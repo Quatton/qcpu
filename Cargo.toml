@@ -7,3 +7,6 @@ default-members = ["qcpu"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+
+[workspace.dependencies]
+clap = { version = "4.5.19", features = ["derive"] }
