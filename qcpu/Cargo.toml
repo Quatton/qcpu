@@ -1,0 +1,4 @@
+[package]
+name = "qcpu"
+version.workspace = true
+edition.workspace = true

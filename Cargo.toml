@@ -1,0 +1,9 @@
+[workspace]
+members = ["qcpu", "qcpu-assembler"]
+resolver = "2"
+default-members = ["qcpu"]
+
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
