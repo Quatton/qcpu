@@ -152,12 +152,13 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "enum_properties",
+ "qcpu_assembler",
  "strum",
  "strum_macros",
 ]
 
 [[package]]
-name = "qcpu-assembler"
+name = "qcpu_assembler"
 version = "0.1.0"
 dependencies = [
  "nom",

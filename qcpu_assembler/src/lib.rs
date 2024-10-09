@@ -32,6 +32,11 @@ pub fn parse_tree(input: &str) -> Result<Vec<Op>, ParseError> {
     Ok(ops)
 }
 
+pub fn to_machine_code(input: &str) -> Result<Vec<u32>, ParseError> {
+    let ops = parse_tree(input)?;
+    Ok(ops.into_iter().map(|op| op.to_machine_code()).collect())
+}
+
 #[cfg(test)]
 mod test {
     use code::ROp;

@@ -1,5 +1,5 @@
 [package]
-name = "qcpu-assembler"
+name = "qcpu_assembler"
 version.workspace = true
 edition.workspace = true
 

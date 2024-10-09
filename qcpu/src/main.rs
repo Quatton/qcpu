@@ -1,22 +1,88 @@
-use clap::Parser;
+use std::io::{Read, Write};
 
-/// Simple program to greet a person
+use clap::{Parser, Subcommand};
+
+/// QCPU Utility
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Name of the person to greet
-    #[arg(short, long)]
-    name: String,
+    #[command(subcommand)]
+    command: Commands,
+}
 
-    /// Number of times to greet
-    #[arg(short, long, default_value_t = 1)]
-    count: u8,
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// A subcommand for assembling RISC-V assembly code to machine code
+    Asm {
+        /// The input file
+        #[arg(short, long)]
+        source: String,
+        /// The output file
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Verbose mode
+        #[arg(short, long, default_value = "false")]
+        verbose: bool,
+    },
 }
 
 fn main() {
     let args = Args::parse();
 
-    for _ in 0..args.count {
-        println!("Hello {}!", args.name);
+    match args.command {
+        Commands::Asm {
+            source,
+            output,
+            verbose,
+        } => {
+            let source_path = std::path::Path::new(&source);
+            let dir_of_source = source_path.parent().unwrap_or(std::path::Path::new("."));
+            let output_path = output.unwrap_or_else(|| {
+                dir_of_source
+                    .join(source_path.file_stem().unwrap())
+                    .with_extension("out")
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            });
+
+            let mut input = String::new();
+            if let Err(e) = std::fs::File::open(source_path)
+                .and_then(|mut file| file.read_to_string(&mut input))
+            {
+                eprintln!("Error reading source file: {}", e);
+                std::process::exit(1);
+            }
+
+            let code = match qcpu_assembler::parse_tree(&input) {
+                Ok(code) => code,
+                Err(e) => {
+                    eprintln!("Error parsing assembly code: {:?}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            let mut output_file = match std::fs::File::create(&output_path) {
+                Ok(file) => file,
+                Err(e) => {
+                    eprintln!("Error creating output file: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            let mut writer = std::io::BufWriter::new(&mut output_file);
+
+            for op in code {
+                let mc = op.to_machine_code();
+                if verbose {
+                    println!("{:?} {:b}", op, mc);
+                }
+                if let Err(e) = writer.write_all(&mc.to_le_bytes()) {
+                    eprintln!("Error writing to output file: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            println!("Done!");
+        }
     }
 }
