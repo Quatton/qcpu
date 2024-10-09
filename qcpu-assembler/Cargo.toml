@@ -2,3 +2,8 @@
 name = "qcpu-assembler"
 version.workspace = true
 edition.workspace = true
+
+[dependencies]
+strum.workspace = true
+strum_macros.workspace = true
+nom.workspace = true
