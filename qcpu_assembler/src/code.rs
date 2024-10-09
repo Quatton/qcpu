@@ -10,7 +10,7 @@ use std::str::FromStr;
 use strum_macros::{EnumProperty, EnumString, VariantNames};
 
 use crate::syntax::IntReg;
-use crate::{iop, rop};
+use crate::{iop, isop, rop};
 
 rop! {
     0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD
@@ -32,16 +32,19 @@ iop! {
     imm[11:0] rs1 0b100 rd 0b0010011 XORI
     imm[11:0] rs1 0b110 rd 0b0010011 ORI
     imm[11:0] rs1 0b111 rd 0b0010011 ANDI
-    // Not supported yet
-    // 0000000 shamt rs1 001 rd 0010011 SLLI
-    // 0000000 shamt rs1 101 rd 0010011 SRLI
-    // 0100000 shamt rs1 101 rd 0010011 SRAI
 }
+
+isop!(
+    0b0000000 shamt rs1 0b001 rd 0b0010011 SLLI
+    0b0000000 shamt rs1 0b101 rd 0b0010011 SRLI
+    0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
+);
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Op {
     R(ROp, IntReg, IntReg, IntReg),
     I(IOp, IntReg, IntReg, i32),
+    IS(ISOp, IntReg, IntReg, i32),
 }
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
@@ -69,6 +72,15 @@ impl Op {
                 )),
                 |(op, rd, rs1, imm)| Op::I(op, rd, rs1, imm),
             ),
+            map(
+                tuple((
+                    delimited(multispace0, ISOp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, parse_i32, multispace0),
+                )),
+                |(op, rd, rs1, imm)| Op::IS(op, rd, rs1, imm),
+            ),
         ))(input)
     }
 
@@ -76,6 +88,7 @@ impl Op {
         match self {
             Op::R(op, rd, rs1, rs2) => op.to_machine_code(rd, rs1, rs2),
             Op::I(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
+            Op::IS(op, rd, rs1, shamt) => op.to_machine_code(rd, rs1, shamt),
         }
     }
 }

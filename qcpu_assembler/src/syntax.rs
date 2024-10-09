@@ -114,3 +114,35 @@ macro_rules! iop {
         }
     };
 }
+
+#[macro_export]
+macro_rules! isop {
+    ($($immf:literal shamt rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
+        #[strum(serialize_all = "lowercase")]
+        pub enum ISOp {
+            $($name,)*
+        }
+
+        impl ISOp {
+            pub fn parse(input: &str) -> IResult<&str, Self> {
+                map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
+            }
+
+            pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, shamt: i32) -> u32 {
+                match self {
+                    $(
+                        ISOp::$name => {
+                            let opcode = $opcode;
+                            let funct3 = $funct3;
+                            let rd = rd as u32;
+                            let rs1 = rs1 as u32;
+                            let imm = shamt as u32;
+                            $immf << 25 | imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+    };
+}

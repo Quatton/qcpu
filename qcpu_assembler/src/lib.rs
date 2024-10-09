@@ -23,7 +23,7 @@ pub fn parse_op(input: &str) -> IResult<&str, Op> {
 pub fn parse_tree(input: &str) -> Result<Vec<Op>, ParseError> {
     let input = normalize(input);
     let (input, ops) = many0(parse_op)(&input)?;
-    if !input.is_empty() {
+    if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {
             input: input.to_string(),
             code: nom::error::ErrorKind::Complete,
