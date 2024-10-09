@@ -23,6 +23,9 @@ enum Commands {
         /// Verbose mode
         #[arg(short, long, default_value = "false")]
         verbose: bool,
+        /// Readable output
+        #[arg(long, default_value = "false")]
+        readable: bool,
     },
 }
 
@@ -34,13 +37,14 @@ fn main() {
             source,
             output,
             verbose,
+            readable,
         } => {
             let source_path = std::path::Path::new(&source);
             let dir_of_source = source_path.parent().unwrap_or(std::path::Path::new("."));
             let output_path = output.unwrap_or_else(|| {
                 dir_of_source
                     .join(source_path.file_stem().unwrap())
-                    .with_extension("out")
+                    .with_extension(if !readable { "bin" } else { "txt" })
                     .to_str()
                     .unwrap()
                     .to_string()
@@ -77,7 +81,14 @@ fn main() {
                 if verbose {
                     println!("{:?} {:b}", op, mc);
                 }
-                if let Err(e) = writer.write_all(&mc.to_le_bytes()) {
+                let formatted;
+                let res = if readable {
+                    formatted = format!("{:032b}\n", mc);
+                    formatted.as_bytes()
+                } else {
+                    &mc.to_le_bytes()
+                };
+                if let Err(e) = writer.write_all(res) {
                     eprintln!("Error writing to output file: {}", e);
                     std::process::exit(1);
                 }

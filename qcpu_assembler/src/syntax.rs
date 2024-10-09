@@ -7,7 +7,7 @@ use nom::character::complete::alphanumeric1;
 use nom::combinator::map_res;
 
 #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantNames)]
-#[strum(serialize_all = "snake_case")]
+#[strum(serialize_all = "lowercase")]
 pub enum IntReg {
     Zero,
     Ra,
@@ -54,7 +54,7 @@ impl IntReg {
 macro_rules! rop {
     ($($funct7:literal rs2 rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
         #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
-        #[strum(serialize_all = "snake_case")]
+        #[strum(serialize_all = "lowercase")]
         pub enum ROp {
             $($name,)*
         }
@@ -87,7 +87,7 @@ macro_rules! rop {
 macro_rules! iop {
     ($(imm[11:0] rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
         #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
-        #[strum(serialize_all = "snake_case")]
+        #[strum(serialize_all = "lowercase")]
         pub enum IOp {
             $($name,)*
         }
