@@ -1,54 +1,4 @@
-use std::str::FromStr;
-
-use nom::IResult;
-use strum_macros::{EnumIter, EnumString, VariantNames};
-
-use nom::character::complete::alphanumeric1;
-use nom::combinator::map_res;
-
-#[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantNames)]
-#[strum(serialize_all = "lowercase")]
-pub enum IntReg {
-    Zero,
-    Ra,
-    Sp,
-    Gp,
-    Tp,
-    T0,
-    T1,
-    T2,
-    #[strum(serialize = "s0", serialize = "fp")]
-    S0,
-    S1,
-    A0,
-    A1,
-    A2,
-    A3,
-    A4,
-    A5,
-    A6,
-    A7,
-    S2,
-    S3,
-    S4,
-    S5,
-    S6,
-    S7,
-    S8,
-    S9,
-    S10,
-    S11,
-    T3,
-    T4,
-    T5,
-    T6,
-}
-
-impl IntReg {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
-        map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
-    }
-}
+extern crate proc_macro;
 
 #[macro_export]
 macro_rules! rop {
@@ -59,11 +9,9 @@ macro_rules! rop {
             $($name,)*
         }
 
-        impl ROp {
-            pub fn parse(input: &str) -> IResult<&str, Self> {
-                map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
-            }
+        impl WithParser for ROp {}
 
+        impl ROp {
             pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, rs2: IntReg) -> u32 {
                 match self {
                     $(
@@ -92,10 +40,9 @@ macro_rules! iop {
             $($name,)*
         }
 
+        impl WithParser for IOp {}
+
         impl IOp {
-            pub fn parse(input: &str) -> IResult<&str, Self> {
-                map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
-            }
 
             pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, imm: i32) -> u32 {
                 match self {
@@ -124,11 +71,9 @@ macro_rules! isop {
             $($name,)*
         }
 
-        impl ISOp {
-            pub fn parse(input: &str) -> IResult<&str, Self> {
-                map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
-            }
+        impl WithParser for ISOp {}
 
+        impl ISOp {
             pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, shamt: i32) -> u32 {
                 match self {
                     $(

@@ -1,4 +1,3 @@
-use nom::character::complete::alphanumeric1;
 use nom::{
     branch::alt,
     character::complete::{digit1, multispace0, multispace1},
@@ -6,49 +5,19 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
-use std::str::FromStr;
-use strum_macros::{EnumProperty, EnumString, VariantNames};
 
-use crate::syntax::IntReg;
-use crate::{iop, isop, rop};
+use crate::{reg::IntReg, WithParser};
+use crate::{IOp, ISOp, ROp};
 
-rop! {
-    0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD
-    0b0100000 rs2 rs1 0b000 rd 0b0110011 SUB
-    0b0000000 rs2 rs1 0b001 rd 0b0110011 SLL
-    0b0000000 rs2 rs1 0b010 rd 0b0110011 SLT
-    0b0000000 rs2 rs1 0b011 rd 0b0110011 SLTU
-    0b0000000 rs2 rs1 0b100 rd 0b0110011 XOR
-    0b0000000 rs2 rs1 0b101 rd 0b0110011 SRL
-    0b0100000 rs2 rs1 0b101 rd 0b0110011 SRA
-    0b0000000 rs2 rs1 0b110 rd 0b0110011 OR
-    0b0000000 rs2 rs1 0b111 rd 0b0110011 AND
+pub fn parse_i32(input: &str) -> IResult<&str, i32> {
+    map_res(digit1, |s: &str| s.parse::<i32>())(input)
 }
-
-iop! {
-    imm[11:0] rs1 0b000 rd 0b0010011 ADDI
-    imm[11:0] rs1 0b010 rd 0b0010011 SLTI
-    imm[11:0] rs1 0b011 rd 0b0010011 SLTIU
-    imm[11:0] rs1 0b100 rd 0b0010011 XORI
-    imm[11:0] rs1 0b110 rd 0b0010011 ORI
-    imm[11:0] rs1 0b111 rd 0b0010011 ANDI
-}
-
-isop!(
-    0b0000000 shamt rs1 0b001 rd 0b0010011 SLLI
-    0b0000000 shamt rs1 0b101 rd 0b0010011 SRLI
-    0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
-);
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Op {
     R(ROp, IntReg, IntReg, IntReg),
     I(IOp, IntReg, IntReg, i32),
     IS(ISOp, IntReg, IntReg, i32),
-}
-
-pub fn parse_i32(input: &str) -> IResult<&str, i32> {
-    map_res(digit1, |s: &str| s.parse::<i32>())(input)
 }
 
 impl Op {

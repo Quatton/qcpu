@@ -1,5 +1,5 @@
 [package]
-name = "qcpu_assembler"
+name = "qcpu_syntax"
 version.workspace = true
 edition.workspace = true
 
@@ -7,5 +7,3 @@ edition.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 nom.workspace = true
-
-qcpu_syntax.workspace = true

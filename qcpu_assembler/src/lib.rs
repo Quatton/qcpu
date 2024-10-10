@@ -1,11 +1,5 @@
-use code::Op;
-use error::ParseError;
 use nom::{multi::many0, IResult};
-use syntax::IntReg;
-
-pub mod code;
-pub mod error;
-pub mod syntax;
+use qcpu_syntax::{error::ParseError, parser::Op, reg::IntReg, WithParser};
 
 pub fn normalize(input: &str) -> String {
     // clean up
@@ -39,24 +33,17 @@ pub fn to_machine_code(input: &str) -> Result<Vec<u32>, ParseError> {
 
 #[cfg(test)]
 mod test {
-    use code::ROp;
+
     use std::str::FromStr;
+
+    use qcpu_syntax::ROp;
 
     use super::*;
 
     #[test]
     fn test_add() {
-        //   let code = r#"
-        //   add a0 a1 a2
-        //   sub a0 a1 a2
-        // "#;
-        //   let lines = code.trim().lines();
-        //   for line in lines.into_iter() {
-        //       let op =
-        //       println!("{op:?} {:b}", op.to_machine_code());
-        //   }
         let code = "add";
-        println!("{:?}", ROp::from_str(code));
+        assert_eq!(ROp::ADD, ROp::from_str(code).unwrap());
     }
 
     #[test]

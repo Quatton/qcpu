@@ -162,6 +162,16 @@ name = "qcpu_assembler"
 version = "0.1.0"
 dependencies = [
  "nom",
+ "qcpu_syntax",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
+name = "qcpu_syntax"
+version = "0.1.0"
+dependencies = [
+ "nom",
  "strum",
  "strum_macros",
 ]
