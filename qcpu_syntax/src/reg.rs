@@ -1,6 +1,6 @@
-use strum_macros::{EnumIter, EnumString, VariantNames};
+use strum_macros::{Display, EnumIter, EnumString, VariantArray};
 
-#[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantNames)]
+#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray)]
 #[strum(serialize_all = "lowercase")]
 pub enum IntReg {
     Zero,

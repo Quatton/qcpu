@@ -7,6 +7,7 @@ use nom::{
     IResult,
 };
 
+use crate::error::ParseError;
 use crate::reg::IntReg;
 use crate::{IOp, ISOp, ROp};
 
@@ -18,6 +19,10 @@ pub trait WithParser: std::str::FromStr {
     fn parse(input: &str) -> IResult<&str, Self> {
         map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
     }
+}
+
+pub trait FromMachineCode {
+    fn from_machine_code(input: u32) -> Result<Op, ParseError>;
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -65,6 +70,24 @@ impl Op {
             Op::R(op, rd, rs1, rs2) => op.to_machine_code(rd, rs1, rs2),
             Op::I(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
             Op::IS(op, rd, rs1, shamt) => op.to_machine_code(rd, rs1, shamt),
+        }
+    }
+
+    pub fn from_machine_code(input: u32) -> Result<Self, ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & input;
+        match opcode {
+            0b0110011 => ROp::from_machine_code(input),
+            0b0010011 => IOp::from_machine_code(input),
+            0b0011011 => ISOp::from_machine_code(input),
+            _ => Err(ParseError::DisassemblerError(input)),
+        }
+    }
+
+    pub fn to_asm(self) -> String {
+        match self {
+            Op::R(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
+            Op::I(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
+            Op::IS(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
         }
     }
 }

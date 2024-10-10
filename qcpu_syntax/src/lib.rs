@@ -1,3 +1,4 @@
+use strum::VariantArray;
 pub mod error;
 pub mod macros;
 pub mod parser;
