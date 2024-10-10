@@ -1,5 +1,9 @@
 use nom::{multi::many0, IResult};
-use qcpu_syntax::{error::ParseError, parser::Op, reg::IntReg, WithParser};
+use qcpu_syntax::{
+    error::ParseError,
+    parser::{Op, WithParser},
+    reg::IntReg,
+};
 
 pub fn normalize(input: &str) -> String {
     // clean up

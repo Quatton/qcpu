@@ -3,16 +3,16 @@ extern crate proc_macro;
 #[macro_export]
 macro_rules! rop {
     ($($funct7:literal rs2 rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
-        #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString)]
         #[strum(serialize_all = "lowercase")]
         pub enum ROp {
             $($name,)*
         }
 
-        impl WithParser for ROp {}
+        impl parser::WithParser for ROp {}
 
         impl ROp {
-            pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, rs2: IntReg) -> u32 {
+            pub fn to_machine_code(self, rd: reg::IntReg, rs1: reg::IntReg, rs2: reg::IntReg) -> u32 {
                 match self {
                     $(
                         ROp::$name => {
@@ -34,17 +34,17 @@ macro_rules! rop {
 #[macro_export]
 macro_rules! iop {
     ($(imm[11:0] rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
-        #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString)]
         #[strum(serialize_all = "lowercase")]
         pub enum IOp {
             $($name,)*
         }
 
-        impl WithParser for IOp {}
+        impl parser::WithParser for IOp {}
 
         impl IOp {
 
-            pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, imm: i32) -> u32 {
+            pub fn to_machine_code(self, rd: reg::IntReg, rs1: reg::IntReg, imm: i32) -> u32 {
                 match self {
                     $(
                         IOp::$name => {
@@ -65,16 +65,16 @@ macro_rules! iop {
 #[macro_export]
 macro_rules! isop {
     ($($immf:literal shamt rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
-        #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumProperty, VariantNames)]
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString)]
         #[strum(serialize_all = "lowercase")]
         pub enum ISOp {
             $($name,)*
         }
 
-        impl WithParser for ISOp {}
+        impl parser::WithParser for ISOp {}
 
         impl ISOp {
-            pub fn to_machine_code(self, rd: IntReg, rs1: IntReg, shamt: i32) -> u32 {
+            pub fn to_machine_code(self, rd: reg::IntReg, rs1: reg::IntReg, shamt: i32) -> u32 {
                 match self {
                     $(
                         ISOp::$name => {

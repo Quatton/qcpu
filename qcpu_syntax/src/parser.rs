@@ -1,3 +1,4 @@
+use nom::character::complete::alphanumeric1;
 use nom::{
     branch::alt,
     character::complete::{digit1, multispace0, multispace1},
@@ -6,11 +7,17 @@ use nom::{
     IResult,
 };
 
-use crate::{reg::IntReg, WithParser};
+use crate::reg::IntReg;
 use crate::{IOp, ISOp, ROp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     map_res(digit1, |s: &str| s.parse::<i32>())(input)
+}
+
+pub trait WithParser: std::str::FromStr {
+    fn parse(input: &str) -> IResult<&str, Self> {
+        map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

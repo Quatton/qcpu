@@ -1,7 +1,5 @@
 use strum_macros::{EnumIter, EnumString, VariantNames};
 
-use crate::WithParser;
-
 #[derive(PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum IntReg {
@@ -40,4 +38,4 @@ pub enum IntReg {
     T6,
 }
 
-impl WithParser for IntReg {}
+impl crate::parser::WithParser for IntReg {}

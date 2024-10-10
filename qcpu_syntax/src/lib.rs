@@ -1,8 +1,3 @@
-use crate::reg::IntReg;
-use nom::character::complete::alphanumeric1;
-use nom::{combinator::map_res, IResult};
-use strum_macros::{EnumProperty, EnumString, VariantNames};
-
 pub mod error;
 pub mod macros;
 pub mod parser;
@@ -35,9 +30,3 @@ isop!(
   0b0000000 shamt rs1 0b101 rd 0b0010011 SRLI
   0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
 );
-
-pub trait WithParser: std::str::FromStr {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
-    }
-}
