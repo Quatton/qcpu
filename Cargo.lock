@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "enum_properties",
@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_assembler"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nom",
  "qcpu_syntax",
@@ -169,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_syntax"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nom",
  "strum",

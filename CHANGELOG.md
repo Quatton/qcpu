@@ -1,7 +1,10 @@
+## [0.2.0] - 2024-10-10
+- Introducing `to_assembly` to convert binary to assembly code. (disassembler)
+- More organized code.
+
 ## [0.1.1] - 2024-10-10
 - Support:
 ```rs
-
 rop! {
     0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD
     0b0100000 rs2 rs1 0b000 rd 0b0110011 SUB
