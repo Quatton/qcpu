@@ -168,6 +168,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "qcpu_simulator"
+version = "0.2.0"
+dependencies = [
+ "qcpu_syntax",
+]
+
+[[package]]
 name = "qcpu_syntax"
 version = "0.2.0"
 dependencies = [

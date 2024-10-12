@@ -3,7 +3,7 @@ use nom::error::Error;
 #[derive(Debug)]
 pub enum ParseError {
     NomError(Error<String>),
-    DisassemblerError(u32),
+    DisassemblerError(String),
 }
 
 impl From<nom::Err<Error<&str>>> for ParseError {

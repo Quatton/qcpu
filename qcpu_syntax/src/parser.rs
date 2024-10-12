@@ -77,9 +77,8 @@ impl Op {
         let opcode = 0b00000000000000000000000001111111 & input;
         match opcode {
             0b0110011 => ROp::from_machine_code(input),
-            0b0010011 => IOp::from_machine_code(input),
-            0b0011011 => ISOp::from_machine_code(input),
-            _ => Err(ParseError::DisassemblerError(input)),
+            0b0010011 => IOp::from_machine_code(input).or_else(|_| ISOp::from_machine_code(input)),
+            _ => Err(ParseError::DisassemblerError(format!("{:032b}", input))),
         }
     }
 

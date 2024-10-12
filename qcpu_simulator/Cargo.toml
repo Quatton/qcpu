@@ -1,0 +1,7 @@
+[package]
+name = "qcpu_simulator"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+qcpu_syntax.workspace = true

@@ -46,7 +46,7 @@ macro_rules! rop {
                 $(
                     ($funct3, $funct7, $opcode) => Ok(parser::Op::R(ROp::$name, rd, rs1, rs2)),
                 )*
-                _ => Err(error::ParseError::DisassemblerError(mc)),
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
             }
         }
       }
@@ -96,7 +96,7 @@ macro_rules! iop {
                 $(
                     ($funct3, $opcode) => Ok(parser::Op::I(IOp::$name, rd, rs1, imm)),
                 )*
-                _ => Err(error::ParseError::DisassemblerError(mc)),
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
             }
         }
       }
@@ -107,7 +107,7 @@ macro_rules! iop {
 
 #[macro_export]
 macro_rules! isop {
-    ($($immf:literal shamt rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
+    ($($imm:literal shamt rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
         #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
         #[strum(serialize_all = "lowercase")]
         pub enum ISOp {
@@ -126,7 +126,7 @@ macro_rules! isop {
                             let rd = rd as u32;
                             let rs1 = rs1 as u32;
                             let imm = shamt as u32;
-                            $immf << 25 | imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+                            $imm << 25 | imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
                         }
                     )*
                 }
@@ -135,21 +135,21 @@ macro_rules! isop {
 
         impl parser::FromMachineCode for ISOp {
           fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
-            let opcode =  0b00000000000000000000000001111111  & mc;
+            let opcode =    0b00000000000000000000000001111111  & mc;
             let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
-            let funct3 = (0b00000000000000000111000000000000  & mc) >> 12;
-            let rs1i =   ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
-            let imm =     ((0b11111110000000000000000000000000  & mc) >> 20) as i32;
-            let immf =    ((0b10000000000000000000000000000000  & mc) >> 25) as i32;
+            let funct3 =   (0b00000000000000000111000000000000  & mc) >> 12;
+            let rs1i =     ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+            let shamt =    ((0b00000001111100000000000000000000  & mc) >> 20) as i32;
+            let imm =      ((0b11111110000000000000000000000000  & mc) >> 25) as i32;
 
             let rd = reg::IntReg::VARIANTS[rdi];
             let rs1 = reg::IntReg::VARIANTS[rs1i];
 
-            match (funct3, immf, opcode) {
+            match (funct3, imm, opcode) {
                 $(
-                    ($funct3, $immf, $opcode) => Ok(parser::Op::IS(ISOp::$name, rd, rs1, imm)),
+                    ($funct3, $imm, $opcode) => Ok(parser::Op::IS(ISOp::$name, rd, rs1, shamt)),
                 )*
-                _ => Err(error::ParseError::DisassemblerError(mc)),
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
             }
         }
       }

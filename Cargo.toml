@@ -1,5 +1,5 @@
 [workspace]
-members = ["qcpu", "qcpu_assembler", "qcpu_syntax"]
+members = ["qcpu", "qcpu_assembler", "qcpu_syntax", "qcpu_simulator"]
 resolver = "2"
 default-members = ["qcpu"]
 
@@ -17,3 +17,4 @@ nom = "7.1.3"
 
 qcpu_assembler = { path = "./qcpu_assembler" }
 qcpu_syntax = { path = "./qcpu_syntax" }
+qcpu_simulator = { path = "./qcpu_simulator" }

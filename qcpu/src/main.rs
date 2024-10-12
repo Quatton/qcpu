@@ -1,6 +1,10 @@
-use std::io::{Read, Write};
+use std::{
+    fs::OpenOptions,
+    io::{Read, Write},
+};
 
 use clap::{Parser, Subcommand};
+use qcpu_assembler::{from_machine_code, to_assembly};
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -26,6 +30,16 @@ enum Commands {
         /// Readable output
         #[arg(long, default_value = "false")]
         readable: bool,
+    },
+
+    /// A subcommand for disassembling machine code to RISC-V assembly code
+    Disasm {
+        /// The input file
+        #[arg(short, long)]
+        source: String,
+        /// The output file
+        #[arg(short, long)]
+        output: Option<String>,
     },
 }
 
@@ -94,6 +108,39 @@ fn main() {
                 }
             }
             println!("Done!");
+        }
+        Commands::Disasm { source, output } => {
+            let source_path = std::path::Path::new(&source);
+            let dir_of_source = source_path.parent().unwrap_or(std::path::Path::new("."));
+            let output_path = output.unwrap_or_else(|| {
+                dir_of_source
+                    .join(source_path.file_stem().unwrap())
+                    .with_extension("s")
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            });
+
+            let bytes = std::fs::read(source_path).unwrap();
+
+            let mcs: Vec<u32> = bytes
+                .chunks_exact(4)
+                .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
+                .collect();
+
+            let ops = from_machine_code(mcs).unwrap();
+            let asm = to_assembly(ops);
+
+            let mut output_file = OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(output_path)
+                .unwrap();
+
+            let mut writer = std::io::BufWriter::new(&mut output_file);
+
+            writer.write_all(asm.as_bytes()).unwrap();
         }
     }
 }
