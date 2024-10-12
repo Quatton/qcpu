@@ -1,3 +1,6 @@
+## [0.2.1] - 2024-10-12
+- Fixed error for `ISOp` operations.
+
 ## [0.2.0] - 2024-10-10
 - Introducing `to_assembly` to convert binary to assembly code. (disassembler)
 - More organized code.
