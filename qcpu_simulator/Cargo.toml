@@ -4,4 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+strum.workspace = true
 qcpu_syntax.workspace = true
+qcpu_assembler.workspace = true

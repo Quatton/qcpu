@@ -171,7 +171,9 @@ dependencies = [
 name = "qcpu_simulator"
 version = "0.2.1"
 dependencies = [
+ "qcpu_assembler",
  "qcpu_syntax",
+ "strum",
 ]
 
 [[package]]
