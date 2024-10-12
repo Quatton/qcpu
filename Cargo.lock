@@ -153,6 +153,7 @@ dependencies = [
  "clap",
  "enum_properties",
  "qcpu_assembler",
+ "qcpu_simulator",
  "strum",
  "strum_macros",
 ]

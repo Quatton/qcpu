@@ -41,12 +41,37 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+
+    /// A subcommand for simulating RISC-V machine code
+    Sim {
+        /// The input file in machine code
+        #[arg(short, long)]
+        bin: String,
+
+        /// Verbose mode
+        #[arg(short, long, default_value = "false")]
+        verbose: bool,
+    },
 }
 
 fn main() {
     let args = Args::parse();
 
     match args.command {
+        Commands::Sim { bin, verbose } => {
+            let bytes = std::fs::read(bin).unwrap();
+            let mcs: Vec<u32> = bytes
+                .chunks_exact(4)
+                .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
+                .collect();
+
+            let ops = from_machine_code(mcs).unwrap();
+
+            let mut sim = qcpu_simulator::Simulator::new()
+                .config(qcpu_simulator::SimulationConfig { verbose });
+
+            sim.run(ops.into_iter().map(|op| op.to_machine_code()).collect());
+        }
         Commands::Asm {
             source,
             output,
