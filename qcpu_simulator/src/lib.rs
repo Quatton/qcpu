@@ -1,14 +1,26 @@
 use qcpu_syntax::{parser::Op, reg::IntReg, IOp, ISOp, ROp};
 use strum::VariantArray;
+#[derive(Default)]
+
+pub struct Snapshot {
+    pc: usize,
+    reg: [Option<i32>; 32],
+}
 
 #[derive(Default)]
 pub struct SimulationContext {
-    pub registers: [u32; 32],
+    pub registers: [i32; 32],
+    pub history: Vec<Snapshot>,
+    pub pc: usize,
 }
 
 impl SimulationContext {
     pub fn new() -> Self {
-        Self { registers: [0; 32] }
+        Self {
+            registers: [0; 32],
+            history: vec![],
+            pc: 0,
+        }
     }
 
     pub fn log_registers(&self) {
@@ -19,6 +31,18 @@ impl SimulationContext {
                 println!();
             }
         }
+    }
+
+    pub fn commit(&mut self, rd: usize, new: i32) {
+        let latest = if let Some(lastest) = self.history.last_mut() {
+            lastest
+        } else {
+            self.history.push(Snapshot::default());
+            self.history.last_mut().unwrap()
+        };
+
+        latest.reg[rd] = Some(new);
+        self.registers[rd] = new;
     }
 }
 
@@ -46,14 +70,17 @@ impl Simulator {
     }
 
     pub fn run(&mut self, code: Vec<u32>) {
-        let mut pc = 0;
-        while pc < code.len() {
+        while self.context.pc < code.len() {
             if self.config.verbose {
-                println!("======pc: {}======\n", pc);
+                println!("======pc: {}======\n", self.context.pc);
             }
-            let op = Op::from_machine_code(code[pc]).unwrap();
+            let op = Op::from_machine_code(code[self.context.pc]).unwrap();
+            self.context.history.push(Snapshot {
+                pc: self.context.pc,
+                reg: [None; 32],
+            });
             self.execute(op);
-            pc += 1;
+            self.context.pc += 1;
         }
     }
 
@@ -74,14 +101,10 @@ impl Simulator {
                     ROp::XOR => self.context.registers[rs1] ^ self.context.registers[rs2],
                     ROp::SLL => self.context.registers[rs1] << self.context.registers[rs2],
                     ROp::SRL => self.context.registers[rs1] >> self.context.registers[rs2],
-                    ROp::SRA => {
-                        (self.context.registers[rs1] as i32 >> self.context.registers[rs2]) as u32
-                    }
+                    ROp::SRA => self.context.registers[rs1] >> self.context.registers[rs2],
                     // signed comparison
                     ROp::SLT => {
-                        if (self.context.registers[rs1] as i32)
-                            < (self.context.registers[rs2] as i32)
-                        {
+                        if self.context.registers[rs1] < self.context.registers[rs2] {
                             1
                         } else {
                             0
@@ -89,26 +112,28 @@ impl Simulator {
                     }
                     // unsigned comparison
                     ROp::SLTU => {
-                        if self.context.registers[rs1] < self.context.registers[rs2] {
+                        if (self.context.registers[rs1] as u32)
+                            < (self.context.registers[rs2] as u32)
+                        {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.context.registers[rd] = result;
+                self.context.commit(rd, result);
             }
             Op::I(op, rd, rs1, imm) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let result = match op {
-                    IOp::ADDI => self.context.registers[rs1] + imm as u32,
-                    IOp::ANDI => self.context.registers[rs1] & imm as u32,
-                    IOp::ORI => self.context.registers[rs1] | imm as u32,
-                    IOp::XORI => self.context.registers[rs1] ^ imm as u32,
+                    IOp::ADDI => self.context.registers[rs1] + imm,
+                    IOp::ANDI => self.context.registers[rs1] & imm,
+                    IOp::ORI => self.context.registers[rs1] | imm,
+                    IOp::XORI => self.context.registers[rs1] ^ imm,
                     // signed comparison
                     IOp::SLTI => {
-                        if (self.context.registers[rs1] as i32) < imm {
+                        if self.context.registers[rs1] < imm {
                             1
                         } else {
                             0
@@ -116,14 +141,14 @@ impl Simulator {
                     }
                     // unsigned comparison
                     IOp::SLTIU => {
-                        if self.context.registers[rs1] < imm as u32 {
+                        if (self.context.registers[rs1] as u32) < (imm as u32) {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.context.registers[rd] = result;
+                self.context.commit(rd, result);
             }
             Op::IS(op, rd, rs1, shamt) => {
                 let rd = rd as usize;
@@ -131,9 +156,9 @@ impl Simulator {
                 let result = match op {
                     ISOp::SLLI => self.context.registers[rs1] << shamt,
                     ISOp::SRLI => self.context.registers[rs1] >> shamt,
-                    ISOp::SRAI => (self.context.registers[rs1] as i32 >> shamt) as u32,
+                    ISOp::SRAI => self.context.registers[rs1] >> shamt,
                 };
-                self.context.registers[rd] = result;
+                self.context.commit(rd, result);
             }
         }
         if self.config.verbose {
