@@ -36,7 +36,7 @@ enum Commands {
     Disasm {
         /// The input file
         #[arg(short, long)]
-        source: String,
+        bin: String,
         /// The output file
         #[arg(short, long)]
         output: Option<String>,
@@ -134,7 +134,10 @@ fn main() {
             }
             println!("Done!");
         }
-        Commands::Disasm { source, output } => {
+        Commands::Disasm {
+            bin: source,
+            output,
+        } => {
             let source_path = std::path::Path::new(&source);
             let dir_of_source = source_path.parent().unwrap_or(std::path::Path::new("."));
             let output_path = output.unwrap_or_else(|| {
