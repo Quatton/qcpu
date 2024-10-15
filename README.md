@@ -10,6 +10,24 @@
 ├── qcpu_syntax
 ```
 
+## Installation
+
+Make sure you have cargo installed.
+
+```sh
+# Linux/MacOS
+curl https://sh.rustup.rs -sSf | sh
+
+# Windows
+winget install -e --id Rustlang.Rustup
+```
+
+Then install the qcpu package.
+
+```sh
+cargo install --path ./qcpu # <- if you're in the root directory, otherwise just make sure the path is correct
+```
+
 ## For assembler
   
 ```sh

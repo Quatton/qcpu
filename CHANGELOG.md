@@ -1,3 +1,6 @@
+## [0.3.0] - 2024-10-15
+- Simulation with `qcpu sim -b <input_file_in_binary>`.
+
 ## [0.2.1] - 2024-10-12
 - Fixed error for `ISOp` operations.
 
