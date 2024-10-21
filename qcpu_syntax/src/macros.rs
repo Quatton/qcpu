@@ -177,7 +177,7 @@ macro_rules! bop {
                             let funct3 = $funct3;
                             let rs2 = rs2 as u32;
                             let rs1 = rs1 as u32;
-                            let imm = imm as u32;
+                            let imm = (imm as u32) << 1;
                             let imm11 = 0b1 & imm >> 11;
                             let imm4 = 0b1111 & imm >> 1;
                             let imm12 = 0b1 & imm >> 12;
@@ -211,7 +211,7 @@ macro_rules! bop {
                 let imm = (imm12 << 12 |
                 imm11 << 11 | imm10 << 5 | imm4 << 1);
 
-                let imm = i12_to_i32(imm >> 1) << 1;
+                let imm = i12_to_i32(imm >> 1);
 
                 let rs2 = reg::IntReg::VARIANTS[rs2i];
                 let rs1 = reg::IntReg::VARIANTS[rs1i];
