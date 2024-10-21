@@ -4,6 +4,7 @@ use nom::error::Error;
 pub enum ParseError {
     NomError(Error<String>),
     DisassemblerError(String),
+    JumpTargetError(String),
 }
 
 impl From<nom::Err<Error<&str>>> for ParseError {

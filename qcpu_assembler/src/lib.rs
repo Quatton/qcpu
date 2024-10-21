@@ -30,7 +30,7 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
     };
 
     let mut len = 0;
-    Ok(nodes
+    let mut ops: Vec<Op> = nodes
         .into_iter()
         .filter_map(|node| match node {
             Node::Label(label) => {
@@ -42,7 +42,13 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
                 Some(op)
             }
         })
-        .collect())
+        .collect();
+
+    for (i, op) in ops.iter_mut().enumerate() {
+        op.resolve_labels(ctx, i)?;
+    }
+
+    Ok(ops)
 }
 
 pub fn to_machine_code(ops: Vec<Op>, ctx: &ParsingContext) -> Result<Vec<u32>, ParseError> {
@@ -164,5 +170,22 @@ mod test {
         // println!("{:32b}", u);
         // println!("{:32b}", expected);
         assert_eq!(u, expected)
+    }
+
+    #[test]
+    fn parse_branch_op() {
+        let code = r#"
+            addi a0 zero 3
+            .los12312__op:
+                addi a0 a0 -1
+                bne a0 zero .los12312__op
+
+            addi a1 zero 1
+        "#;
+
+        let mut ctx = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx).unwrap();
+
+        println!("{:?}", ops);
     }
 }

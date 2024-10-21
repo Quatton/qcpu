@@ -73,7 +73,7 @@ macro_rules! iop {
                             let funct3 = $funct3;
                             let rd = rd as u32;
                             let rs1 = rs1 as u32;
-                            let imm = imm as u32;
+                            let imm = i32_to_i12(imm);
                             imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
                         }
                     )*
@@ -87,8 +87,9 @@ macro_rules! iop {
             let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
             let funct3 = (0b00000000000000000111000000000000  & mc) >> 12;
             let rs1i =   ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
-            let imm =     ((0b11111111111100000000000000000000  & mc) >> 20) as i32;
+            let imm =     ((0b11111111111100000000000000000000  & mc) >> 20);
 
+            let imm = i12_to_i32(imm);
             let rd = reg::IntReg::VARIANTS[rdi];
             let rs1 = reg::IntReg::VARIANTS[rs1i];
 
@@ -168,7 +169,7 @@ macro_rules! bop {
         impl parser::WithParser for BOp {}
 
         impl BOp {
-            pub fn to_machine_code(self, rs2: reg::IntReg, rs1: reg::IntReg, imm: u32) -> u32 {
+            pub fn to_machine_code(self, rs2: reg::IntReg, rs1: reg::IntReg, imm: i32) -> u32 {
                 match self {
                     $(
                         BOp::$name => {
@@ -176,6 +177,7 @@ macro_rules! bop {
                             let funct3 = $funct3;
                             let rs2 = rs2 as u32;
                             let rs1 = rs1 as u32;
+                            let imm = imm as u32;
                             let imm11 = 0b1 & imm >> 11;
                             let imm4 = 0b1111 & imm >> 1;
                             let imm12 = 0b1 & imm >> 12;
@@ -206,14 +208,17 @@ macro_rules! bop {
                 let imm4 =     ((0b00000000000000000000111100000000  & mc) >> 8) as u32;
                 let imm11 =    ((0b00000000000000000000000010000000  & mc) >> 7) as u32;
 
-                let imm = imm12 << 11 | imm11 << 10 | imm10 << 5 | imm4 << 1;
+                let imm = (imm12 << 12 |
+                imm11 << 11 | imm10 << 5 | imm4 << 1);
+
+                let imm = i12_to_i32(imm >> 1) << 1;
 
                 let rs2 = reg::IntReg::VARIANTS[rs2i];
                 let rs1 = reg::IntReg::VARIANTS[rs1i];
 
                 match (funct3, opcode) {
                     $(
-                        ($funct3, $opcode) => Ok(parser::Op::B(BOp::$name, rs2, rs1, parser::JumpTarget::from_offset(imm))),
+                        ($funct3, $opcode) => Ok(parser::Op::B(BOp::$name, rs2, rs1, parser::JumpTarget::from_offset(imm as i32))),
                     )*
                     _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
                 }

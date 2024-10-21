@@ -40,3 +40,19 @@ bop!(
   imm[12|10:5] rs2 rs1 0b110 imm[4:1|11] 0b1100011 BLTU
   imm[12|10:5] rs2 rs1 0b111 imm[4:1|11] 0b1100011 BGEU
 );
+
+fn i12_to_i32(i: u32) -> i32 {
+    if i >> 11 == 0 {
+        i as i32
+    } else {
+        (i | 0xFFFFF000) as i32
+    }
+}
+
+fn i32_to_i12(i: i32) -> u32 {
+    if i < 0 {
+        (i >> 31 | (i & 0xFFF)) as u32
+    } else {
+        i as u32
+    }
+}

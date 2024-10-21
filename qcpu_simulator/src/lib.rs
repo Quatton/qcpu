@@ -1,14 +1,14 @@
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
     reg::IntReg,
-    IOp, ISOp, ROp,
+    BOp, IOp, ISOp, ROp,
 };
 use strum::VariantArray;
 
 #[derive(Default)]
 pub struct Snapshot {
     pc: usize,
-    reg: [Option<i32>; 32],
+    reg: [Option<(i32, i32)>; 32],
 }
 
 #[derive(Default)]
@@ -45,7 +45,7 @@ impl SimulationContext {
             self.history.last_mut().unwrap()
         };
 
-        latest.reg[rd] = Some(new);
+        latest.reg[rd] = Some((self.registers[rd], new));
         self.registers[rd] = new;
     }
 }
@@ -84,11 +84,11 @@ impl Simulator {
                 pc: self.context.pc,
                 reg: [None; 32],
             });
-            self.context.pc = self.execute(op);
+            self.execute(op);
         }
     }
 
-    pub fn execute(&mut self, op: Op) -> usize {
+    pub fn execute(&mut self, op: Op) {
         if self.config.verbose {
             println!("{:?}", op);
         }
@@ -168,14 +168,37 @@ impl Simulator {
                 self.context.pc + 1
             }
             Op::B(op, rs2, rs1, imm) => {
-                // do something
-                self.context.pc + 1
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+                let jmp = match op {
+                    BOp::BEQ => self.context.registers[rs1] == self.context.registers[rs2],
+                    BOp::BNE => self.context.registers[rs1] != self.context.registers[rs2],
+                    BOp::BLT => self.context.registers[rs1] < self.context.registers[rs2],
+                    BOp::BGE => self.context.registers[rs1] >= self.context.registers[rs2],
+                    BOp::BGEU => {
+                        (self.context.registers[rs1] as u32) >= (self.context.registers[rs2] as u32)
+                    }
+
+                    BOp::BLTU => {
+                        (self.context.registers[rs1] as u32) < (self.context.registers[rs2] as u32)
+                    }
+                };
+
+                if !jmp {
+                    self.context.pc + 1
+                } else {
+                    let next = self.context.pc as i32 + imm.offset().unwrap();
+                    if next < 0 {
+                        panic!("negative pc");
+                    }
+                    next as usize
+                }
             }
         };
         if self.config.verbose {
             self.context.log_registers();
         }
-        next_pc
+        self.context.pc = next_pc;
     }
 }
 
@@ -199,6 +222,23 @@ mod test {
         "#;
         let mut parsing_context = ParsingContext::default();
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
+        let code = qcpu_assembler::to_machine_code(ops, &parsing_context).unwrap();
+        sim.run(code);
+    }
+
+    #[test]
+    fn test_branch_simulator() {
+        let mut sim = Simulator::new().config(SimulationConfig { verbose: true });
+        let asm = r#"
+            addi a0 zero 3
+            loop:
+                addi a1 a1 2
+                addi a0 a0 -1
+                bne a0 zero loop
+        "#;
+        let mut parsing_context = ParsingContext::default();
+        let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
+        println!("{:?}", ops);
         let code = qcpu_assembler::to_machine_code(ops, &parsing_context).unwrap();
         sim.run(code);
     }
