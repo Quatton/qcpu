@@ -1,7 +1,11 @@
-use qcpu_syntax::{parser::Op, reg::IntReg, IOp, ISOp, ROp};
+use qcpu_syntax::{
+    parser::{Op, ParsingContext},
+    reg::IntReg,
+    IOp, ISOp, ROp,
+};
 use strum::VariantArray;
-#[derive(Default)]
 
+#[derive(Default)]
 pub struct Snapshot {
     pc: usize,
     reg: [Option<i32>; 32],
@@ -70,25 +74,25 @@ impl Simulator {
     }
 
     pub fn run(&mut self, code: Vec<u32>) {
+        let mut ctx = ParsingContext::default();
         while self.context.pc < code.len() {
             if self.config.verbose {
                 println!("======pc: {}======\n", self.context.pc);
             }
-            let op = Op::from_machine_code(code[self.context.pc]).unwrap();
+            let op = Op::from_machine_code(code[self.context.pc], &mut ctx).unwrap();
             self.context.history.push(Snapshot {
                 pc: self.context.pc,
                 reg: [None; 32],
             });
-            self.execute(op);
-            self.context.pc += 1;
+            self.context.pc = self.execute(op);
         }
     }
 
-    pub fn execute(&mut self, op: Op) {
+    pub fn execute(&mut self, op: Op) -> usize {
         if self.config.verbose {
             println!("{:?}", op);
         }
-        match op {
+        let next_pc = match op {
             Op::R(op, rd, rs1, rs2) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
@@ -122,6 +126,7 @@ impl Simulator {
                     }
                 };
                 self.context.commit(rd, result);
+                self.context.pc + 1
             }
             Op::I(op, rd, rs1, imm) => {
                 let rd = rd as usize;
@@ -149,6 +154,7 @@ impl Simulator {
                     }
                 };
                 self.context.commit(rd, result);
+                self.context.pc + 1
             }
             Op::IS(op, rd, rs1, shamt) => {
                 let rd = rd as usize;
@@ -159,11 +165,17 @@ impl Simulator {
                     ISOp::SRAI => self.context.registers[rs1] >> shamt,
                 };
                 self.context.commit(rd, result);
+                self.context.pc + 1
             }
-        }
+            Op::B(op, rs2, rs1, imm) => {
+                // do something
+                self.context.pc + 1
+            }
+        };
         if self.config.verbose {
             self.context.log_registers();
         }
+        next_pc
     }
 }
 
@@ -185,7 +197,9 @@ mod test {
             addi a1 zero 2
             add a2 a0 a1
         "#;
-        let code = qcpu_assembler::to_machine_code(asm).unwrap();
+        let mut parsing_context = ParsingContext::default();
+        let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
+        let code = qcpu_assembler::to_machine_code(ops, &parsing_context).unwrap();
         sim.run(code);
     }
 }

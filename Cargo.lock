@@ -154,6 +154,7 @@ dependencies = [
  "enum_properties",
  "qcpu_assembler",
  "qcpu_simulator",
+ "qcpu_syntax",
  "strum",
  "strum_macros",
 ]

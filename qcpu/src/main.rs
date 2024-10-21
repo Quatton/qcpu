@@ -5,6 +5,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, to_assembly};
+use qcpu_syntax::parser::ParsingContext;
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -65,12 +66,13 @@ fn main() {
                 .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
                 .collect();
 
-            let ops = from_machine_code(mcs).unwrap();
+            let mut ctx = ParsingContext::default();
+            let ops = from_machine_code(mcs, &mut ctx).unwrap();
 
             let mut sim = qcpu_simulator::Simulator::new()
                 .config(qcpu_simulator::SimulationConfig { verbose });
 
-            sim.run(ops.into_iter().map(|op| op.to_machine_code()).collect());
+            sim.run(ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect());
         }
         Commands::Asm {
             source,
@@ -97,7 +99,8 @@ fn main() {
                 std::process::exit(1);
             }
 
-            let code = match qcpu_assembler::parse_tree(&input) {
+            let mut ctx = ParsingContext::default();
+            let code = match qcpu_assembler::parse_tree(&input, &mut ctx) {
                 Ok(code) => code,
                 Err(e) => {
                     eprintln!("Error parsing assembly code: {:?}", e);
@@ -116,7 +119,7 @@ fn main() {
             let mut writer = std::io::BufWriter::new(&mut output_file);
 
             for op in code {
-                let mc = op.to_machine_code();
+                let mc = op.to_machine_code(&ctx);
                 if verbose {
                     println!("{:?} {:b}", op, mc);
                 }
@@ -156,7 +159,8 @@ fn main() {
                 .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
                 .collect();
 
-            let ops = from_machine_code(mcs).unwrap();
+            let mut ctx = ParsingContext::default();
+            let ops = from_machine_code(mcs, &mut ctx).unwrap();
             let asm = to_assembly(ops);
 
             let mut output_file = OpenOptions::new()

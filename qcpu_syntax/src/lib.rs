@@ -31,3 +31,12 @@ isop!(
   0b0000000 shamt rs1 0b101 rd 0b0010011 SRLI
   0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
 );
+
+bop!(
+  imm[12|10:5] rs2 rs1 0b000 imm[4:1|11] 0b1100011 BEQ
+  imm[12|10:5] rs2 rs1 0b001 imm[4:1|11] 0b1100011 BNE
+  imm[12|10:5] rs2 rs1 0b100 imm[4:1|11] 0b1100011 BLT
+  imm[12|10:5] rs2 rs1 0b101 imm[4:1|11] 0b1100011 BGE
+  imm[12|10:5] rs2 rs1 0b110 imm[4:1|11] 0b1100011 BLTU
+  imm[12|10:5] rs2 rs1 0b111 imm[4:1|11] 0b1100011 BGEU
+);

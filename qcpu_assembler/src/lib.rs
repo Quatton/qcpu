@@ -1,8 +1,9 @@
-use nom::{multi::many0, IResult};
+#![allow(clippy::unusual_byte_groupings)]
+
+use nom::multi::many0;
 use qcpu_syntax::{
     error::ParseError,
-    parser::{Op, WithParser},
-    reg::IntReg,
+    parser::{Node, Op, ParsingContext},
 };
 
 pub fn normalize(input: &str) -> String {
@@ -18,40 +19,34 @@ pub fn overnormalize_for_test(input: String) -> String {
         .to_ascii_lowercase()
 }
 
-pub fn parse_intreg(input: &str) -> IResult<&str, IntReg> {
-    IntReg::parse(input)
-}
-
-pub fn parse_op(input: &str) -> IResult<&str, Op> {
-    Op::parse(input)
-}
-
-pub fn parse_tree(input: &str) -> Result<Vec<Op>, ParseError> {
+pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
     let input = normalize(input);
-    let (input, ops) = many0(parse_op)(&input)?;
+    let (input, nodes) = many0(Node::parse)(&input)?;
     if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {
             input: input.to_string(),
             code: nom::error::ErrorKind::Complete,
         }));
     };
-    Ok(ops)
+
+    let mut len = 0;
+    Ok(nodes
+        .into_iter()
+        .filter_map(|node| match node {
+            Node::Label(label) => {
+                ctx.label_map.insert(label, len);
+                None
+            }
+            Node::OpNode(op) => {
+                len += 1;
+                Some(op)
+            }
+        })
+        .collect())
 }
 
-pub fn to_machine_code(input: &str) -> Result<Vec<u32>, ParseError> {
-    let ops = parse_tree(input)?;
-    Ok(ops.into_iter().map(|op| op.to_machine_code()).collect())
-}
-
-pub fn from_machine_code(input: Vec<u32>) -> Result<Vec<Op>, ParseError> {
-    let mut ops = Vec::new();
-
-    for mc in input {
-        let op = Op::from_machine_code(mc)?;
-        ops.push(op);
-    }
-
-    Ok(ops)
+pub fn to_machine_code(ops: Vec<Op>, ctx: &ParsingContext) -> Result<Vec<u32>, ParseError> {
+    Ok(ops.iter().map(|op| op.to_machine_code(ctx)).collect())
 }
 
 pub fn to_assembly(input: Vec<Op>) -> String {
@@ -61,12 +56,25 @@ pub fn to_assembly(input: Vec<Op>) -> String {
     }
     result
 }
+
+pub fn from_machine_code(input: Vec<u32>, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
+    let mut ops = Vec::new();
+
+    for mc in input {
+        let op = Op::from_machine_code(mc, ctx)?;
+
+        ops.push(op);
+    }
+
+    Ok(ops)
+}
+
 #[cfg(test)]
 mod test {
 
     use std::str::FromStr;
 
-    use qcpu_syntax::ROp;
+    use qcpu_syntax::{reg::IntReg, BOp, ROp};
 
     use super::*;
 
@@ -83,7 +91,8 @@ mod test {
             sub a0 a1 a2
             addi a0 a1 1
         "#;
-        let ops = parse_tree(code).unwrap();
+        let mut ctx = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx).unwrap();
         for op in ops {
             println!("{:?}", op);
         }
@@ -96,13 +105,14 @@ mod test {
             sub a3, a4, a5
             addi a0 a1 1
         "#;
-        let ops = parse_tree(code)
+        let mut ctx = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx)
             .inspect_err(|e| eprintln!("{:?}", e))
             .unwrap();
         let expected = [0x00c58533, 0x40f706b3, 0x00158513];
         for (op, exp) in ops.iter().zip(expected.iter()) {
-            println!("{:032b}", op.to_machine_code());
-            assert_eq!(op.to_machine_code(), *exp);
+            println!("{:032b}", op.to_machine_code(&ctx));
+            assert_eq!(op.to_machine_code(&ctx), *exp);
         }
     }
 
@@ -131,14 +141,28 @@ mod test {
 
             srli t5, t5, 1
         "#;
-        let ops = parse_tree(code).unwrap();
-        let mcs = ops.iter().map(|op| op.to_machine_code()).collect();
-        let ops = from_machine_code(mcs).unwrap();
+        let mut ctx1 = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx1).unwrap();
+        let mcs = ops.iter().map(|op| op.to_machine_code(&ctx1)).collect();
+
+        let mut ctx2 = ParsingContext::default();
+        let ops = from_machine_code(mcs, &mut ctx2).unwrap();
         let asm = to_assembly(ops);
 
         assert_eq!(
             overnormalize_for_test(normalize(code)),
             overnormalize_for_test(normalize(&asm))
         );
+    }
+
+    #[test]
+    fn branch_op() {
+        let beq = BOp::BEQ;
+        let u = beq.to_machine_code(IntReg::A0, IntReg::A1, 0b1101010101010);
+
+        let expected: u32 = 0b1010101_01010_01011_000_01011_1100011;
+        // println!("{:32b}", u);
+        // println!("{:32b}", expected);
+        assert_eq!(u, expected)
     }
 }
