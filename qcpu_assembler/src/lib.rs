@@ -199,6 +199,8 @@ mod test {
 
         let mc = to_machine_code(ops, &ctx).unwrap();
 
-        println!("{:?}", mc);
+        for i in mc {
+            println!("{:032b}", i);
+        }
     }
 }

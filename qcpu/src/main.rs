@@ -1,12 +1,13 @@
 use std::{
     fs::OpenOptions,
     io::{Read, Write},
+    path::PathBuf,
 };
 
 use clap::{Parser, Subcommand};
-use qcpu_assembler::{from_machine_code, to_assembly};
-use qcpu_syntax::parser::ParsingContext;
-use qcpu_syntax::reg::IntReg;
+use qcpu_assembler::{from_machine_code, parse_tree, to_assembly};
+use qcpu_syntax::parser::{Op, ParsingContext};
+use qcpu_tui::app::App;
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -22,7 +23,7 @@ enum Commands {
     Asm {
         /// The input file
         #[arg(short, long)]
-        source: String,
+        source: PathBuf,
         /// The output file
         #[arg(short, long)]
         output: Option<String>,
@@ -38,7 +39,7 @@ enum Commands {
     Disasm {
         /// The input file
         #[arg(short, long)]
-        bin: String,
+        bin: PathBuf,
         /// The output file
         #[arg(short, long)]
         output: Option<String>,
@@ -48,11 +49,19 @@ enum Commands {
     Sim {
         /// The input file in machine code
         #[arg(short, long)]
-        bin: String,
+        bin: Option<PathBuf>,
+
+        /// The input file in assembly (This will override the bin)
+        #[arg(short, long)]
+        source: Option<PathBuf>,
 
         /// Verbose mode
         #[arg(short, long, default_value = "false")]
         verbose: bool,
+
+        /// Interactive mode (overrides verbose mode)
+        #[arg(short, long, default_value = "false")]
+        interactive: bool,
     },
 }
 
@@ -60,20 +69,46 @@ fn main() {
     let args = Args::parse();
 
     match args.command {
-        Commands::Sim { bin, verbose } => {
-            let bytes = std::fs::read(bin).unwrap();
-            let mcs: Vec<u32> = bytes
-                .chunks_exact(4)
-                .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
-                .collect();
-
+        Commands::Sim {
+            bin,
+            source,
+            verbose,
+            interactive,
+        } => {
             let mut ctx = ParsingContext::default();
-            let ops = from_machine_code(mcs, &mut ctx).unwrap();
+            let ops: Vec<Op> = if let Some(source) = source {
+                let asm = std::fs::read_to_string(source).unwrap();
 
+                parse_tree(&asm, &mut ctx).unwrap()
+            } else if let Some(bin) = bin {
+                let bytes = std::fs::read(bin).unwrap();
+
+                let mcs = bytes
+                    .chunks_exact(4)
+                    .map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]))
+                    .collect();
+
+                from_machine_code(mcs, &mut ctx).unwrap()
+            } else {
+                panic!("bro come on");
+            };
+
+            let cfg = qcpu_simulator::SimulationConfig {
+                verbose: if interactive { false } else { verbose },
+                interactive,
+            };
+
+            let code = ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect();
             let mut sim = qcpu_simulator::Simulator::new()
-                .config(qcpu_simulator::SimulationConfig { verbose });
-
-            sim.run(ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect());
+                .config(cfg)
+                .load_program(code);
+            if interactive {
+                let mut app = App::new().load_parsing_context(ctx).load_simulator(sim);
+                qcpu_tui::main(&mut app).unwrap();
+            } else {
+                sim.run(&mut ctx);
+                sim.simulation_context.log_registers();
+            }
         }
         Commands::Asm {
             source,
@@ -101,7 +136,7 @@ fn main() {
             }
 
             let mut ctx = ParsingContext::default();
-            let mut code = match qcpu_assembler::parse_tree(&input, &mut ctx) {
+            let code = match qcpu_assembler::parse_tree(&input, &mut ctx) {
                 Ok(code) => code,
                 Err(e) => {
                     eprintln!("Error parsing assembly code: {:?}", e);
@@ -109,8 +144,13 @@ fn main() {
                 }
             };
 
-            code.push(qcpu_syntax::parser::Op::S(qcpu_syntax::STOp::SW, IntReg::A0, IntReg::Zero, 0));
-            
+            // code.push(qcpu_syntax::parser::Op::S(
+            //     qcpu_syntax::STOp::SW,
+            //     IntReg::A0,
+            //     IntReg::Zero,
+            //     0,
+            // ));
+
             let mut output_file = match std::fs::File::create(&output_path) {
                 Ok(file) => file,
                 Err(e) => {

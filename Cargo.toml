@@ -14,7 +14,10 @@ clap = { version = "4.5.19", features = ["derive"] }
 strum = "0.26.3"
 strum_macros = "0.26.4"
 nom = "7.1.3"
+ratatui = "0.29.0"
+color-eyre = "0.6.3"
 
 qcpu_assembler = { path = "./qcpu_assembler" }
 qcpu_syntax = { path = "./qcpu_syntax" }
 qcpu_simulator = { path = "./qcpu_simulator" }
+qcpu_tui = { path = "./qcpu_tui" }

@@ -1,0 +1,11 @@
+[package]
+name = "qcpu_tui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ratatui.workspace = true
+color-eyre.workspace = true
+qcpu_syntax.workspace = true
+qcpu_simulator.workspace = true
+strum.workspace = true
