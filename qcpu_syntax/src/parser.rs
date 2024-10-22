@@ -14,7 +14,7 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, IOp, ISOp, ROp};
+use crate::{BOp, IOp, ISOp, ROp, STOp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
@@ -90,6 +90,7 @@ pub enum Op {
     I(IOp, IntReg, IntReg, i32),
     IS(ISOp, IntReg, IntReg, i32),
     B(BOp, IntReg, IntReg, JumpTarget),
+    S(STOp, IntReg, IntReg, u32),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -166,7 +167,7 @@ impl Op {
                     delimited(multispace0, IntReg::parse, multispace1),
                     delimited(multispace0, JumpTarget::parse, multispace0),
                 )),
-                |(op, rd, rs1, imm)| Op::B(op, rd, rs1, imm),
+                |(op, rs2, rs1, imm)| Op::B(op, rs2, rs1, imm),
             ),
         ))(input)
     }
@@ -180,6 +181,7 @@ impl Op {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rs2, *rs1, imm)
             }
+            &Op::S(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
         }
     }
 
@@ -206,6 +208,7 @@ impl Op {
                 imm.label()
                     .map_or_else(|| imm.offset().unwrap().to_string(), |x| x.to_string())
             ),
+            Op::S(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
         }
     }
 

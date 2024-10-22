@@ -226,3 +226,42 @@ macro_rules! bop {
         }
     }
 }
+
+#[macro_export]
+macro_rules! stop {
+    ($(imm[11:5] rs2 rs1 $funct3:literal imm[4:0] $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        pub enum STOp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for STOp {}
+
+        impl STOp {
+            pub fn to_machine_code(self, rs2: reg::IntReg, rs1: reg::IntReg, imm: u32) -> u32 {
+                match self {
+                    $(
+                        STOp::$name => {
+                            let opcode = $opcode;
+                            let funct3 = $funct3;
+                            let rs2 = rs2 as u32;
+                            let rs1 = rs1 as u32;
+
+                            let imm4 = imm & 0b11111;
+                            let imm11 = (imm >> 5)  & 0b1111111;
+
+                            imm11 << 25
+                            | rs2 << 20
+                            | rs1 << 15
+                            | funct3 << 12
+                            | imm4 << 7
+                            | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+    }
+}

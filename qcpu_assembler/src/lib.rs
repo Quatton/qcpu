@@ -77,10 +77,9 @@ pub fn from_machine_code(input: Vec<u32>, ctx: &mut ParsingContext) -> Result<Ve
 
 #[cfg(test)]
 mod test {
-
     use std::str::FromStr;
 
-    use qcpu_syntax::{reg::IntReg, BOp, ROp};
+    use qcpu_syntax::{reg::IntReg, BOp, ROp, STOp};
 
     use super::*;
 
@@ -175,17 +174,31 @@ mod test {
     #[test]
     fn parse_branch_op() {
         let code = r#"
-            addi a0 zero 3
-            .los12312__op:
-                addi a0 a0 -1
-                bne a0 zero .los12312__op
+            addi a0 zero 10
+            addi t0 zero 1
 
-            addi a1 zero 1
+            fib:
+                addi a1 zero 1
+                addi a2 zero 1
+            .loop:
+                beq a0 t0 .end
+                add a3 a1 a2
+                add a1 zero a2
+                add a2 zero a3
+                addi a0 a0 -1
+                beq zero zero .loop
+
+            .end:
+                add a0 zero a1
         "#;
 
         let mut ctx = ParsingContext::default();
-        let ops = parse_tree(code, &mut ctx).unwrap();
+        let mut ops = parse_tree(code, &mut ctx).unwrap();
 
-        println!("{:?}", ops);
+        ops.push(Op::S(STOp::SW, IntReg::A0, IntReg::Zero, 0));
+
+        let mc = to_machine_code(ops, &ctx).unwrap();
+
+        println!("{:?}", mc);
     }
 }

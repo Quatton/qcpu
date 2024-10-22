@@ -194,6 +194,7 @@ impl Simulator {
                     next as usize
                 }
             }
+            Op::S(_, _, _, _) => todo!(),
         };
         if self.config.verbose {
             self.context.log_registers();
@@ -230,12 +231,22 @@ mod test {
     fn test_branch_simulator() {
         let mut sim = Simulator::new().config(SimulationConfig { verbose: true });
         let asm = r#"
-            addi a0 zero 3
-            loop:
-                addi a1 a1 2
+            addi a0 zero 10
+            addi t0 zero 1
+
+            fib:
+                addi a1 zero 1
+                addi a2 zero 1
+            .loop:
+                beq a0 t0 .end
+                add a3 a1 a2
+                add a1 zero a2
+                add a2 zero a3
                 addi a0 a0 -1
-                addi a2 a2 1
-                bne a0 zero loop
+                beq zero zero .loop
+
+            .end:
+                add a0 zero a1
         "#;
         let mut parsing_context = ParsingContext::default();
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();

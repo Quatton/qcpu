@@ -6,6 +6,7 @@ use std::{
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, to_assembly};
 use qcpu_syntax::parser::ParsingContext;
+use qcpu_syntax::reg::IntReg;
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -100,7 +101,7 @@ fn main() {
             }
 
             let mut ctx = ParsingContext::default();
-            let code = match qcpu_assembler::parse_tree(&input, &mut ctx) {
+            let mut code = match qcpu_assembler::parse_tree(&input, &mut ctx) {
                 Ok(code) => code,
                 Err(e) => {
                     eprintln!("Error parsing assembly code: {:?}", e);
@@ -108,6 +109,8 @@ fn main() {
                 }
             };
 
+            code.push(qcpu_syntax::parser::Op::S(qcpu_syntax::STOp::SW, IntReg::A0, IntReg::Zero, 0));
+            
             let mut output_file = match std::fs::File::create(&output_path) {
                 Ok(file) => file,
                 Err(e) => {

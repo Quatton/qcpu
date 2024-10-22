@@ -41,6 +41,10 @@ bop!(
   imm[12|10:5] rs2 rs1 0b111 imm[4:1|11] 0b1100011 BGEU
 );
 
+stop!(
+    imm[11:5] rs2 rs1 0b010 imm[4:0] 0b0100011 SW
+);
+
 fn i12_to_i32(i: u32) -> i32 {
     if i >> 11 == 0 {
         i as i32
