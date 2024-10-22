@@ -8,7 +8,7 @@ use strum::VariantArray;
 #[derive(Default)]
 pub struct Snapshot {
     pc: usize,
-    reg: [Option<(i32, i32)>; 32],
+    reg: [i32; 32],
 }
 
 #[derive(Default)]
@@ -37,7 +37,7 @@ impl SimulationContext {
         }
     }
 
-    pub fn commit(&mut self, rd: usize, new: i32) {
+    pub fn commit(&mut self, reg: usize, value: i32) {
         let latest = if let Some(lastest) = self.history.last_mut() {
             lastest
         } else {
@@ -45,8 +45,8 @@ impl SimulationContext {
             self.history.last_mut().unwrap()
         };
 
-        latest.reg[rd] = Some((self.registers[rd], new));
-        self.registers[rd] = new;
+        latest.reg[reg] = value;
+        self.registers[reg] = value;
     }
 }
 
@@ -80,11 +80,11 @@ impl Simulator {
                 println!("======pc: {}======\n", self.context.pc);
             }
             let op = Op::from_machine_code(code[self.context.pc], &mut ctx).unwrap();
+            self.execute(op);
             self.context.history.push(Snapshot {
                 pc: self.context.pc,
-                reg: [None; 32],
-            });
-            self.execute(op);
+                reg: self.context.registers,
+            })
         }
     }
 
