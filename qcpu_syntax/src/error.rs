@@ -6,6 +6,7 @@ pub enum ParseError {
     DisassemblerError(String),
     JumpTargetError(String),
     InvalidMachineCode(u32),
+    InvalidIntReg,
 }
 
 impl From<nom::Err<Error<&str>>> for ParseError {

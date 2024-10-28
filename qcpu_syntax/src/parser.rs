@@ -251,7 +251,7 @@ impl Op {
                     delimited(multispace0, IntReg::parse, multispace1),
                     delimited(multispace0, JumpTarget::parse, multispace0),
                 )),
-                |(op, rs2, rs1, imm)| Op::B(op, rs2, rs1, imm),
+                |(op, rs1, rs2, imm)| Op::B(op, rs2, rs1, imm),
             ),
             map(
                 tuple((
@@ -268,7 +268,7 @@ impl Op {
                     delimited(multispace0, IntReg::parse, multispace1),
                     delimited(multispace0, JumpTarget::parse, multispace0),
                 )),
-                |(op, rs1, rd, imm)| Op::JR(op, rd, rs1, imm),
+                |(op, rd, rs1, imm)| Op::JR(op, rd, rs1, imm),
             ),
             map(
                 tuple((
@@ -333,7 +333,7 @@ impl Op {
             Op::R(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::I(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
             Op::IS(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
-            Op::B(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
+            Op::B(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rs1, rd, imm),
             Op::S(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
             Op::L(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
             Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),

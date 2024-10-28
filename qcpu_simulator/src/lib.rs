@@ -101,6 +101,9 @@ impl SimulationContext {
     }
 
     pub fn commit(&mut self, reg: usize, value: i32) {
+        if reg == 0 {
+            return;
+        }
         let latest = if let Some(lastest) = self.history.last_mut() {
             lastest
         } else {
@@ -202,6 +205,7 @@ impl Simulator {
 
     pub fn run(&mut self) -> Result<(), &str> {
         self.init();
+        let mut i = 0;
         loop {
             // align
             self.ctx.pc = (self.ctx.pc >> 2) << 2;
@@ -210,8 +214,10 @@ impl Simulator {
                 Some(pc) => self.ctx.pc = pc,
                 None => break,
             }
+            i += 1;
         }
 
+        println!("======finished in {} cycles======", i);
         Ok(())
     }
 
