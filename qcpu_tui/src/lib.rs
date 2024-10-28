@@ -55,10 +55,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
             PlayMode::ForwardUntilBreakpoint => {
                 if let Some(ss) = app.simulator.ctx.history.get(app.snapshot_idx) {
                     if app.breakpoint.contains(&(ss.pc)) {
+                        app.snapshot_idx += 1;
                         app.playmode = PlayMode::Manual;
                     } else {
                         app.snapshot_idx += 1;
                     }
+                }
+                if app.done && app.snapshot_idx >= curlen {
+                    app.playmode = PlayMode::Manual;
                 }
             }
             PlayMode::BackwardUntilBreakpoint => {
@@ -69,18 +73,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                             app.playmode = PlayMode::Manual;
                         }
                     }
+                } else {
+                    app.playmode = PlayMode::Manual;
                 }
             }
             PlayMode::Forward => {
-                if app.snapshot_idx < curlen - 1 {
-                    app.snapshot_idx += 1;
-                } else {
+                if app.done && app.snapshot_idx >= curlen {
                     app.playmode = PlayMode::Manual;
+                } else {
+                    app.snapshot_idx += 1;
                 }
             }
             PlayMode::Backward => {
                 if app.snapshot_idx > 0 {
                     app.snapshot_idx -= 1;
+                }
+                if app.snapshot_idx == 0 {
+                    app.playmode = PlayMode::Manual;
                 }
             }
             _ => {}
@@ -114,9 +123,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 app.snapshot_idx = curlen - 1;
             }
         }
-        terminal.draw(|f| ui(f, app))?;
 
-        if poll(Duration::from_millis(10))? {
+        if PlayMode::Manual == app.playmode {
+            terminal.draw(|f| ui(f, app))?;
+        }
+
+        if poll(Duration::from_millis(1))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == event::KeyEventKind::Release {
                     // Skip events that are not KeyEventKind::Press
