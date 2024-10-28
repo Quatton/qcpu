@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 use nom::character::complete::{alphanumeric1, char, one_of};
 use nom::combinator::{opt, recognize, verify};
 use nom::multi::many0;
-use nom::sequence::pair;
+use nom::sequence::{pair, preceded, terminated};
 use nom::{
     branch::alt,
     character::complete::{digit1, multispace0, multispace1},
@@ -14,7 +15,7 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, IOp, ISOp, JOp, JROp, ROp, STOp};
+use crate::{BOp, IOp, ISOp, JOp, JROp, LOp, ROp, STOp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
@@ -33,7 +34,43 @@ pub trait FromMachineCode<'a> {
     fn from_machine_code(input: u32) -> Result<Op, ParseError>;
 }
 
-pub type LabelMap = HashMap<String, usize>;
+pub struct LabelMap(HashMap<String, usize>, HashMap<usize, String>);
+
+impl LabelMap {
+    pub fn new() -> Self {
+        Self(HashMap::new(), HashMap::new())
+    }
+
+    pub fn insert(&mut self, label: String, idx: usize) {
+        self.0.insert(label.clone(), idx);
+        self.1.insert(idx, label);
+    }
+
+    pub fn get_label(&self, idx: usize) -> Option<&String> {
+        self.1.get(&idx)
+    }
+}
+
+impl Default for LabelMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deref for LabelMap {
+    type Target = HashMap<String, usize>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for LabelMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 pub type WithContext<T> = (T, ParsingContext);
 
 #[derive(Debug, Clone)]
@@ -81,6 +118,10 @@ impl JumpTarget {
         })
     }
     fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, offset) = opt(parse_i32)(input)?;
+        if let Some(offset) = offset {
+            return Ok((input, Self::from_offset(offset)));
+        }
         identifier(input).map(|(input, label)| (input, Self::from_label(label.to_string())))
     }
 }
@@ -94,11 +135,34 @@ impl std::fmt::Display for JumpTarget {
     }
 }
 
-#[derive(Default)]
 pub struct ParsingContext {
     pub label_map: LabelMap,
+    pub main_label: String,
 }
 
+impl Default for ParsingContext {
+    fn default() -> Self {
+        Self {
+            label_map: LabelMap::new(),
+            main_label: "_min_caml_start".to_owned(),
+        }
+    }
+}
+
+impl ParsingContext {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn get_main_pc(&self) -> Option<usize> {
+        self.label_map.get(&self.main_label).copied()
+    }
+
+    pub fn with_main_label(mut self, label: String) -> Self {
+        self.main_label = label;
+        self
+    }
+}
 #[derive(Debug, PartialEq, Clone)]
 pub enum Op {
     R(ROp, IntReg, IntReg, IntReg),
@@ -106,9 +170,10 @@ pub enum Op {
     IS(ISOp, IntReg, IntReg, i32),
     B(BOp, IntReg, IntReg, JumpTarget),
     S(STOp, IntReg, IntReg, i32),
+    L(LOp, IntReg, IntReg, i32),
     J(JOp, IntReg, JumpTarget),
     JR(JROp, IntReg, IntReg, JumpTarget),
-    Halt,
+    Exit(u32),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -118,16 +183,17 @@ pub enum Node {
 }
 
 // courtesy of https://stackoverflow.com/a/61329008
+// also OH MY GOD
 pub fn identifier<'a, E: nom::error::ParseError<&'a str>>(
     s: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
     verify(
         recognize(pair(
             alt((one_of(
-                "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                "_.()abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
             ),)),
             many0(alt((one_of(
-                "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                "_.()abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
             ),))),
         )),
         |s: &str| !s.chars().next().unwrap().is_numeric(),
@@ -202,7 +268,25 @@ impl Op {
                     delimited(multispace0, IntReg::parse, multispace1),
                     delimited(multispace0, JumpTarget::parse, multispace0),
                 )),
-                |(op, rd, rs1, imm)| Op::JR(op, rd, rs1, imm),
+                |(op, rs1, rd, imm)| Op::JR(op, rd, rs1, imm),
+            ),
+            map(
+                tuple((
+                    delimited(multispace0, STOp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    preceded(multispace0, parse_i32),
+                    terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+                )),
+                |(op, rs2, imm, rs1)| Op::S(op, rs2, rs1, imm),
+            ),
+            map(
+                tuple((
+                    delimited(multispace0, LOp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    preceded(multispace0, parse_i32),
+                    terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+                )),
+                |(op, rd, imm, rs1)| Op::L(op, rd, rs1, imm),
             ),
         ))(input)
     }
@@ -217,6 +301,7 @@ impl Op {
                 op.to_machine_code(*rs2, *rs1, imm)
             }
             &Op::S(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
+            &Op::L(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
             Op::JR(op, rd, rs1, label) => {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rd, *rs1, imm)
@@ -225,14 +310,11 @@ impl Op {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rd, imm)
             }
-            Op::Halt => 0,
+            Op::Exit(mc) => *mc,
         }
     }
 
     pub fn from_machine_code(input: u32, _ctx: &ParsingContext) -> Result<Self, ParseError> {
-        if input == 0 {
-            return Ok(Op::Halt);
-        }
         let opcode = 0b00000000000000000000000001111111 & input;
         match opcode {
             0b0110011 => ROp::from_machine_code(input),
@@ -240,7 +322,9 @@ impl Op {
             0b1100011 => BOp::from_machine_code(input),
             0b1100111 => JROp::from_machine_code(input),
             0b1101111 => JOp::from_machine_code(input),
-            _ => Err(ParseError::DisassemblerError(format!("{:032b}", input))),
+            0b0100011 => STOp::from_machine_code(input),
+            0b0000011 => LOp::from_machine_code(input),
+            _ => Ok(Op::Exit(input)),
         }
     }
 
@@ -251,9 +335,10 @@ impl Op {
             Op::IS(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
             Op::B(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
             Op::S(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
+            Op::L(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
             Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
-            Op::Halt => "".to_owned(),
+            Op::Exit(_) => String::new(),
         }
     }
 

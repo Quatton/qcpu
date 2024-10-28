@@ -1,6 +1,11 @@
 #![allow(clippy::unusual_byte_groupings)]
 
-use nom::multi::many0;
+use nom::{
+    character::complete::{char, multispace0, not_line_ending},
+    combinator::opt,
+    multi::many0,
+    sequence::delimited,
+};
 use qcpu_syntax::{
     error::ParseError,
     parser::{Node, Op, ParsingContext},
@@ -21,7 +26,8 @@ pub fn overnormalize_for_test(input: String) -> String {
 
 pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
     let input = normalize(input);
-    let (input, nodes) = many0(Node::parse)(&input)?;
+    let comment = opt(delimited(multispace0, char('!'), not_line_ending));
+    let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input.as_str())?;
     if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {
             input: input.to_string(),
@@ -43,6 +49,17 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
             }
         })
         .collect();
+
+    // if ctx.get_main_pc().is_some() {
+    //     ops.insert(
+    //         0,
+    //         Op::J(
+    //             qcpu_syntax::JOp::JAL,
+    //             qcpu_syntax::IntReg::Ra,
+    //             qcpu_syntax::JumpTarget::from_label(ctx.main_label.clone()),
+    //         ),
+    //     );
+    // }
 
     for (i, op) in ops.iter_mut().enumerate() {
         op.resolve_labels(ctx, i)?;
@@ -226,6 +243,74 @@ mod test {
         let mut ctx = ParsingContext::default();
         let ops = parse_tree(code, &mut ctx).unwrap();
         let mc = to_machine_code(&ops, &ctx).unwrap();
+        let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
+
+        for (op, dis) in ops.into_iter().zip(dis_ops) {
+            assert_eq!(op, dis)
+        }
+    }
+
+    #[test]
+    fn real_program() {
+        let code = r#"
+fib(int):
+        addi    sp,sp,-32
+        sw      ra,28(sp)
+        sw      s0,24(sp)
+        sw      s1,20(sp)
+        addi    s0,sp,32
+        sw      a0,-20(s0)
+        lw      a4,-20(s0)
+        addi      a5,zero,1
+        beq     a4,a5,.L2
+        lw      a4,-20(s0)
+        addi      a5,zero,2
+        bne     a4,a5,.L3
+.L2:
+        addi      a5,zero,1
+        jal     ra .L4
+.L3:
+        lw      a5,-20(s0)
+        addi    a5,a5,-1
+        add      a0,zero,a5
+        jal     ra    fib(int)
+        add      s1,zero,a0
+        lw      a5,-20(s0)
+        addi    a5,a5,-2
+        add      a0,zero,a5
+        jalr   ra ra 0
+        add      a5,zero,a0
+        add     a5,s1,a5
+.L4:
+        add      a0,zero,a5
+        lw      ra,28(sp)
+        lw      s0,24(sp)
+        lw      s1,20(sp)
+        addi    sp,sp,32
+        jalr    ra ra 0
+main:
+        addi    sp,sp,-16
+        sw      ra,12(sp)
+        sw      s0,8(sp)
+        addi    s0,sp,16
+        addi      a0,zero,5
+        jal     ra    fib(int)
+        add      a5,zero,a0
+        add      a0,zero,a5
+        lw      ra,12(sp)
+        lw      s0,8(sp)
+        addi    sp,sp,16
+        jalr    ra ra 0
+"#;
+
+        let mut ctx = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx).unwrap();
+        let mc = to_machine_code(&ops, &ctx).unwrap();
+
+        // for i in mc.iter() {
+        //     println!("{:032b}", i);
+        // }
+
         let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
 
         for (op, dis) in ops.into_iter().zip(dis_ops) {

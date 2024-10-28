@@ -42,6 +42,8 @@ pub struct App {
     pub snapshot_idx: usize,
     pub current_screen: CurrentScreen,
     pub done: bool,
+    pub show_dialog: bool,
+    pub dialog_message: String,
 }
 
 impl App {
@@ -51,6 +53,8 @@ impl App {
             simulator: Simulator::new().config(SimulationConfig::new().interactive(true)),
             snapshot_idx: 0,
             current_screen: CurrentScreen::Main,
+            show_dialog: false,
+            dialog_message: String::new(),
         }
     }
 

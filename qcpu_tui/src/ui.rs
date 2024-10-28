@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Cell, List, ListItem, Row, Table},
+    widgets::{Block, Cell, Row, Table},
     Frame,
 };
 use strum::VariantArray;
@@ -11,7 +11,7 @@ use strum::VariantArray;
 use crate::app::App;
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
-fn _centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     // Cut the given rectangle into three vertical pieces
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -36,31 +36,52 @@ fn _centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(1), Constraint::Percentage(30)])
+        .constraints([Constraint::Min(1), Constraint::Percentage(40)])
         .split(frame.area());
 
-    let mut list_items = Vec::<ListItem>::new();
+    let mut list_items = Vec::new();
 
     let idx = app.snapshot_idx;
     let ss = app.simulator.ctx.history.get(idx).unwrap();
 
     for (i, &op) in app.simulator.ctx.program.iter().enumerate() {
-        list_items.push(ListItem::new(Line::from(Span::styled(
-            Op::from_machine_code(op, &app.simulator.config.parsing_context)
-                .unwrap()
-                .to_asm(),
-            if idx > 0 && ss.pc == i * 4 {
-                Style::default().fg(Color::Yellow)
-            } else {
-                Style::default()
-            },
-        ))));
+        list_items.push(Row::new(vec![
+            Cell::from(Span::styled(
+                format!(
+                    "0x{:05x}: {}",
+                    i * 4 + app.simulator.ctx.program_offset,
+                    app.simulator
+                        .config
+                        .parsing_context
+                        .label_map
+                        .get_label(i)
+                        .map_or("", |v| v)
+                ),
+                if idx > 0 && ss.pc == i * 4 {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default()
+                },
+            )),
+            Cell::from(Span::styled(
+                Op::from_machine_code(op, &app.simulator.config.parsing_context)
+                    .unwrap()
+                    .to_asm(),
+                if idx > 0 && ss.pc == i * 4 + app.simulator.ctx.program_offset {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default()
+                },
+            )),
+        ]));
     }
 
-    let list = List::new(list_items).block(Block::bordered().title_bottom(format!(
-        " PC: {} -- Snapshot: {} -- Halt: {}",
-        ss.pc, app.snapshot_idx, app.done
-    )));
+    let list = Table::new(list_items, [Constraint::Min(1); 2]).block(
+        Block::bordered()
+            .title_bottom(Line::from(format!(" PC: 0x{:05x} ", ss.pc)).centered())
+            .title_bottom(Line::from(format!(" Snapshot: {:05} ", idx)).centered())
+            .title_bottom(Line::from(format!(" Done: {:05} ", app.done)).centered()),
+    );
 
     let regs: Vec<Cell> = ss
         .reg
@@ -74,6 +95,17 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let widths = [Constraint::Min(1); 2];
 
     let reg_table = Table::new(rows, widths).block(Block::bordered());
+
     frame.render_widget(list, chunks[1]);
     frame.render_widget(reg_table, chunks[0]);
+
+    if app.show_dialog {
+        let popup_block = Block::bordered()
+            .title(app.dialog_message.as_str())
+            .style(Style::default().bg(Color::DarkGray));
+
+        let area = centered_rect(60, 25, frame.area());
+
+        frame.render_widget(popup_block, area);
+    }
 }

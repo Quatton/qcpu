@@ -38,4 +38,8 @@ pub enum IntReg {
     T6,
 }
 
-impl crate::parser::WithParser for IntReg {}
+impl crate::parser::WithParser for IntReg {
+    fn parse(input: &str) -> IResult<&str, Self> {
+        map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
+    }
+}

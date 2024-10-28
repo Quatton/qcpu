@@ -63,8 +63,11 @@ enum Commands {
         #[arg(short, long, default_value = "false")]
         interactive: bool,
 
-        #[arg(short, long, default_value = "4096")]
+        #[arg(short, long, default_value = "1048576")]
         memory_size: usize,
+
+        #[arg(short, long, default_value = "_min_caml_start")]
+        entry_point: String,
     },
 }
 
@@ -78,8 +81,9 @@ fn main() {
             verbose,
             interactive,
             memory_size,
+            entry_point,
         } => {
-            let mut ctx = ParsingContext::default();
+            let mut ctx = ParsingContext::default().with_main_label(entry_point);
             let ops: Vec<Op> = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
 

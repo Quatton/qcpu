@@ -45,7 +45,17 @@ bop!(
 );
 
 stop!(
+    imm[11:5] rs2 rs1 0b000 imm[4:0] 0b0100011 SB
+    imm[11:5] rs2 rs1 0b001 imm[4:0] 0b0100011 SH
     imm[11:5] rs2 rs1 0b010 imm[4:0] 0b0100011 SW
+);
+
+lop!(
+    imm[11:0] rs1 0b000 rd 0b0000011 LB
+    imm[11:0] rs1 0b001 rd 0b0000011 LH
+    imm[11:0] rs1 0b010 rd 0b0000011 LW
+    imm[11:0] rs1 0b100 rd 0b0000011 LBU
+    imm[11:0] rs1 0b101 rd 0b0000011 LHU
 );
 
 #[cfg(test)]

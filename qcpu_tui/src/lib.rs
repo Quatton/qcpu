@@ -58,7 +58,16 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                             app.simulator.ctx.pc = pc;
                             i += 1;
                         }
-                        _ => {
+                        Ok(_) => {
+                            app.dialog_message = format!("Simulation ended at snapshot {}", i);
+                            app.done = true;
+                            app.show_dialog = true;
+                            app.snapshot_idx -= 1;
+                            break;
+                        }
+                        Err(e) => {
+                            app.show_dialog = true;
+                            app.dialog_message = format!("{:?}", e);
                             app.done = true;
                             app.snapshot_idx -= 1;
                             break;
@@ -79,6 +88,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 CurrentScreen::Main => match key.code {
                     KeyCode::Char('q') => {
                         app.current_screen = CurrentScreen::Exiting;
+                        app.show_dialog = true;
+                        app.dialog_message = "Do you want to quit? [y/n]".to_string();
                     }
                     KeyCode::Right => {
                         if !app.done || app.snapshot_idx < curlen - 1 {
@@ -88,6 +99,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     KeyCode::Left => {
                         app.snapshot_idx = app.snapshot_idx.saturating_sub(1);
                     }
+                    KeyCode::Char('e') => {
+                        app.show_dialog = !app.show_dialog;
+                    }
                     _ => {}
                 },
                 CurrentScreen::Exiting => match key.code {
@@ -95,7 +109,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                         return Ok(true);
                     }
                     KeyCode::Char('n') | KeyCode::Char('q') => {
-                        return Ok(false);
+                        app.current_screen = CurrentScreen::Main;
+                        app.show_dialog = false;
                     }
                     _ => {}
                 },

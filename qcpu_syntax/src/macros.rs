@@ -291,6 +291,29 @@ macro_rules! stop {
             }
         }
 
+        impl parser::FromMachineCode<'_> for STOp {
+            fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+                let opcode =     0b00000000000000000000000001111111  & mc;
+                let imm11 =    ((0b11111110000000000000000000000000  & mc) >> 25) as u32;
+                let rs2i =     ((0b00000001111100000000000000000000  & mc) >> 20) as usize;
+                let rs1i =     ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+                let funct3 =   ((0b00000000000000000111000000000000  & mc) >> 12) as u32;
+                let imm4 =     ((0b00000000000000000000111110000000  & mc) >> 7) as u32;
+
+                let imm = i12_to_i32(imm11 << 5 | imm4);
+
+                let rs2 = reg::IntReg::VARIANTS[rs2i];
+                let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+                match (funct3, opcode) {
+                    $(
+                        ($funct3, $opcode) => Ok(parser::Op::S(STOp::$name, rs2, rs1, imm as i32)),
+                    )*
+                    _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+                }
+            }
+        }
+
     }
 }
 
@@ -408,6 +431,58 @@ impl crate::parser::FromMachineCode<'_> for crate::JOp {
                 "{:032b}",
                 mc
             ))),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! lop {
+    ($(imm[11:0] rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        pub enum LOp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for LOp {}
+
+        impl LOp {
+            pub fn to_machine_code(self, rd: reg::IntReg, rs1: reg::IntReg, imm: i32) -> u32 {
+                match self {
+                    $(
+                        LOp::$name => {
+                            let opcode = $opcode;
+                            let funct3 = $funct3;
+                            let rd = rd as u32;
+                            let rs1 = rs1 as u32;
+                            let imm = i32_to_i12(imm);
+                            imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for LOp {
+          fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+            let opcode =  0b00000000000000000000000001111111  & mc;
+            let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
+            let funct3 = (0b00000000000000000111000000000000  & mc) >> 12;
+            let rs1i =   ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+            let imm =     ((0b11111111111100000000000000000000  & mc) >> 20);
+
+            let imm = i12_to_i32(imm);
+            let rd = reg::IntReg::VARIANTS[rdi];
+            let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+            match (funct3, opcode) {
+                $(
+                    ($funct3, $opcode) => Ok(parser::Op::L(LOp::$name, rd, rs1, imm)),
+                )*
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+
+            }
+          }
         }
     }
 }
