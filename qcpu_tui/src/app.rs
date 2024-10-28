@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use qcpu_simulator::{SimulationConfig, Simulator};
 
 // use crate::{action::Action, event::Event, terminal::Frame};
@@ -7,6 +9,23 @@ pub enum CurrentScreen {
     #[default]
     Main,
     Exiting,
+}
+
+#[derive(Default, PartialEq)]
+pub enum InputMode {
+    #[default]
+    Normal,
+    Breakpoint,
+}
+
+#[derive(Default, PartialEq)]
+pub enum PlayMode {
+    #[default]
+    Manual,
+    ForwardUntilBreakpoint,
+    BackwardUntilBreakpoint,
+    Forward,
+    Backward,
 }
 
 // pub trait Component {
@@ -44,6 +63,10 @@ pub struct App {
     pub done: bool,
     pub show_dialog: bool,
     pub dialog_message: String,
+    pub input_mode: InputMode,
+    pub breakpoint: HashSet<usize>,
+    pub playmode: PlayMode,
+    pub breakpoint_idx: usize,
 }
 
 impl App {
@@ -55,6 +78,10 @@ impl App {
             current_screen: CurrentScreen::Main,
             show_dialog: false,
             dialog_message: String::new(),
+            input_mode: InputMode::Normal,
+            breakpoint: HashSet::new(),
+            playmode: PlayMode::Manual,
+            breakpoint_idx: 0,
         }
     }
 
