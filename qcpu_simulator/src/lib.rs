@@ -313,6 +313,8 @@ impl Simulator {
                 }
             }
             Op::S(_, _, _, _) => todo!(),
+            Op::J(_, _, _) => todo!(),
+            Op::JR(_, _, _, _) => todo!(),
         };
         if self.config.verbose {
             self.simulation_context.log_registers();
@@ -340,7 +342,7 @@ mod test {
         "#;
         let mut parsing_context = ParsingContext::default();
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
-        let code = qcpu_assembler::to_machine_code(ops, &parsing_context).unwrap();
+        let code = qcpu_assembler::to_machine_code(&ops, &parsing_context).unwrap();
         let mut sim = Simulator::new()
             .config(SimulationConfig::new().verbose(true))
             .load_program(code);
@@ -370,7 +372,7 @@ mod test {
         let mut parsing_context = ParsingContext::default();
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
         println!("{:?}", ops);
-        let code = qcpu_assembler::to_machine_code(ops, &parsing_context).unwrap();
+        let code = qcpu_assembler::to_machine_code(&ops, &parsing_context).unwrap();
         let mut sim = Simulator::new()
             .config(SimulationConfig::new().verbose(true))
             .load_program(code);

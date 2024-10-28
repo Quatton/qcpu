@@ -51,7 +51,7 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
     Ok(ops)
 }
 
-pub fn to_machine_code(ops: Vec<Op>, ctx: &ParsingContext) -> Result<Vec<u32>, ParseError> {
+pub fn to_machine_code(ops: &[Op], ctx: &ParsingContext) -> Result<Vec<u32>, ParseError> {
     Ok(ops.iter().map(|op| op.to_machine_code(ctx)).collect())
 }
 
@@ -68,7 +68,6 @@ pub fn from_machine_code(input: Vec<u32>, ctx: &mut ParsingContext) -> Result<Ve
 
     for mc in input {
         let op = Op::from_machine_code(mc, ctx)?;
-
         ops.push(op);
     }
 
@@ -197,10 +196,40 @@ mod test {
 
         ops.push(Op::S(STOp::SW, IntReg::A0, IntReg::Zero, 0));
 
-        let mc = to_machine_code(ops, &ctx).unwrap();
+        let mc = to_machine_code(&ops, &ctx).unwrap();
 
         for i in mc {
             println!("{:032b}", i);
+        }
+    }
+
+    #[test]
+    fn parse_jmp_op() {
+        let code = r#"
+            addi a0 zero 10
+            addi t0 zero 1
+
+            fib:
+                addi a1 zero 1
+                addi a2 zero 1
+            .loop:
+                beq a0 t0 .end
+                add a3 a1 a2
+                add a1 zero a2
+                add a2 zero a3
+                addi a0 a0 -1
+                jal ra .loop
+
+            .end:
+                add a0 zero a1
+        "#;
+        let mut ctx = ParsingContext::default();
+        let ops = parse_tree(code, &mut ctx).unwrap();
+        let mc = to_machine_code(&ops, &ctx).unwrap();
+        let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
+
+        for (op, dis) in ops.into_iter().zip(dis_ops) {
+            assert_eq!(op, dis)
         }
     }
 }

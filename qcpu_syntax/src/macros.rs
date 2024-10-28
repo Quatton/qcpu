@@ -1,4 +1,32 @@
+use strum::VariantArray;
+
+use crate::{parser::JumpTarget, reg};
+
 extern crate proc_macro;
+
+pub(crate) fn i12_to_i32(i: u32) -> i32 {
+    if i >> 11 == 0 {
+        i as i32
+    } else {
+        (i | 0xFFFFF000) as i32
+    }
+}
+
+pub(crate) fn i32_to_i12(i: i32) -> u32 {
+    (i & 0xFFF) as u32
+}
+
+pub(crate) fn in_to_i32(i: u32, n: u32) -> i32 {
+    if i >> (n - 1) == 0 {
+        i as i32
+    } else {
+        i as i32 | -(1 << n)
+    }
+}
+
+pub(crate) fn i32_to_in(i: i32, n: u32) -> u32 {
+    (i & ((1 << n) - 1)) as u32
+}
 
 #[macro_export]
 macro_rules! rop {
@@ -177,7 +205,7 @@ macro_rules! bop {
                             let funct3 = $funct3;
                             let rs2 = rs2 as u32;
                             let rs1 = rs1 as u32;
-                            let imm = (imm as u32) << 1;
+                            let imm = imm as u32;
                             let imm11 = 0b1 & imm >> 11;
                             let imm4 = 0b1111 & imm >> 1;
                             let imm12 = 0b1 & imm >> 12;
@@ -211,7 +239,7 @@ macro_rules! bop {
                 let imm = (imm12 << 12 |
                 imm11 << 11 | imm10 << 5 | imm4 << 1);
 
-                let imm = i12_to_i32(imm >> 1);
+                let imm = i12_to_i32(imm);
 
                 let rs2 = reg::IntReg::VARIANTS[rs2i];
                 let rs1 = reg::IntReg::VARIANTS[rs1i];
@@ -239,7 +267,7 @@ macro_rules! stop {
         impl parser::WithParser for STOp {}
 
         impl STOp {
-            pub fn to_machine_code(self, rs2: reg::IntReg, rs1: reg::IntReg, imm: u32) -> u32 {
+            pub fn to_machine_code(self, rs2: reg::IntReg, rs1: reg::IntReg, imm: i32) -> u32 {
                 match self {
                     $(
                         STOp::$name => {
@@ -248,8 +276,8 @@ macro_rules! stop {
                             let rs2 = rs2 as u32;
                             let rs1 = rs1 as u32;
 
-                            let imm4 = imm & 0b11111;
-                            let imm11 = (imm >> 5)  & 0b1111111;
+                            let imm4 = (imm & 0b11111) as u32;
+                            let imm11 = ((imm >> 5)  & 0b1111111) as u32;
 
                             imm11 << 25
                             | rs2 << 20
@@ -263,5 +291,123 @@ macro_rules! stop {
             }
         }
 
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum JOp {
+    JAL,
+}
+
+impl crate::parser::WithParser for JOp {}
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum JROp {
+    JALR,
+}
+
+impl crate::parser::WithParser for JROp {}
+
+impl JOp {
+    pub fn to_machine_code(self, rd: reg::IntReg, imm: i32) -> u32 {
+        let imm = i32_to_in(imm, 21);
+        let opcode = 0b1101111;
+        let rd = rd as u32;
+        let imm20 = (imm >> 20) & 0b1;
+        let imm10 = (imm >> 1) & 0b1111111111;
+        let imm11 = (imm >> 11) & 0b1;
+        let imm19 = (imm >> 12) & 0b11111111;
+
+        imm20 << 31 | imm10 << 21 | imm11 << 20 | imm19 << 12 | rd << 7 | opcode
+    }
+}
+
+impl JROp {
+    pub fn to_machine_code(self, rd: reg::IntReg, rs1: reg::IntReg, imm: i32) -> u32 {
+        let imm = i32_to_i12(imm);
+        let opcode = 0b1100111;
+        let rd = rd as u32;
+        let rs1 = rs1 as u32;
+        let imm = imm & 0b111111111111;
+        let funct3 = 0b000;
+
+        imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for crate::JROp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+
+        match opcode {
+            0b1100111 => {
+                let imm = (0b11111111111100000000000000000000 & mc) >> 20;
+                let rs1i = (0b00000000000011111000000000000000 & mc) >> 15;
+                let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+                let rdi = (0b00000000000000000000111110000000 & mc) >> 7;
+
+                if funct3 != 0b000 {
+                    return Err(crate::error::ParseError::DisassemblerError(format!(
+                        "{:032b}",
+                        mc
+                    )));
+                }
+
+                let imm = i12_to_i32(imm);
+
+                let rd = reg::IntReg::VARIANTS[rdi as usize];
+                let rs1 = reg::IntReg::VARIANTS[rs1i as usize];
+
+                Ok(crate::parser::Op::JR(
+                    JROp::JALR,
+                    rd,
+                    rs1,
+                    JumpTarget::from_offset(imm),
+                ))
+            }
+
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
+    }
+}
+impl crate::parser::FromMachineCode<'_> for crate::JOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+
+        match opcode {
+            0b1101111 => {
+                let imm20 = 0b1 & (mc >> 31);
+                let imm10_1 = 0b1111111111 & (mc >> 21);
+                let imm11 = 0b1 & (mc >> 20);
+                let imm19_12 = 0b11111111 & (mc >> 12);
+                let rdi = 0b11111 & (mc >> 7);
+
+                let imm = in_to_i32(
+                    imm20 << 20 | imm10_1 << 1 | imm11 << 11 | imm19_12 << 12,
+                    21,
+                );
+
+                let rd = reg::IntReg::VARIANTS[rdi as usize];
+
+                Ok(crate::parser::Op::J(
+                    JOp::JAL,
+                    rd,
+                    JumpTarget::from_offset(imm),
+                ))
+            }
+
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
     }
 }

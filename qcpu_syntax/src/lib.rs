@@ -3,6 +3,9 @@ pub mod error;
 pub mod macros;
 pub mod parser;
 pub mod reg;
+pub use macros::*;
+pub use parser::*;
+pub use reg::*;
 
 rop! {
   0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD
@@ -45,18 +48,47 @@ stop!(
     imm[11:5] rs2 rs1 0b010 imm[4:0] 0b0100011 SW
 );
 
-fn i12_to_i32(i: u32) -> i32 {
-    if i >> 11 == 0 {
-        i as i32
-    } else {
-        (i | 0xFFFFF000) as i32
-    }
-}
+#[cfg(test)]
+mod test {
+    use super::*;
 
-fn i32_to_i12(i: i32) -> u32 {
-    if i < 0 {
-        (i >> 31 | (i & 0xFFF)) as u32
-    } else {
-        i as u32
+    #[test]
+    fn i12() {
+        for i in 0..((1 << 12) - 1) {
+            assert_eq!(i32_to_i12(i12_to_i32(i)), i);
+            assert_eq!(in_to_i32(i, 12), i12_to_i32(i));
+        }
+
+        for i in -(1 << (12 - 1))..((1 << 12) - 1) {
+            let bits = |x: i32| format!("{:32b}", x)[20..32].to_owned();
+            assert_eq!(bits(i12_to_i32(i32_to_i12(i))), bits(i));
+            assert_eq!(bits(i32_to_in(i, 12) as i32), bits(i32_to_i12(i) as i32));
+        }
+    }
+
+    #[test]
+    fn jop() {
+        let jop = Op::J(JOp::JAL, IntReg::Ra, JumpTarget::from_offset(-20));
+
+        let ctx = ParsingContext::default();
+        let mc = jop.to_machine_code(&ctx);
+
+        let dismc = Op::from_machine_code(mc, &ctx)
+            .unwrap()
+            .to_machine_code(&ctx);
+        // 1 11111111 1 1111110110
+
+        // 1 11111111 1 1111110110
+        // 1 1111110110 1 11111111
+
+        let imm = i32_to_in(-20, 21);
+        let imm20 = (imm >> 20) & 0b1;
+        let imm10 = (imm >> 1) & 0b1111111111;
+        let imm11 = (imm >> 11) & 0b1;
+        let imm19 = (imm >> 12) & 0b11111111;
+
+        println!("{imm20:1b} {imm10:10b} {imm11:1b} {imm19:8b}");
+        println!("{:032b}", mc);
+        println!("{:032b}", dismc);
     }
 }

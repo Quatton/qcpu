@@ -14,7 +14,7 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, IOp, ISOp, ROp, STOp};
+use crate::{BOp, IOp, ISOp, JOp, JROp, ROp, STOp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
@@ -36,10 +36,16 @@ pub trait FromMachineCode<'a> {
 pub type LabelMap = HashMap<String, usize>;
 pub type WithContext<T> = (T, ParsingContext);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct JumpTarget {
     label: Option<String>,
     offset: Option<i32>,
+}
+
+impl PartialEq for JumpTarget {
+    fn eq(&self, other: &Self) -> bool {
+        self.offset == other.offset
+    }
 }
 
 impl JumpTarget {
@@ -79,6 +85,15 @@ impl JumpTarget {
     }
 }
 
+impl std::fmt::Display for JumpTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.label() {
+            Some(label) => write!(f, "{label}"),
+            None => write!(f, "{}", self.offset().unwrap()),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ParsingContext {
     pub label_map: LabelMap,
@@ -90,7 +105,9 @@ pub enum Op {
     I(IOp, IntReg, IntReg, i32),
     IS(ISOp, IntReg, IntReg, i32),
     B(BOp, IntReg, IntReg, JumpTarget),
-    S(STOp, IntReg, IntReg, u32),
+    S(STOp, IntReg, IntReg, i32),
+    J(JOp, IntReg, JumpTarget),
+    JR(JROp, IntReg, IntReg, JumpTarget),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -169,6 +186,23 @@ impl Op {
                 )),
                 |(op, rs2, rs1, imm)| Op::B(op, rs2, rs1, imm),
             ),
+            map(
+                tuple((
+                    delimited(multispace0, JOp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, JumpTarget::parse, multispace0),
+                )),
+                |(op, rd, imm)| Op::J(op, rd, imm),
+            ),
+            map(
+                tuple((
+                    delimited(multispace0, JROp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, JumpTarget::parse, multispace0),
+                )),
+                |(op, rd, rs1, imm)| Op::JR(op, rd, rs1, imm),
+            ),
         ))(input)
     }
 
@@ -182,55 +216,65 @@ impl Op {
                 op.to_machine_code(*rs2, *rs1, imm)
             }
             &Op::S(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
+            Op::JR(op, rd, rs1, label) => {
+                let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
+                op.to_machine_code(*rd, *rs1, imm)
+            }
+            Op::J(op, rd, label) => {
+                let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
+                op.to_machine_code(*rd, imm)
+            }
         }
     }
 
-    pub fn from_machine_code(input: u32, _ctx: &mut ParsingContext) -> Result<Self, ParseError> {
+    pub fn from_machine_code(input: u32, _ctx: &ParsingContext) -> Result<Self, ParseError> {
         let opcode = 0b00000000000000000000000001111111 & input;
         match opcode {
             0b0110011 => ROp::from_machine_code(input),
             0b0010011 => IOp::from_machine_code(input).or_else(|_| ISOp::from_machine_code(input)),
             0b1100011 => BOp::from_machine_code(input),
+            0b1100111 => JROp::from_machine_code(input),
+            0b1101111 => JOp::from_machine_code(input),
             _ => Err(ParseError::DisassemblerError(format!("{:032b}", input))),
         }
     }
 
-    pub fn to_asm(self) -> String {
+    pub fn to_asm(&self) -> String {
         match self {
             Op::R(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::I(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
             Op::IS(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
-            Op::B(op, rd, rs1, imm) => format!(
-                "{} {}, {}, {}",
-                op,
-                rd,
-                rs1,
-                imm.label()
-                    .map_or_else(|| imm.offset().unwrap().to_string(), |x| x.to_string())
-            ),
+            Op::B(op, rd, rs1, imm) => format!("{} {}, {}, {}", op, rd, rs1, imm),
             Op::S(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
+            Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),
+            Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
         }
     }
 
     pub fn resolve_labels(&mut self, ctx: &ParsingContext, idx: usize) -> Result<(), ParseError> {
-        if let Op::B(_, _, _, label) = self {
-            if label.offset().is_none() {
-                if label.label.is_none() {
-                    return Err(ParseError::JumpTargetError(
-                        "Jump target must have either a label or an offset".to_string(),
-                    ));
-                }
-                if !ctx.label_map.contains_key(label.label.as_ref().unwrap()) {
-                    return Err(ParseError::DisassemblerError(format!(
-                        "Label {} not found",
-                        label.label.as_ref().unwrap()
-                    )));
-                }
+        let label = match self {
+            Op::B(_, _, _, label) => label,
+            Op::J(_, _, label) => label,
+            Op::JR(_, _, _, label) => label,
+            _ => return Ok(()),
+        };
 
-                let target = ctx.label_map.get(label.label.as_ref().unwrap()).unwrap();
-                let offset = *target as i32 - idx as i32;
-                label.offset = Some(offset);
+        if label.offset().is_none() {
+            if label.label.is_none() {
+                return Err(ParseError::JumpTargetError(
+                    "Jump target must have either a label or an offset".to_string(),
+                ));
             }
+            if !ctx.label_map.contains_key(label.label.as_ref().unwrap()) {
+                return Err(ParseError::DisassemblerError(format!(
+                    "Label {} not found",
+                    label.label.as_ref().unwrap()
+                )));
+            }
+
+            let target = ctx.label_map.get(label.label.as_ref().unwrap()).unwrap();
+            let offset = (*target as i32 - idx as i32) * 4;
+            label.offset = Some(offset);
         }
         Ok(())
     }
