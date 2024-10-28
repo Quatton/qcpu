@@ -329,8 +329,27 @@ impl Simulator {
                 }
             }
             Op::S(_, _, _, _) => todo!(),
-            Op::J(_, _, _) => todo!(),
-            Op::JR(_, _, _, _) => todo!(),
+            Op::J(_, rd, imm) => {
+                let rd = rd as usize;
+                // op is JOp::JAL anyway so idc
+                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
+                let next = self.ctx.pc as i32 + imm.offset().unwrap();
+                if next < 0 {
+                    panic!("negative pc");
+                }
+                next as usize
+            }
+            Op::JR(_, rd, rs1, imm) => {
+                let rd = rd as usize;
+                let rs1 = rs1 as usize;
+                // op is JOp::JALR anyway so idc
+                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
+                let next = self.ctx.registers[rs1] + imm.offset().unwrap();
+                if next < 0 {
+                    panic!("negative pc");
+                }
+                next as usize
+            }
             Op::Halt => return None,
         };
         Some(next_pc)
