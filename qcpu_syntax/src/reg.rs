@@ -36,7 +36,6 @@ pub enum IntReg {
     T4,
     T5,
     T6,
-    Invalid,
 }
 
 impl crate::parser::WithParser for IntReg {}
