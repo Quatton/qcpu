@@ -48,21 +48,25 @@ pub fn main(app: &mut App) -> Result<(), Box<dyn Error>> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<bool> {
     loop {
-        let curlen = app.simulator.simulation_context.history.len();
-        if app.snapshot_idx >= curlen as i32 && !app.done {
-            let mut i = curlen;
-            while i <= app.snapshot_idx as usize {
-                if let Ok(pc) = app.simulator.run_unit(
-                    app.simulator.simulation_context.pc,
-                    &mut app.parsing_context,
-                ) {
-                    app.simulator.simulation_context.pc = pc;
-                    i += 1;
-                } else {
-                    app.done = true;
-                    app.snapshot_idx -= 1;
-                    break;
+        let curlen = app.simulator.ctx.history.len();
+        if app.snapshot_idx >= curlen {
+            if !app.done {
+                let mut i = curlen;
+                while i <= app.snapshot_idx {
+                    match app.simulator.run_unit() {
+                        Ok(Some(pc)) => {
+                            app.simulator.ctx.pc = pc;
+                            i += 1;
+                        }
+                        _ => {
+                            app.done = true;
+                            app.snapshot_idx -= 1;
+                            break;
+                        }
+                    }
                 }
+            } else {
+                app.snapshot_idx = curlen - 1;
             }
         }
         terminal.draw(|f| ui(f, app))?;
@@ -77,14 +81,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                         app.current_screen = CurrentScreen::Exiting;
                     }
                     KeyCode::Right => {
-                        if !app.done || (app.snapshot_idx) as usize <= curlen - 2 {
+                        if !app.done || app.snapshot_idx < curlen - 1 {
                             app.snapshot_idx += 1;
                         }
                     }
                     KeyCode::Left => {
-                        if app.snapshot_idx > 0 {
-                            app.snapshot_idx -= 1;
-                        }
+                        app.snapshot_idx = app.snapshot_idx.saturating_sub(1);
                     }
                     _ => {}
                 },

@@ -1,5 +1,4 @@
 use qcpu_simulator::{SimulationConfig, Simulator};
-use qcpu_syntax::parser::ParsingContext;
 
 // use crate::{action::Action, event::Event, terminal::Frame};
 
@@ -39,9 +38,8 @@ pub enum CurrentScreen {
 
 #[derive(Default)]
 pub struct App {
-    pub parsing_context: ParsingContext,
     pub simulator: Simulator,
-    pub snapshot_idx: i32,
+    pub snapshot_idx: usize,
     pub current_screen: CurrentScreen,
     pub done: bool,
 }
@@ -50,9 +48,8 @@ impl App {
     pub fn new() -> App {
         App {
             done: false,
-            parsing_context: ParsingContext::default(),
             simulator: Simulator::new().config(SimulationConfig::new().interactive(true)),
-            snapshot_idx: -1,
+            snapshot_idx: 0,
             current_screen: CurrentScreen::Main,
         }
     }
@@ -62,12 +59,7 @@ impl App {
         self
     }
 
-    pub fn load_parsing_context(mut self, prs_ctx: ParsingContext) -> Self {
-        self.parsing_context = prs_ctx;
-        self
-    }
-
     pub fn log_registers(&self) {
-        self.simulator.simulation_context.log_registers();
+        self.simulator.ctx.log_registers();
     }
 }

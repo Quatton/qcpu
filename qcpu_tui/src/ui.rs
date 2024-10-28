@@ -41,48 +41,37 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     let mut list_items = Vec::<ListItem>::new();
 
-    let idx: Result<usize, _> = app.snapshot_idx.try_into();
+    let idx = app.snapshot_idx;
+    let ss = app.simulator.ctx.history.get(idx).unwrap();
 
-    let ss = match idx {
-        Ok(x) => app.simulator.simulation_context.history.get(x).copied(),
-        Err(_) => None,
-    };
-
-    for (i, &op) in app.simulator.simulation_context.program.iter().enumerate() {
+    for (i, &op) in app.simulator.ctx.program.iter().enumerate() {
         list_items.push(ListItem::new(Line::from(Span::styled(
-            Op::from_machine_code(op, &app.parsing_context)
+            Op::from_machine_code(op, &app.simulator.config.parsing_context)
                 .unwrap()
                 .to_asm(),
-            if let Some(ss) = ss {
-                if ss.pc == i {
-                    Style::default().fg(Color::Yellow)
-                } else {
-                    Style::default()
-                }
+            if idx > 0 && ss.pc == i * 4 {
+                Style::default().fg(Color::Yellow)
             } else {
                 Style::default()
             },
         ))));
     }
 
-    let list = List::new(list_items).block(Block::bordered());
+    let list = List::new(list_items).block(Block::bordered().title_bottom(format!(
+        " PC: {} -- Snapshot: {} -- Halt: {}",
+        ss.pc, app.snapshot_idx, app.done
+    )));
 
     let regs: Vec<Cell> = ss
-        .unwrap_or_default()
         .reg
         .iter()
         .enumerate()
         .map(|(i, val)| Cell::from(format!("{:<5}: {:<10} ", IntReg::VARIANTS[i], val)))
         .collect();
 
-    let rows = regs.chunks_exact(4).map(|c| Row::new(Vec::from(c)));
+    let rows = regs.chunks_exact(2).map(|c| Row::new(Vec::from(c)));
 
-    let widths = [
-        Constraint::Min(1),
-        Constraint::Min(1),
-        Constraint::Min(1),
-        Constraint::Min(1),
-    ];
+    let widths = [Constraint::Min(1); 2];
 
     let reg_table = Table::new(rows, widths).block(Block::bordered());
     frame.render_widget(list, chunks[1]);

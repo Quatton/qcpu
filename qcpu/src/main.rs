@@ -62,6 +62,9 @@ enum Commands {
         /// Interactive mode (overrides verbose mode)
         #[arg(short, long, default_value = "false")]
         interactive: bool,
+
+        #[arg(short, long, default_value = "4096")]
+        memory_size: usize,
     },
 }
 
@@ -74,6 +77,7 @@ fn main() {
             source,
             verbose,
             interactive,
+            memory_size,
         } => {
             let mut ctx = ParsingContext::default();
             let ops: Vec<Op> = if let Some(source) = source {
@@ -93,21 +97,26 @@ fn main() {
                 panic!("bro come on");
             };
 
+            let code = ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect();
+
             let cfg = qcpu_simulator::SimulationConfig {
                 verbose: if interactive { false } else { verbose },
                 interactive,
+                memory_size,
+                parsing_context: ctx,
             };
 
-            let code = ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect();
             let mut sim = qcpu_simulator::Simulator::new()
                 .config(cfg)
                 .load_program(code);
+
+            sim.init();
             if interactive {
-                let mut app = App::new().load_parsing_context(ctx).load_simulator(sim);
+                let mut app = App::new().load_simulator(sim);
                 qcpu_tui::main(&mut app).unwrap();
             } else {
-                sim.run(&mut ctx);
-                sim.simulation_context.log_registers();
+                sim.run().unwrap();
+                sim.ctx.log_registers();
             }
         }
         Commands::Asm {

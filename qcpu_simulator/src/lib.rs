@@ -54,22 +54,30 @@ impl std::fmt::Debug for Registers {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct SimulationContext {
-    pub program: Vec<u32>,
     pub registers: Registers,
     pub history: Vec<Snapshot>,
     pub pc: usize,
+    pub memory: Vec<u8>,
+    pub program: Vec<u32>,
+}
+
+impl Default for SimulationContext {
+    fn default() -> Self {
+        Self {
+            registers: Registers::new(),
+            history: vec![Snapshot::default()],
+            pc: 0,
+            memory: Vec::new(),
+            program: Vec::new(),
+        }
+    }
 }
 
 impl SimulationContext {
     pub fn new() -> Self {
-        Self {
-            program: vec![],
-            registers: Registers::new(),
-            history: vec![],
-            pc: 0,
-        }
+        Self::default()
     }
 
     pub fn log_registers(&self) {
@@ -77,7 +85,13 @@ impl SimulationContext {
     }
 
     pub fn load_program(mut self, program: Vec<u32>) -> Self {
-        self.program = program;
+        self.program = program.clone();
+        for line in program.into_iter() {
+            for byte in line.to_le_bytes() {
+                self.memory[self.pc] = byte;
+                self.pc += 1;
+            }
+        }
         self
     }
 
@@ -98,6 +112,8 @@ impl SimulationContext {
 pub struct SimulationConfig {
     pub verbose: bool,
     pub interactive: bool,
+    pub memory_size: usize,
+    pub parsing_context: ParsingContext,
 }
 
 impl SimulationConfig {
@@ -105,6 +121,8 @@ impl SimulationConfig {
         Self {
             verbose: false,
             interactive: false,
+            memory_size: 4096,
+            parsing_context: ParsingContext::default(),
         }
     }
 
@@ -117,56 +135,96 @@ impl SimulationConfig {
         self.interactive = interactive;
         self
     }
+
+    pub fn memory_size(mut self, memory_size: usize) -> Self {
+        self.memory_size = memory_size;
+        self
+    }
+
+    pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
+        self.parsing_context = parsing_context;
+        self
+    }
 }
 
 pub struct Simulator {
-    pub simulation_context: SimulationContext,
+    pub ctx: SimulationContext,
     pub config: SimulationConfig,
 }
 
 impl Simulator {
     pub fn new() -> Self {
         Self {
-            simulation_context: SimulationContext::default(),
+            ctx: SimulationContext::default(),
             config: SimulationConfig::default(),
         }
     }
 
+    pub fn load_program(mut self, program: Vec<u32>) -> Self {
+        self.ctx = self.ctx.load_program(program);
+        self
+    }
+
     pub fn config(mut self, config: SimulationConfig) -> Self {
         self.config = config;
+        self.ctx.memory = vec![0; self.config.memory_size];
         self
     }
 
-    pub fn run(&mut self, ctx: &mut ParsingContext) {
-        while self.simulation_context.pc < self.simulation_context.program.len() {
-            let pc = self.run_unit(self.simulation_context.pc, ctx).unwrap();
-            self.simulation_context.pc = pc;
+    pub fn init(&mut self) {
+        self.ctx.pc = 0;
+        self.ctx.registers = Registers::new();
+    }
+
+    pub fn run(&mut self) -> Result<(), &str> {
+        self.init();
+        loop {
+            // align
+            self.ctx.pc = (self.ctx.pc >> 2) << 2;
+            let pc = self.run_unit();
+            match pc.unwrap() {
+                Some(pc) => self.ctx.pc = pc,
+                None => break,
+            }
         }
+
+        Ok(())
     }
 
-    pub fn load_program(mut self, program: Vec<u32>) -> Self {
-        self.simulation_context.program = program;
-        self
-    }
+    pub fn run_unit(&mut self) -> Result<Option<usize>, &str> {
+        let pc = self.ctx.pc;
 
-    pub fn run_unit(&mut self, pc: usize, ctx: &mut ParsingContext) -> Result<usize, &str> {
+        self.ctx.history.push(Snapshot {
+            pc: self.ctx.pc,
+            reg: self.ctx.registers,
+        });
+
         if self.config.verbose {
-            println!("======pc: {}======\n", self.simulation_context.pc);
+            println!("======pc: {}======\n", self.ctx.pc);
         }
-        let code = self.simulation_context.program.get(pc);
-        if let Some(&code) = code {
-            let op = Op::from_machine_code(code, ctx).unwrap();
-            self.simulation_context.history.push(Snapshot {
-                pc: self.simulation_context.pc,
-                reg: self.simulation_context.registers,
-            });
-            Ok(self.execute(op))
-        } else {
-            Err("index out of bound")
+
+        // fetch (little endian)
+        let program = self.ctx.memory[pc..pc + 4]
+            .iter()
+            .rev()
+            .fold(0, |acc, &x| acc << 8 | x as u32);
+
+        let op = Op::from_machine_code(program, &self.config.parsing_context).unwrap();
+
+        // execute
+        let next_pc = self.execute(op);
+
+        // no memory access
+        // no write back
+
+        if self.config.verbose {
+            self.ctx.log_registers();
         }
+
+        Ok(next_pc)
     }
 
-    pub fn execute(&mut self, op: Op) -> usize {
+    pub fn execute(&mut self, op: Op) -> Option<usize> {
         if self.config.verbose {
             println!("{:?}", op);
         }
@@ -176,43 +234,17 @@ impl Simulator {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
                 let result = match op {
-                    ROp::ADD => {
-                        self.simulation_context.registers[rs1]
-                            + self.simulation_context.registers[rs2]
-                    }
-                    ROp::SUB => {
-                        self.simulation_context.registers[rs1]
-                            - self.simulation_context.registers[rs2]
-                    }
-                    ROp::AND => {
-                        self.simulation_context.registers[rs1]
-                            & self.simulation_context.registers[rs2]
-                    }
-                    ROp::OR => {
-                        self.simulation_context.registers[rs1]
-                            | self.simulation_context.registers[rs2]
-                    }
-                    ROp::XOR => {
-                        self.simulation_context.registers[rs1]
-                            ^ self.simulation_context.registers[rs2]
-                    }
-                    ROp::SLL => {
-                        self.simulation_context.registers[rs1]
-                            << self.simulation_context.registers[rs2]
-                    }
-                    ROp::SRL => {
-                        self.simulation_context.registers[rs1]
-                            >> self.simulation_context.registers[rs2]
-                    }
-                    ROp::SRA => {
-                        self.simulation_context.registers[rs1]
-                            >> self.simulation_context.registers[rs2]
-                    }
+                    ROp::ADD => self.ctx.registers[rs1] + self.ctx.registers[rs2],
+                    ROp::SUB => self.ctx.registers[rs1] - self.ctx.registers[rs2],
+                    ROp::AND => self.ctx.registers[rs1] & self.ctx.registers[rs2],
+                    ROp::OR => self.ctx.registers[rs1] | self.ctx.registers[rs2],
+                    ROp::XOR => self.ctx.registers[rs1] ^ self.ctx.registers[rs2],
+                    ROp::SLL => self.ctx.registers[rs1] << self.ctx.registers[rs2],
+                    ROp::SRL => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
+                    ROp::SRA => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
                     // signed comparison
                     ROp::SLT => {
-                        if self.simulation_context.registers[rs1]
-                            < self.simulation_context.registers[rs2]
-                        {
+                        if self.ctx.registers[rs1] < self.ctx.registers[rs2] {
                             1
                         } else {
                             0
@@ -220,29 +252,27 @@ impl Simulator {
                     }
                     // unsigned comparison
                     ROp::SLTU => {
-                        if (self.simulation_context.registers[rs1] as u32)
-                            < (self.simulation_context.registers[rs2] as u32)
-                        {
+                        if (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32) {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.simulation_context.commit(rd, result);
-                self.simulation_context.pc + 1
+                self.ctx.commit(rd, result);
+                self.ctx.pc + 4
             }
             Op::I(op, rd, rs1, imm) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let result = match op {
-                    IOp::ADDI => self.simulation_context.registers[rs1] + imm,
-                    IOp::ANDI => self.simulation_context.registers[rs1] & imm,
-                    IOp::ORI => self.simulation_context.registers[rs1] | imm,
-                    IOp::XORI => self.simulation_context.registers[rs1] ^ imm,
+                    IOp::ADDI => self.ctx.registers[rs1] + imm,
+                    IOp::ANDI => self.ctx.registers[rs1] & imm,
+                    IOp::ORI => self.ctx.registers[rs1] | imm,
+                    IOp::XORI => self.ctx.registers[rs1] ^ imm,
                     // signed comparison
                     IOp::SLTI => {
-                        if self.simulation_context.registers[rs1] < imm {
+                        if self.ctx.registers[rs1] < imm {
                             1
                         } else {
                             0
@@ -250,62 +280,48 @@ impl Simulator {
                     }
                     // unsigned comparison
                     IOp::SLTIU => {
-                        if (self.simulation_context.registers[rs1] as u32) < (imm as u32) {
+                        if (self.ctx.registers[rs1] as u32) < (imm as u32) {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.simulation_context.commit(rd, result);
-                self.simulation_context.pc + 1
+                self.ctx.commit(rd, result);
+                self.ctx.pc + 4
             }
             Op::IS(op, rd, rs1, shamt) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let result = match op {
-                    ISOp::SLLI => self.simulation_context.registers[rs1] << shamt,
-                    ISOp::SRLI => self.simulation_context.registers[rs1] >> shamt,
-                    ISOp::SRAI => self.simulation_context.registers[rs1] >> shamt,
+                    ISOp::SLLI => self.ctx.registers[rs1] << shamt,
+                    ISOp::SRLI => self.ctx.registers[rs1] >> shamt,
+                    ISOp::SRAI => self.ctx.registers[rs1] >> shamt,
                 };
-                self.simulation_context.commit(rd, result);
-                self.simulation_context.pc + 1
+                self.ctx.commit(rd, result);
+                self.ctx.pc + 4
             }
             Op::B(op, rs2, rs1, imm) => {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
                 let jmp = match op {
-                    BOp::BEQ => {
-                        self.simulation_context.registers[rs1]
-                            == self.simulation_context.registers[rs2]
-                    }
-                    BOp::BNE => {
-                        self.simulation_context.registers[rs1]
-                            != self.simulation_context.registers[rs2]
-                    }
-                    BOp::BLT => {
-                        self.simulation_context.registers[rs1]
-                            < self.simulation_context.registers[rs2]
-                    }
-                    BOp::BGE => {
-                        self.simulation_context.registers[rs1]
-                            >= self.simulation_context.registers[rs2]
-                    }
+                    BOp::BEQ => self.ctx.registers[rs1] == self.ctx.registers[rs2],
+                    BOp::BNE => self.ctx.registers[rs1] != self.ctx.registers[rs2],
+                    BOp::BLT => self.ctx.registers[rs1] < self.ctx.registers[rs2],
+                    BOp::BGE => self.ctx.registers[rs1] >= self.ctx.registers[rs2],
                     BOp::BGEU => {
-                        (self.simulation_context.registers[rs1] as u32)
-                            >= (self.simulation_context.registers[rs2] as u32)
+                        (self.ctx.registers[rs1] as u32) >= (self.ctx.registers[rs2] as u32)
                     }
 
                     BOp::BLTU => {
-                        (self.simulation_context.registers[rs1] as u32)
-                            < (self.simulation_context.registers[rs2] as u32)
+                        (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32)
                     }
                 };
 
                 if !jmp {
-                    self.simulation_context.pc + 1
+                    self.ctx.pc + 4
                 } else {
-                    let next = self.simulation_context.pc as i32 + imm.offset().unwrap();
+                    let next = self.ctx.pc as i32 + imm.offset().unwrap();
                     if next < 0 {
                         panic!("negative pc");
                     }
@@ -315,11 +331,9 @@ impl Simulator {
             Op::S(_, _, _, _) => todo!(),
             Op::J(_, _, _) => todo!(),
             Op::JR(_, _, _, _) => todo!(),
+            Op::Halt => return None,
         };
-        if self.config.verbose {
-            self.simulation_context.log_registers();
-        }
-        next_pc
+        Some(next_pc)
     }
 }
 
@@ -344,9 +358,14 @@ mod test {
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
         let code = qcpu_assembler::to_machine_code(&ops, &parsing_context).unwrap();
         let mut sim = Simulator::new()
-            .config(SimulationConfig::new().verbose(true))
+            .config(
+                SimulationConfig::new()
+                    .verbose(true)
+                    .parsing_context(parsing_context),
+            )
             .load_program(code);
-        sim.run(&mut parsing_context);
+
+        sim.run().unwrap();
     }
 
     #[test]
@@ -371,13 +390,16 @@ mod test {
         "#;
         let mut parsing_context = ParsingContext::default();
         let ops = qcpu_assembler::parse_tree(asm, &mut parsing_context).unwrap();
-        println!("{:?}", ops);
         let code = qcpu_assembler::to_machine_code(&ops, &parsing_context).unwrap();
         let mut sim = Simulator::new()
-            .config(SimulationConfig::new().verbose(true))
+            .config(
+                SimulationConfig::new()
+                    .verbose(true)
+                    .parsing_context(parsing_context),
+            )
             .load_program(code);
 
-        sim.run(&mut parsing_context);
+        sim.run().unwrap();
 
         fn fib(n: i32) -> i32 {
             if n == 1 {
@@ -389,6 +411,6 @@ mod test {
             fib(n - 1) + fib(n - 2)
         }
 
-        assert_eq!(sim.simulation_context.registers[10], fib(16));
+        assert_eq!(sim.ctx.registers[10], fib(16));
     }
 }

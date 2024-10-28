@@ -108,6 +108,7 @@ pub enum Op {
     S(STOp, IntReg, IntReg, i32),
     J(JOp, IntReg, JumpTarget),
     JR(JROp, IntReg, IntReg, JumpTarget),
+    Halt,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -224,10 +225,14 @@ impl Op {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rd, imm)
             }
+            Op::Halt => 0,
         }
     }
 
     pub fn from_machine_code(input: u32, _ctx: &ParsingContext) -> Result<Self, ParseError> {
+        if input == 0 {
+            return Ok(Op::Halt);
+        }
         let opcode = 0b00000000000000000000000001111111 & input;
         match opcode {
             0b0110011 => ROp::from_machine_code(input),
@@ -248,6 +253,7 @@ impl Op {
             Op::S(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
             Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
+            Op::Halt => "".to_owned(),
         }
     }
 
