@@ -146,7 +146,6 @@ impl App {
             PlayMode::ForwardUntilBreakpoint => {
                 if let Some(ss) = self.simulator.ctx.history.get(self.snapshot_idx) {
                     if self.breakpoint.contains(&(ss.pc)) {
-                        self.snapshot_idx += 1;
                         self.playmode = PlayMode::Manual;
                     } else {
                         self.snapshot_idx += 1;
@@ -281,6 +280,7 @@ impl App {
                 }
                 KeyCode::Char(']') => {
                     self.playmode = PlayMode::ForwardUntilBreakpoint;
+                    self.snapshot_idx += 1;
                     Action::Noop
                 }
                 KeyCode::Char('[') => {
