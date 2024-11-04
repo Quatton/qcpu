@@ -1,96 +1,22 @@
-use std::ops::{Deref, DerefMut, Range};
+pub mod pipeline;
+pub mod reg;
 
+use std::ops::Range;
+
+use pipeline::{Snapshot, Snapshots};
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
-    reg::IntReg,
     BOp, FROp, IOp, ISOp, ROp, STOp,
 };
 
-use strum::VariantArray;
-
-type _IntRegisters = [i32; 32];
-type _FloatRegisters = [f32; 32];
-
-#[derive(Default, Clone, Copy)]
-pub struct IntRegisters(_IntRegisters);
-
-impl Deref for IntRegisters {
-    type Target = _IntRegisters;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for IntRegisters {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl IntRegisters {
-    pub fn new() -> Self {
-        Self([0; 32])
-    }
-
-    pub fn from_array(reg: _IntRegisters) -> Self {
-        Self(reg)
-    }
-}
-
-#[derive(Default, Clone, Copy)]
-pub struct FloatRegisters(_FloatRegisters);
-
-impl Deref for FloatRegisters {
-    type Target = _FloatRegisters;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for FloatRegisters {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl FloatRegisters {
-    pub fn new() -> Self {
-        Self([0.0; 32])
-    }
-
-    pub fn from_array(reg: _FloatRegisters) -> Self {
-        Self(reg)
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct Snapshot {
-    pub pc: usize,
-    pub ireg: IntRegisters,
-    pub freg: FloatRegisters,
-    pub memory_transition: Vec<(usize, u8, u8)>,
-}
-
-impl std::fmt::Debug for IntRegisters {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (i, r) in IntReg::VARIANTS.iter().enumerate() {
-            write!(f, "{:<5}: {:<10} ", r, self[i])?;
-            if (i + 1) % 4 == 0 {
-                writeln!(f)?;
-            }
-        }
-        Ok(())
-    }
-}
+use reg::{FloatRegisters, IntRegisters};
 
 #[derive(Clone)]
 pub struct SimulationContext {
     pub ireg: IntRegisters,
     pub freg: FloatRegisters,
     pub program_offset: usize,
-    pub history: Vec<Snapshot>,
+    pub history: Snapshots,
     pub pc: usize,
     pub memory: Vec<u8>,
     pub program: Vec<u32>,
@@ -102,7 +28,7 @@ impl Default for SimulationContext {
             ireg: IntRegisters::new(),
             freg: FloatRegisters::new(),
             program_offset: 0,
-            history: vec![Snapshot::default()],
+            history: Snapshots::default(),
             pc: 0,
             memory: Vec::new(),
             program: Vec::new(),
@@ -136,24 +62,13 @@ impl SimulationContext {
         if reg == 0 {
             return;
         }
-        let latest = if let Some(lastest) = self.history.last_mut() {
-            lastest
-        } else {
-            self.history.push(Snapshot::default());
-            self.history.last_mut().unwrap()
-        };
-
+        let latest = self.history.last_mut().unwrap();
         latest.ireg[reg] = value;
         self.ireg[reg] = value;
     }
 
     pub fn commit_memory(&mut self, addr: Range<usize>, value: i32) {
-        let latest = if let Some(lastest) = self.history.last_mut() {
-            lastest
-        } else {
-            self.history.push(Snapshot::default());
-            self.history.last_mut().unwrap()
-        };
+        let latest = self.history.last_mut().unwrap();
 
         for (addr, value) in addr.clone().zip(value.to_le_bytes().iter()) {
             latest
@@ -162,6 +77,15 @@ impl SimulationContext {
         }
 
         self.memory[addr].copy_from_slice(&value.to_le_bytes());
+    }
+
+    pub fn push(&mut self) {
+        self.history.push(Snapshot {
+            pc: self.pc,
+            ireg: self.ireg,
+            freg: self.freg,
+            ..Default::default()
+        });
     }
 }
 
@@ -235,6 +159,25 @@ impl Simulator {
         self.ctx.ireg[2] = (self.config.memory_size >> 1).try_into().unwrap();
     }
 
+    pub fn instruction_fetch(&mut self) -> u32 {
+        let pc = self.ctx.history.last().unwrap().next_pc;
+
+        self.ctx.memory[pc..pc + 4]
+            .iter()
+            .rev()
+            .fold(0, |acc, &x| acc << 8 | x as u32)
+    }
+
+    pub fn instruction_decode(&mut self) -> Option<(usize, Op)> {
+        match self.ctx.history.last().unwrap().awaiting_decode {
+            Some((usize, program)) => Some((
+                usize,
+                Op::from_machine_code(program, &self.config.parsing_context).unwrap(),
+            )),
+            _ => None,
+        }
+    }
+
     pub fn run(&mut self) -> Result<(), &str> {
         self.init();
         let mut i = 0;
@@ -254,27 +197,19 @@ impl Simulator {
     }
 
     pub fn run_unit(&mut self) -> Result<Option<usize>, &str> {
-        self.ctx.pc = (self.ctx.pc >> 2) << 2;
-        let pc = self.ctx.pc;
-
-        self.ctx.history.push(Snapshot {
+        let snapshot = Snapshot {
             pc: self.ctx.pc,
             ireg: self.ctx.ireg,
             freg: self.ctx.freg,
-            memory_transition: Vec::new(),
-        });
+            ..Default::default()
+        };
 
-        if self.config.verbose {
-            println!("======pc: {}======\n", self.ctx.pc);
-        }
+        let program = self.instruction_fetch();
 
-        // fetch (little endian)
-        let program = self.ctx.memory[pc..pc + 4]
-            .iter()
-            .rev()
-            .fold(0, |acc, &x| acc << 8 | x as u32);
+        let op = self.instruction_decode();
 
-        let op = Op::from_machine_code(program, &self.config.parsing_context).unwrap();
+        // TODO: execute should accept Option<(usize, Op)> but fuck it
+        let op = op.unwrap().1;
 
         // execute
         let next_pc = self.execute(op);
