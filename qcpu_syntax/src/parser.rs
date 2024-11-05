@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 use nom::character::complete::{alphanumeric1, char, one_of};
@@ -73,10 +74,19 @@ impl DerefMut for LabelMap {
 
 pub type WithContext<T> = (T, ParsingContext);
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JumpTarget {
     label: Option<String>,
     offset: Option<i32>,
+}
+
+impl Debug for JumpTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.label() {
+            Some(label) => write!(f, "{label}"),
+            None => write!(f, "{}", self.offset().unwrap()),
+        }
+    }
 }
 
 impl PartialEq for JumpTarget {

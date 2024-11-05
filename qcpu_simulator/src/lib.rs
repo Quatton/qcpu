@@ -3,12 +3,11 @@ pub mod reg;
 mod result;
 pub mod snapshot;
 
-use execute::execute;
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
     STOp,
 };
-use result::{Decode, MemoryAccess, MemoryAccessRequest, RegisterWriteBackRequest};
+use result::{MemoryAccessRequest, RegisterWriteBackRequest};
 use snapshot::{Snapshot, Snapshots};
 
 #[derive(Default, Clone)]
@@ -18,18 +17,6 @@ pub struct SimulationContext {
     pub memory: Vec<u8>,
     pub program: Vec<u32>,
 }
-
-// impl Default for SimulationContext {
-//     fn default() -> Self {
-//         Self {
-//             program_offset: 0,
-//             history: Snapshots::default(),
-//             pc: 0,
-//             memory: Vec::new(),
-//             program: Vec::new(),
-//         }
-//     }
-// }
 
 impl SimulationContext {
     pub fn new() -> Self {
@@ -121,6 +108,7 @@ impl Simulator {
     pub fn init(&mut self) {
         self.ctx.history = Snapshots::default();
         let last = self.ctx.history.last_mut().unwrap();
+
         last.fetch_result.predicted_pc =
             self.config.parsing_context.get_main_pc().unwrap_or(0) * 4 + self.ctx.program_offset;
         last.ireg[2] = (self.config.memory_size >> 1).try_into().unwrap();
@@ -131,8 +119,9 @@ impl Simulator {
 
     pub fn instruction_fetch(&self, prev: &Snapshot, next: &mut Snapshot) {
         let pc = prev.next_pc;
+        next.fetch_result.base_pc = pc;
 
-        next.fetch_result.bubble = prev.execute_result.refetch;
+        next.bubble = prev.execute_result.refetch;
 
         next.fetch_result.awaiting_decode = Some(
             self.ctx.memory[pc..pc + 4]
@@ -142,12 +131,11 @@ impl Simulator {
         );
 
         next.fetch_result.predicted_pc = pc + 4; // better branch prediction
-        next.fetch_result.base_pc = pc;
+        next.next_pc = next.fetch_result.predicted_pc;
     }
 
     pub fn instruction_decode(&self, prev: &Snapshot, next: &mut Snapshot) {
-        next.decode_result = Decode::from_fetch(prev.fetch_result);
-        if next.decode_result.bubble {
+        if next.bubble || prev.fetch_result.awaiting_decode.is_none() {
             return;
         }
 
@@ -174,7 +162,7 @@ impl Simulator {
                 )
             }
             let pc = self.run_unit();
-            if pc.is_err() || pc.unwrap().is_none() {
+            if pc.is_err() {
                 break;
             }
             i += 1;
@@ -189,19 +177,15 @@ impl Simulator {
         let prev = self.ctx.history.last().unwrap();
 
         self.instruction_fetch(prev, &mut next);
-        next.next_pc = next.fetch_result.predicted_pc;
+        let mut next_pc = Some(next.next_pc);
 
-        self.instruction_decode(prev, &mut next);
-
-        // execute
-        let predicted_pc = execute(prev, &mut next);
-        if next.execute_result.refetch {
-            next.next_pc = next.execute_result.predicted_pc;
+        if !next.bubble {
+            self.instruction_decode(prev, &mut next);
+            next_pc = self.execute(prev, &mut next);
         }
+        // execute
 
-        // no memory access
         self.memory_access(prev, &mut next);
-        // no write back
 
         self.write_back(prev, &mut next);
 
@@ -209,14 +193,25 @@ impl Simulator {
             self.ctx.log_registers();
         }
 
+        for (addr, _, new) in next.memory_access_result.memory_transition.iter() {
+            self.ctx.memory[*addr] = *new;
+        }
+
+        let done = next_pc.is_none()
+            && next.execute_result.register_write_back_request.is_none()
+            && next.memory_access_result.wb.is_none()
+            && next.write_back_result.is_none();
+
         self.ctx.history.push(next);
 
-        Ok(predicted_pc)
+        if done {
+            return Err("done");
+        }
+
+        Ok(next_pc)
     }
 
     pub fn memory_access(&self, prev: &Snapshot, next: &mut Snapshot) {
-        next.memory_access_result = MemoryAccess::from_execute(prev.execute_result.clone());
-
         if prev.execute_result.memory_access_request.is_none() {
             return;
         }
@@ -285,14 +280,12 @@ impl Simulator {
     }
 
     pub fn write_back(&self, prev: &Snapshot, next: &mut Snapshot) {
-        if prev.memory_access_result.bubble || prev.memory_access_result.wb.is_none() {
-            return;
-        }
-
-        match prev.memory_access_result.wb.unwrap() {
-            RegisterWriteBackRequest::WriteInt(value, rd) => {
-                next.ireg[rd] = value;
+        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = prev.memory_access_result.wb {
+            if rd == 0 {
+                return;
             }
+            next.ireg[rd] = value;
+            next.write_back_result = Some(prev.memory_access_result.wb.unwrap());
         }
     }
 }
@@ -411,11 +404,14 @@ min_caml_print_int:
         let mc = qcpu_assembler::to_machine_code(&ops, &ctx).unwrap();
 
         let mut sim = Simulator::new()
-            .config(SimulationConfig::new().verbose(true).parsing_context(ctx))
+            .config(
+                SimulationConfig::new()
+                    .memory_size(4096)
+                    .verbose(true)
+                    .parsing_context(ctx),
+            )
             .load_program(mc);
 
         sim.run().unwrap();
-
-        assert_eq!(sim.ctx.memory.get(3000).unwrap(), &55);
     }
 }

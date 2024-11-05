@@ -36,11 +36,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Min(1),
-            Constraint::Percentage(50),
-            Constraint::Min(1),
-        ])
+        .constraints([Constraint::Min(1), Constraint::Percentage(30)])
         .split(frame.area());
 
     let mut list_items = Vec::new();
@@ -127,9 +123,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .map(|(i, val)| Cell::from(format!("{:<5}: {:<10} ", IntReg::VARIANTS[i], val)))
         .collect();
 
-    let rows = regs.chunks_exact(2).map(|c| Row::new(Vec::from(c)));
+    let rows = regs.chunks_exact(4).map(|c| Row::new(Vec::from(c)));
 
-    let widths = [Constraint::Min(1); 2];
+    let widths = [Constraint::Min(1); 4];
 
     let reg_table = Table::new(rows, widths).block(
         Block::bordered()
@@ -146,13 +142,20 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .enumerate()
         .fold(vec![], |mut acc, (i, cur)| {
             let mut row: Vec<Cell> = std::iter::repeat_n(Cell::new(""), i).collect();
-            row.push(Cell::from(format!("{:?}", cur.fetch_result)));
-            row.push(Cell::from(format!("{:?}", cur.decode_result)));
-            row.push(Cell::from(format!("{:?}", cur.execute_result)));
-            row.push(Cell::from(format!("{:?}", cur.memory_access_result)));
-            row.push(Cell::from(format!("{:?}", cur.write_back_result)));
+            row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)));
 
-            acc.push(Row::from_iter(row).height(8));
+            if cur.bubble {
+                row.push(Cell::from("DE\n🫧"));
+                row.push(Cell::from("EX\n🫧"));
+                // row.push(Cell::from("MEM\n🫧"));
+                // row.push(Cell::from("WB\n🫧"));
+            } else {
+                row.push(Cell::from(format!("DE\n{:?}", cur.decode_result)));
+                row.push(Cell::from(format!("EX\n{:?}", cur.execute_result)));
+            }
+            row.push(Cell::from(format!("MEM\n{:?}", cur.memory_access_result)));
+            row.push(Cell::from(format!("WB\n{:?}", cur.write_back_result)));
+            acc.push(Row::from_iter(row).height(10));
             acc
         });
     let pipeline = Table::new(
@@ -161,9 +164,14 @@ pub fn ui(frame: &mut Frame, app: &App) {
     )
     .block(Block::bordered());
 
-    frame.render_widget(program_list, chunks[2]);
-    frame.render_widget(pipeline, chunks[1]);
-    frame.render_widget(reg_table, chunks[0]);
+    let upper = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(12)])
+        .split(chunks[0]);
+
+    frame.render_widget(program_list, chunks[1]);
+    frame.render_widget(pipeline, upper[0]);
+    frame.render_widget(reg_table, upper[1]);
 
     if app.show_dialog {
         let popup_block = Block::bordered()
