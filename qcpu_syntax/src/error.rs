@@ -7,6 +7,7 @@ pub enum ParseError {
     JumpTargetError(String),
     InvalidMachineCode(u32),
     InvalidIntReg,
+    InvalidFloatReg,
 }
 
 impl From<nom::Err<Error<&str>>> for ParseError {

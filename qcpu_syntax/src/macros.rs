@@ -486,3 +486,58 @@ macro_rules! lop {
         }
     }
 }
+
+#[macro_export]
+macro_rules! frop {
+    ($($funct7:literal rs2 rs1 rm rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        #[allow(non_camel_case_types)]
+        pub enum FROp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for FROp {}
+
+        impl FROp {
+            pub fn to_machine_code(self, rd: reg::FloatReg, rs1: reg::FloatReg, rs2: reg::FloatReg, rm: reg::RoundingMode) -> u32 {
+                match self {
+                    $(
+                        FROp::$name => {
+                            let funct7 = $funct7;
+                            let opcode = $opcode;
+                            let rs2 = rs2 as u32;
+                            let rs1 = rs1 as u32;
+                            let rd = rd as u32;
+                            let rm = rm as u32;
+                            funct7 << 25 | rs2 << 20 | rs1 << 15 | rm << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for FROp {
+          fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+            let opcode =    0b00000000000000000000000001111111  & mc;
+            let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
+            let rm =      ((0b00000000000000000111000000000000  & mc) >> 12) as usize;
+            let rs1i =    ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+            let rs2i =    ((0b00000001111100000000000000000000  & mc) >> 20) as usize;
+            let funct7 =   (0b11111110000000000000000000000000  & mc) >> 25;
+
+            let rd = reg::FloatReg::VARIANTS[rdi];
+            let rs1 = reg::FloatReg::VARIANTS[rs1i];
+            let rs2 = reg::FloatReg::VARIANTS[rs2i];
+            let rm = reg::RoundingMode::VARIANTS[rm];
+
+            match (funct7, opcode) {
+                $(
+                    ($funct7, $opcode) => Ok(parser::Op::FR(FROp::$name, rd, rs1, rs2, rm)),
+                )*
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+            }
+          }
+        }
+    };
+}

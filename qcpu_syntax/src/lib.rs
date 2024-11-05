@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 use strum::VariantArray;
 pub mod error;
 pub mod macros;
@@ -56,6 +58,29 @@ lop!(
     imm[11:0] rs1 0b010 rd 0b0000011 LW
     imm[11:0] rs1 0b100 rd 0b0000011 LBU
     imm[11:0] rs1 0b101 rd 0b0000011 LHU
+);
+
+frop!(
+    0b0000000 rs2 rs1 rm rd 0b1010011 FADD
+    0b0000100 rs2 rs1 rm rd 0b1010011 FSUB
+    0b0001000 rs2 rs1 rm rd 0b1010011 FMUL
+    0b0001100 rs2 rs1 rm rd 0b1010011 FDIV
+    // 0b0101100 0b00000 rs1 rm rd 0b1010011 FSQRT_S
+    // 0b0010000 rs2 rs1 0b000 rd 0b1010011 FSGNJ_S
+    // 0b0010000 rs2 rs1 0b001 rd 0b1010011 FSGNJN_S
+    // 0b0010000 rs2 rs1 0b010 rd 0b1010011 FSGNJX_S
+    // 0b0010100 rs2 rs1 0b000 rd 0b1010011 FMIN_S
+    // 0b0010100 rs2 rs1 0b001 rd 0b1010011 FMAX_S
+    // 0b1100000 0b00000 rs1 rm rd 0b1010011 FCVT_W_S
+    // 0b1100000 0b00001 rs1 rm rd 0b1010011 FCVT_WU_S
+    // 0b1110000 0b00000 rs1 000 rd 0b1010011 FMV_X_W
+    // 0b1010000 rs2 rs1 0b010 rd 0b1010011 FEQ_S
+    // 0b1010000 rs2 rs1 0b001 rd 0b1010011 FLT_S
+    // 0b1010000 rs2 rs1 0b000 rd 0b1010011 FLE_S
+    // 0b1110000 0b00000 rs1 0b001 rd 0b1010011 FCLASS_S
+    // 0b1101000 0b00000 rs1 rm rd 0b1010011 FCVT_S_W
+    // 0b1101000 0b00001 rs1 rm rd 0b1010011 FCVT_S_WU
+    // 0b1111000 0b00000 rs1 0b000 rd 0b1010011 FMV_W_X
 );
 
 #[cfg(test)]

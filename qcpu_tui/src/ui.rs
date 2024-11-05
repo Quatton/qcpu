@@ -113,7 +113,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     .block(Block::bordered());
 
     let regs: Vec<Cell> = ss
-        .reg
+        .ireg
         .iter()
         .enumerate()
         .map(|(i, val)| Cell::from(format!("{:<5}: {:<10} ", IntReg::VARIANTS[i], val)))

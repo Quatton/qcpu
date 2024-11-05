@@ -3,35 +3,64 @@ use std::ops::{Deref, DerefMut, Range};
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
     reg::IntReg,
-    BOp, IOp, ISOp, ROp, STOp,
+    BOp, FROp, IOp, ISOp, ROp, STOp,
 };
 
 use strum::VariantArray;
 
-type _Registers = [i32; 32];
-#[derive(Default, Clone, Copy)]
-pub struct Registers(_Registers);
+type _IntRegisters = [i32; 32];
+type _FloatRegisters = [f32; 32];
 
-impl Deref for Registers {
-    type Target = _Registers;
+#[derive(Default, Clone, Copy)]
+pub struct IntRegisters(_IntRegisters);
+
+impl Deref for IntRegisters {
+    type Target = _IntRegisters;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Registers {
+impl DerefMut for IntRegisters {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl Registers {
+impl IntRegisters {
     pub fn new() -> Self {
         Self([0; 32])
     }
 
-    pub fn from_array(reg: _Registers) -> Self {
+    pub fn from_array(reg: _IntRegisters) -> Self {
+        Self(reg)
+    }
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct FloatRegisters(_FloatRegisters);
+
+impl Deref for FloatRegisters {
+    type Target = _FloatRegisters;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for FloatRegisters {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl FloatRegisters {
+    pub fn new() -> Self {
+        Self([0.0; 32])
+    }
+
+    pub fn from_array(reg: _FloatRegisters) -> Self {
         Self(reg)
     }
 }
@@ -39,11 +68,12 @@ impl Registers {
 #[derive(Default, Clone)]
 pub struct Snapshot {
     pub pc: usize,
-    pub reg: Registers,
+    pub ireg: IntRegisters,
+    pub freg: FloatRegisters,
     pub memory_transition: Vec<(usize, u8, u8)>,
 }
 
-impl std::fmt::Debug for Registers {
+impl std::fmt::Debug for IntRegisters {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, r) in IntReg::VARIANTS.iter().enumerate() {
             write!(f, "{:<5}: {:<10} ", r, self[i])?;
@@ -57,7 +87,8 @@ impl std::fmt::Debug for Registers {
 
 #[derive(Clone)]
 pub struct SimulationContext {
-    pub registers: Registers,
+    pub ireg: IntRegisters,
+    pub freg: FloatRegisters,
     pub program_offset: usize,
     pub history: Vec<Snapshot>,
     pub pc: usize,
@@ -68,7 +99,8 @@ pub struct SimulationContext {
 impl Default for SimulationContext {
     fn default() -> Self {
         Self {
-            registers: Registers::new(),
+            ireg: IntRegisters::new(),
+            freg: FloatRegisters::new(),
             program_offset: 0,
             history: vec![Snapshot::default()],
             pc: 0,
@@ -84,7 +116,7 @@ impl SimulationContext {
     }
 
     pub fn log_registers(&self) {
-        println!("{:?}", self.registers);
+        println!("{:?}", self.ireg);
     }
 
     pub fn load_program(mut self, program: Vec<u32>, addr: usize) -> Self {
@@ -100,7 +132,7 @@ impl SimulationContext {
         self
     }
 
-    pub fn commit(&mut self, reg: usize, value: i32) {
+    pub fn commit_ireg(&mut self, reg: usize, value: i32) {
         if reg == 0 {
             return;
         }
@@ -111,8 +143,8 @@ impl SimulationContext {
             self.history.last_mut().unwrap()
         };
 
-        latest.reg[reg] = value;
-        self.registers[reg] = value;
+        latest.ireg[reg] = value;
+        self.ireg[reg] = value;
     }
 
     pub fn commit_memory(&mut self, addr: Range<usize>, value: i32) {
@@ -199,8 +231,8 @@ impl Simulator {
     pub fn init(&mut self) {
         self.ctx.pc =
             self.config.parsing_context.get_main_pc().unwrap_or(0) * 4 + self.ctx.program_offset;
-        self.ctx.registers = Registers::new();
-        self.ctx.registers[2] = (self.config.memory_size >> 1).try_into().unwrap();
+        self.ctx.ireg = IntRegisters::new();
+        self.ctx.ireg[2] = (self.config.memory_size >> 1).try_into().unwrap();
     }
 
     pub fn run(&mut self) -> Result<(), &str> {
@@ -227,7 +259,8 @@ impl Simulator {
 
         self.ctx.history.push(Snapshot {
             pc: self.ctx.pc,
-            reg: self.ctx.registers,
+            ireg: self.ctx.ireg,
+            freg: self.ctx.freg,
             memory_transition: Vec::new(),
         });
 
@@ -266,17 +299,17 @@ impl Simulator {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
                 let result = match op {
-                    ROp::ADD => self.ctx.registers[rs1] + self.ctx.registers[rs2],
-                    ROp::SUB => self.ctx.registers[rs1] - self.ctx.registers[rs2],
-                    ROp::AND => self.ctx.registers[rs1] & self.ctx.registers[rs2],
-                    ROp::OR => self.ctx.registers[rs1] | self.ctx.registers[rs2],
-                    ROp::XOR => self.ctx.registers[rs1] ^ self.ctx.registers[rs2],
-                    ROp::SLL => self.ctx.registers[rs1] << self.ctx.registers[rs2],
-                    ROp::SRL => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
-                    ROp::SRA => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
+                    ROp::ADD => self.ctx.ireg[rs1] + self.ctx.ireg[rs2],
+                    ROp::SUB => self.ctx.ireg[rs1] - self.ctx.ireg[rs2],
+                    ROp::AND => self.ctx.ireg[rs1] & self.ctx.ireg[rs2],
+                    ROp::OR => self.ctx.ireg[rs1] | self.ctx.ireg[rs2],
+                    ROp::XOR => self.ctx.ireg[rs1] ^ self.ctx.ireg[rs2],
+                    ROp::SLL => self.ctx.ireg[rs1] << self.ctx.ireg[rs2],
+                    ROp::SRL => self.ctx.ireg[rs1] >> self.ctx.ireg[rs2],
+                    ROp::SRA => self.ctx.ireg[rs1] >> self.ctx.ireg[rs2],
                     // signed comparison
                     ROp::SLT => {
-                        if self.ctx.registers[rs1] < self.ctx.registers[rs2] {
+                        if self.ctx.ireg[rs1] < self.ctx.ireg[rs2] {
                             1
                         } else {
                             0
@@ -284,27 +317,27 @@ impl Simulator {
                     }
                     // unsigned comparison
                     ROp::SLTU => {
-                        if (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32) {
+                        if (self.ctx.ireg[rs1] as u32) < (self.ctx.ireg[rs2] as u32) {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.ctx.commit(rd, result);
+                self.ctx.commit_ireg(rd, result);
                 self.ctx.pc + 4
             }
             Op::I(op, rd, rs1, imm) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let result = match op {
-                    IOp::ADDI => self.ctx.registers[rs1] + imm,
-                    IOp::ANDI => self.ctx.registers[rs1] & imm,
-                    IOp::ORI => self.ctx.registers[rs1] | imm,
-                    IOp::XORI => self.ctx.registers[rs1] ^ imm,
+                    IOp::ADDI => self.ctx.ireg[rs1] + imm,
+                    IOp::ANDI => self.ctx.ireg[rs1] & imm,
+                    IOp::ORI => self.ctx.ireg[rs1] | imm,
+                    IOp::XORI => self.ctx.ireg[rs1] ^ imm,
                     // signed comparison
                     IOp::SLTI => {
-                        if self.ctx.registers[rs1] < imm {
+                        if self.ctx.ireg[rs1] < imm {
                             1
                         } else {
                             0
@@ -312,42 +345,38 @@ impl Simulator {
                     }
                     // unsigned comparison
                     IOp::SLTIU => {
-                        if (self.ctx.registers[rs1] as u32) < (imm as u32) {
+                        if (self.ctx.ireg[rs1] as u32) < (imm as u32) {
                             1
                         } else {
                             0
                         }
                     }
                 };
-                self.ctx.commit(rd, result);
+                self.ctx.commit_ireg(rd, result);
                 self.ctx.pc + 4
             }
             Op::IS(op, rd, rs1, shamt) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let result = match op {
-                    ISOp::SLLI => self.ctx.registers[rs1] << shamt,
-                    ISOp::SRLI => self.ctx.registers[rs1] >> shamt,
-                    ISOp::SRAI => self.ctx.registers[rs1] >> shamt,
+                    ISOp::SLLI => self.ctx.ireg[rs1] << shamt,
+                    ISOp::SRLI => self.ctx.ireg[rs1] >> shamt,
+                    ISOp::SRAI => self.ctx.ireg[rs1] >> shamt,
                 };
-                self.ctx.commit(rd, result);
+                self.ctx.commit_ireg(rd, result);
                 self.ctx.pc + 4
             }
             Op::B(op, rs2, rs1, imm) => {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
                 let jmp = match op {
-                    BOp::BEQ => self.ctx.registers[rs1] == self.ctx.registers[rs2],
-                    BOp::BNE => self.ctx.registers[rs1] != self.ctx.registers[rs2],
-                    BOp::BLT => self.ctx.registers[rs1] < self.ctx.registers[rs2],
-                    BOp::BGE => self.ctx.registers[rs1] >= self.ctx.registers[rs2],
-                    BOp::BGEU => {
-                        (self.ctx.registers[rs1] as u32) >= (self.ctx.registers[rs2] as u32)
-                    }
+                    BOp::BEQ => self.ctx.ireg[rs1] == self.ctx.ireg[rs2],
+                    BOp::BNE => self.ctx.ireg[rs1] != self.ctx.ireg[rs2],
+                    BOp::BLT => self.ctx.ireg[rs1] < self.ctx.ireg[rs2],
+                    BOp::BGE => self.ctx.ireg[rs1] >= self.ctx.ireg[rs2],
+                    BOp::BGEU => (self.ctx.ireg[rs1] as u32) >= (self.ctx.ireg[rs2] as u32),
 
-                    BOp::BLTU => {
-                        (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32)
-                    }
+                    BOp::BLTU => (self.ctx.ireg[rs1] as u32) < (self.ctx.ireg[rs2] as u32),
                 };
 
                 if !jmp {
@@ -363,7 +392,7 @@ impl Simulator {
             Op::S(op, rs2, rs1, imm) => {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
-                let addr = self.ctx.registers[rs1] + imm;
+                let addr = self.ctx.ireg[rs1] + imm;
 
                 // check addr out of bound
                 if addr < 0 || addr >= self.ctx.memory.len() as i32 {
@@ -371,7 +400,7 @@ impl Simulator {
                 }
 
                 let addr = addr as usize;
-                let value = self.ctx.registers[rs2];
+                let value = self.ctx.ireg[rs2];
                 self.ctx.commit_memory(
                     match op {
                         STOp::SB => addr..addr + 1,
@@ -385,7 +414,7 @@ impl Simulator {
             Op::L(op, rd, rs1, imm) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
-                let addr = self.ctx.registers[rs1] + imm;
+                let addr = self.ctx.ireg[rs1] + imm;
 
                 // check addr out of bound
                 if addr < 0 || addr >= self.ctx.memory.len() as i32 {
@@ -410,7 +439,7 @@ impl Simulator {
                     }
                 };
 
-                self.ctx.commit(rd, value);
+                self.ctx.commit_ireg(rd, value);
                 self.ctx.pc + 4
             }
             Op::J(_, rd, imm) => {
@@ -420,19 +449,35 @@ impl Simulator {
                 if next < 0 {
                     panic!("negative pc");
                 }
-                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
+                self.ctx.commit_ireg(rd, self.ctx.pc as i32 + 4);
                 next as usize
             }
             Op::JR(_, rd, rs1, imm) => {
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 // op is JOp::JALR anyway so idc
-                let next = self.ctx.registers[rs1] + imm.offset().unwrap();
+                let next = self.ctx.ireg[rs1] + imm.offset().unwrap();
                 if next < 0 {
                     panic!("negative pc");
                 }
-                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
+                self.ctx.commit_ireg(rd, self.ctx.pc as i32 + 4);
                 next as usize
+            }
+            Op::FR(op, rd, rs1, rs2, _rm) => {
+                // we ignore _rm at this point because idk how
+                let rd = rd as usize;
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+                let rs1_d = self.ctx.freg[rs1];
+                let rs2_d = self.ctx.freg[rs2];
+                let res = match op {
+                    FROp::FADD => rs1_d + rs2_d,
+                    FROp::FSUB => rs1_d - rs2_d,
+                    FROp::FMUL => rs1_d * rs2_d,
+                    FROp::FDIV => rs1_d / rs2_d,
+                };
+                self.ctx.freg[rd] = res;
+                self.ctx.pc + 4
             }
             Op::Exit(_) => return None,
         };
@@ -514,7 +559,7 @@ mod test {
 
         sim.run().unwrap();
 
-        assert_eq!(sim.ctx.registers[10], fib(16));
+        assert_eq!(sim.ctx.ireg[10], fib(16));
     }
 
     #[test]
