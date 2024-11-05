@@ -201,6 +201,9 @@ impl Simulator {
             self.config.parsing_context.get_main_pc().unwrap_or(0) * 4 + self.ctx.program_offset;
         self.ctx.registers = Registers::new();
         self.ctx.registers[2] = (self.config.memory_size >> 1).try_into().unwrap();
+        self.ctx.registers[3] = ((self.config.memory_size >> 1) + (self.config.memory_size >> 2))
+            .try_into()
+            .unwrap();
     }
 
     pub fn run(&mut self) -> Result<(), &str> {
