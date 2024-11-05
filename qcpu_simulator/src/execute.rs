@@ -5,24 +5,34 @@ use crate::snapshot::Snapshot;
 use crate::Simulator;
 
 impl Simulator {
+    fn get_instruction_latency(&self, op: &Op) -> usize {
+        match op {
+            Op::L(_, _, _, _) => 2, // Load instructions have 2-cycle latency
+            _ => 1,                 // Default latency of 1 cycle for other instructions
+        }
+    }
+
     pub fn execute(&self, prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
         if next.execute_result.intr.is_none() || next.execute_result.stall {
-            return Some(prev.decode_result.predicted_pc);
+            return Some(next.execute_result.predicted_pc);
         }
 
         let base_pc = next.execute_result.base_pc;
-        let op = next.execute_result.intr.clone().unwrap();
+        let oop = next.execute_result.intr.clone().unwrap();
 
-        match op {
+        match oop {
             Op::R(op, rd, rs1, rs2) => {
-                if prev.execute_result.busy(&[rs1, rs2, rd]) {
+                let rd = rd as usize;
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+
+                if prev.ireg_delay[rs1] > 0 || prev.ireg_delay[rs2] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
+                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+
                 let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
                 let (rs2_val, ef2, mf2) = prev.get_ireg(rs2);
                 next.execute_result.forward = ef1 || ef2;
@@ -57,15 +67,17 @@ impl Simulator {
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
             Op::I(op, rd, rs1, imm) => {
-                if prev.execute_result.busy(&[rs1, rd]) {
+                let rd = rd as usize;
+                let rs1 = rs1 as usize;
+
+                if prev.ireg_delay[rs1] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-
                 let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
+                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+
                 next.execute_result.forward = ef1;
                 next.memory_access_result.forward = mf1;
                 let result = match op {
@@ -94,14 +106,17 @@ impl Simulator {
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
             Op::IS(op, rd, rs1, shamt) => {
-                if prev.execute_result.busy(&[rs1, rd]) {
+                let rd = rd as usize;
+                let rs1 = rs1 as usize;
+
+                if prev.ireg_delay[rs1] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
                 let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
+                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+
                 next.execute_result.forward = ef1;
                 next.memory_access_result.forward = mf1;
                 let result = match op {
@@ -113,15 +128,17 @@ impl Simulator {
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
             Op::B(op, rs2, rs1, imm) => {
-                if prev.execute_result.busy(&[rs1, rs2]) {
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+
+                if prev.ireg_delay[rs1] > 0 || prev.ireg_delay[rs2] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
                 let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
                 let (rs2_val, ef2, mf2) = prev.get_ireg(rs2);
+
                 next.execute_result.forward = ef1 || ef2;
                 next.memory_access_result.forward = mf1 || mf2;
 
@@ -144,7 +161,10 @@ impl Simulator {
                 }
             }
             Op::S(op, rs2, rs1, imm) => {
-                if prev.execute_result.busy(&[rs1, rs2]) {
+                let rs1i = rs1 as usize;
+                let rs2i = rs2 as usize;
+
+                if prev.ireg_delay[rs1i] > 0 || prev.ireg_delay[rs2i] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
@@ -153,7 +173,9 @@ impl Simulator {
                     .forward_to_memory_access(MemoryAccessRequest::S(op, rs2, rs1, imm));
             }
             Op::L(op, rd, rs1, imm) => {
-                if prev.execute_result.busy(&[rs1, rd]) {
+                let rs1i = rs1 as usize;
+
+                if prev.ireg_delay[rs1i] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
@@ -162,11 +184,6 @@ impl Simulator {
                     .forward_to_memory_access(MemoryAccessRequest::L(op, rd, rs1, imm));
             }
             Op::J(_, rd, imm) => {
-                if prev.execute_result.busy(&[rd]) {
-                    next.execute_result.stall = true;
-                    return Some(next.execute_result.predicted_pc);
-                }
-
                 let rd = rd as usize;
                 // op is JOp::JAL anyway so idc
                 let target = base_pc as i32 + imm.offset().unwrap();
@@ -178,11 +195,6 @@ impl Simulator {
                 return Some(target);
             }
             Op::JR(_, rd, rs1, imm) => {
-                if prev.execute_result.busy(&[rd, rs1]) {
-                    next.execute_result.stall = true;
-                    return Some(next.execute_result.predicted_pc);
-                }
-
                 let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);

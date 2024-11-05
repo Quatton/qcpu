@@ -12,6 +12,7 @@ pub struct Snapshot {
     pub next_pc: usize,
     pub ireg: IntRegisters,
     pub freg: FloatRegisters,
+    pub ireg_delay: [usize; 32],
 
     // for pipelining
     // pub busy_registers: [bool; 32],
@@ -81,23 +82,39 @@ impl Default for Snapshots {
 impl Snapshots {
     pub fn new_snapshot(&self) -> Snapshot {
         let last = self.0.last().unwrap();
-        Snapshot {
+        let mut snapshot = Snapshot {
             ireg: last.ireg,
             freg: last.freg,
-            decode_result: Decode::from_fetch(last.fetch_result),
-            execute_result: Execute::from_decode(if last.execute_result.stall {
-                self.0.get(self.0.len().saturating_sub(2)).map_or_else(
-                    || last.decode_result.clone(),
-                    |prev| prev.decode_result.clone(),
-                )
-            } else {
-                last.decode_result.clone()
-            }),
-            memory_access_result: MemoryAccess {
+            ireg_delay: last.ireg_delay,
+            ..Default::default()
+        };
+
+        snapshot
+            .ireg_delay
+            .iter_mut()
+            .for_each(|d| *d = d.saturating_sub(1));
+
+        snapshot.decode_result = Decode::from_fetch(last.fetch_result);
+        snapshot.fetch_result = Fetch {
+            base_pc: last.next_pc,
+            ..Default::default()
+        };
+
+        if last.execute_result.stall {
+            snapshot.execute_result = last.execute_result.clone();
+            snapshot.execute_result.stall = false; // clear stall (it might stall again because we might set delay to longer than 1)
+            snapshot.decode_result.stall = true;
+            snapshot.fetch_result.stall = true;
+        } else {
+            snapshot.execute_result = Execute::from_decode(last.decode_result.clone());
+            snapshot.memory_access_result = MemoryAccess {
                 wb: last.execute_result.register_write_back_request,
                 ..Default::default()
-            },
-            ..Default::default()
+            };
+
+            snapshot.write_back_result = last.memory_access_result.wb;
         }
+
+        snapshot
     }
 }

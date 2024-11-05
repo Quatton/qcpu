@@ -44,7 +44,13 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let idx = app.snapshot_idx;
     let history = &app.simulator.ctx.history;
     let len = history.len();
-    let ss = history.get(idx).unwrap();
+    let ss = history.get(idx.min(len - 1)).unwrap();
+
+    let if_style: Style = Style::default().fg(Color::Yellow);
+    let de_style: Style = Style::default().fg(Color::Green);
+    let ex_style: Style = Style::default().fg(Color::Blue);
+    let ma_style: Style = Style::default().fg(Color::Magenta);
+    let wb_style: Style = Style::default().fg(Color::Cyan);
 
     for (i, &op) in app.simulator.ctx.program.iter().enumerate() {
         list_items.push(
@@ -60,48 +66,43 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         Style::default()
                     },
                 )),
-                Cell::from(Span::styled(
-                    format!(
-                        "0x{:05x}: {}",
-                        i * 4 + app.simulator.ctx.program_offset,
-                        app.simulator
-                            .config
-                            .parsing_context
-                            .label_map
-                            .get_label(i)
-                            .map_or("", |v| v)
-                    ),
-                    if idx > 0 && ss.fetch_result.base_pc == i * 4 {
-                        Style::default().fg(Color::Yellow)
-                    } else {
-                        Style::default()
-                    },
+                Cell::from(format!(
+                    "0x{:05x}: {}",
+                    i * 4 + app.simulator.ctx.program_offset,
+                    app.simulator
+                        .config
+                        .parsing_context
+                        .label_map
+                        .get_label(i)
+                        .map_or("", |v| v)
                 )),
-                Cell::from(Span::styled(
+                Cell::from(
                     Op::from_machine_code(op, &app.simulator.config.parsing_context)
                         .unwrap()
                         .to_asm(),
-                    Style::default().fg(Color::White),
-                )),
+                ),
             ])
             .style(
-                Style::default()
-                    .bg(
-                        if app.input_mode == InputMode::Breakpoint && app.breakpoint_idx == i {
-                            Color::Yellow
-                        } else {
-                            Color::Reset
-                        },
-                    )
-                    .fg(
-                        if idx > 0
-                            && ss.fetch_result.base_pc == i * 4 + app.simulator.ctx.program_offset
-                        {
-                            Color::Yellow
-                        } else {
-                            Color::White
-                        },
-                    ),
+                if ss.fetch_result.base_pc == i * 4 && !ss.fetch_result.stall {
+                    if_style
+                } else if ss.decode_result.base_pc == i * 4 && !ss.decode_result.stall && !ss.bubble
+                {
+                    de_style
+                } else if ss.execute_result.base_pc == i * 4
+                    && !ss.execute_result.stall
+                    && !ss.bubble
+                {
+                    ex_style
+                } else {
+                    Style::default()
+                }
+                .bg(
+                    if app.input_mode == InputMode::Breakpoint && app.breakpoint_idx == i {
+                        Color::Yellow
+                    } else {
+                        Color::Reset
+                    },
+                ),
             ),
         );
     }
@@ -120,7 +121,19 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .ireg
         .iter()
         .enumerate()
-        .map(|(i, val)| Cell::from(format!("{:<5}: {:<10} ", IntReg::VARIANTS[i], val)))
+        .map(|(i, val)| {
+            Cell::from(format!(
+                "{:<5}: {:<10} [+{}]",
+                IntReg::VARIANTS[i],
+                val,
+                ss.ireg_delay[i]
+            ))
+            .style(if ss.ireg_delay[i] > 0 {
+                Style::default().fg(Color::Red)
+            } else {
+                Style::default()
+            })
+        })
         .collect();
 
     let rows = regs.chunks_exact(4).map(|c| Row::new(Vec::from(c)));
@@ -137,24 +150,26 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let window = 2;
     let history_window = history[idx.saturating_sub(window).max(1)..len.min(idx + window)].to_vec();
     let target_length = history_window.len() + 4;
+
     let history_rows = history_window
         .iter()
         .enumerate()
         .fold(vec![], |mut acc, (i, cur)| {
             let mut row: Vec<Cell> = std::iter::repeat_n(Cell::new(""), i).collect();
-            row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)));
+            row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)).style(if_style));
 
             if cur.bubble {
-                row.push(Cell::from("DE\n🫧"));
-                row.push(Cell::from("EX\n🫧"));
-                // row.push(Cell::from("MEM\n🫧"));
+                row.push(Cell::from("DE\n🫧").style(de_style));
+                row.push(Cell::from("EX\n🫧").style(ex_style));
+
+                // row.push(Cell::from("MA\n🫧"));
                 // row.push(Cell::from("WB\n🫧"));
             } else {
-                row.push(Cell::from(format!("DE\n{:?}", cur.decode_result)));
-                row.push(Cell::from(format!("EX\n{:?}", cur.execute_result)));
+                row.push(Cell::from(format!("DE\n{:?}", cur.decode_result)).style(de_style));
+                row.push(Cell::from(format!("EX\n{:?}", cur.execute_result)).style(ex_style));
             }
-            row.push(Cell::from(format!("MEM\n{:?}", cur.memory_access_result)));
-            row.push(Cell::from(format!("WB\n{:?}", cur.write_back_result)));
+            row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
+            row.push(Cell::from(format!("WB\n{:?}", cur.write_back_result)).style(wb_style));
             acc.push(Row::from_iter(row).height(10));
             acc
         });

@@ -118,8 +118,11 @@ impl Simulator {
     }
 
     pub fn instruction_fetch(&self, prev: &Snapshot, next: &mut Snapshot) {
-        let pc = prev.next_pc;
-        next.fetch_result.base_pc = pc;
+        if next.fetch_result.stall {
+            return;
+        }
+
+        let pc = next.fetch_result.base_pc;
 
         next.bubble = prev.execute_result.refetch;
 
@@ -130,7 +133,7 @@ impl Simulator {
                 .fold(0, |acc, &x| acc << 8 | x as u32),
         );
 
-        next.fetch_result.predicted_pc = pc + 4; // better branch prediction
+        next.fetch_result.predicted_pc = pc + 4; // TODO: better branch prediction
         next.next_pc = next.fetch_result.predicted_pc;
     }
 
@@ -182,7 +185,12 @@ impl Simulator {
         if !next.bubble {
             self.instruction_decode(prev, &mut next);
             next_pc = self.execute(prev, &mut next);
+
+            if prev.execute_result.stall {
+                next.next_pc = next.execute_result.predicted_pc;
+            }
         }
+
         // execute
 
         self.memory_access(prev, &mut next);

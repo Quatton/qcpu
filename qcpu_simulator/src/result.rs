@@ -32,6 +32,7 @@ impl Debug for RegisterWriteBackRequest {
 
 #[derive(Default, Clone, Copy, PartialEq)]
 pub struct Fetch {
+    pub stall: bool,
     pub base_pc: usize,
     pub predicted_pc: usize,
     pub awaiting_decode: Option<u32>,
@@ -39,13 +40,19 @@ pub struct Fetch {
 
 impl Debug for Fetch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "👉 0x{:05x}", self.base_pc)?;
-        writeln!(f, "🤔 0x{:05x}", self.predicted_pc)
+        if self.stall {
+            writeln!(f, "🫸")?;
+        } else {
+            writeln!(f, "👉 0x{:05x}", self.base_pc)?;
+            writeln!(f, "🤔 0x{:05x}", self.predicted_pc)?;
+        }
+        Ok(())
     }
 }
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Decode {
+    pub stall: bool,
     pub predicted_pc: usize,
     pub base_pc: usize,
     pub intr: Option<Op>,
@@ -53,14 +60,20 @@ pub struct Decode {
 
 impl Debug for Decode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.intr.as_ref() {
-            Some(intr) => {
-                writeln!(f, "👉 0x{:05x}", self.base_pc)?;
-                writeln!(f, "🤔 0x{:05x}", self.predicted_pc)?;
-                writeln!(f, "{:#?}", intr)
+        if self.stall {
+            writeln!(f, "🫸")?;
+        } else {
+            match self.intr.as_ref() {
+                Some(intr) => {
+                    writeln!(f, "👉 0x{:05x}", self.base_pc)?;
+                    writeln!(f, "🤔 0x{:05x}", self.predicted_pc)?;
+                    writeln!(f, "{:#?}", intr)?;
+                }
+                None => writeln!(f, "🫧")?,
             }
-            None => writeln!(f, "🫧"),
         }
+
+        Ok(())
     }
 }
 
@@ -160,34 +173,21 @@ pub struct MemoryAccess {
 impl Debug for MemoryAccess {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.wb.is_some() {
-            writeln!(f, "{:?}", self.wb.unwrap())?;
+            write!(f, "{:?}", self.wb.unwrap())?;
         }
-        let (addrs, v1, v2) =
-            self.memory_transition
-                .iter()
-                .fold((vec![], vec![], vec![]), |mut acc, cur| {
-                    acc.0.push(cur.0);
-                    acc.1.push(cur.1);
-                    acc.2.push(cur.2);
-                    acc
-                });
-
-        for addr in addrs.into_iter() {
-            write!(f, "{:05x} ", addr)?;
+        for (addr, _, val) in self.memory_transition.iter() {
+            writeln!(f, "{:05x} → {:04x}", addr, val)?;
         }
-
-        writeln!(f)?;
-
-        for v1 in v1.into_iter() {
-            write!(f, "{:?} ", v1)?;
+        if !self.memory_transition.is_empty() {
+            writeln!(
+                f,
+                "{:>12}",
+                self.memory_transition
+                    .iter()
+                    .rev()
+                    .fold(0_u32, |acc, &(_, _, val)| acc << 8 | (val as u32))
+            )?;
         }
-
-        writeln!(f)?;
-
-        for v2 in v2.into_iter() {
-            write!(f, "{:?} ", v2)?;
-        }
-        writeln!(f)?;
         Ok(())
     }
 }
