@@ -1,7 +1,19 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    io::{self, stdout},
+    panic::{set_hook, take_hook},
+};
 
-use crossterm::event::KeyCode;
+use crossterm::{
+    event::KeyCode,
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 use qcpu_simulator::{SimulationConfig, Simulator};
+use ratatui::{
+    prelude::{Backend, CrosstermBackend},
+    Terminal,
+};
 
 use crate::{
     tui::{self, Action},
@@ -103,6 +115,7 @@ impl App {
     }
 
     pub async fn run(&mut self, mut tui: tui::Tui) -> Result<(), Box<dyn std::error::Error>> {
+        init_panic_hook();
         tui.enter()?; // Starts event handler, enters raw mode, enters alternate screen
 
         loop {
@@ -145,7 +158,7 @@ impl App {
         match self.playmode {
             PlayMode::ForwardUntilBreakpoint => {
                 if let Some(ss) = self.simulator.ctx.history.get(self.snapshot_idx) {
-                    if self.breakpoint.contains(&(ss.pc)) {
+                    if self.breakpoint.contains(&ss.fetch_result.base_pc) {
                         self.playmode = PlayMode::Manual;
                     } else {
                         self.snapshot_idx += 1;
@@ -159,7 +172,7 @@ impl App {
                 if self.snapshot_idx > 0 {
                     self.snapshot_idx -= 1;
                     if let Some(ss) = self.simulator.ctx.history.get(self.snapshot_idx) {
-                        if self.breakpoint.contains(&(ss.pc)) {
+                        if self.breakpoint.contains(&ss.fetch_result.base_pc) {
                             self.playmode = PlayMode::Manual;
                         }
                     }
@@ -189,8 +202,7 @@ impl App {
                 let mut i = curlen;
                 while i <= self.snapshot_idx {
                     match self.simulator.run_unit() {
-                        Ok(Some(pc)) => {
-                            self.simulator.ctx.pc = pc;
+                        Ok(Some(_)) => {
                             i += 1;
                         }
                         Ok(_) => {
@@ -312,4 +324,25 @@ impl App {
             },
         }
     }
+}
+
+pub fn init_panic_hook() {
+    let original_hook = take_hook();
+    set_hook(Box::new(move |panic_info| {
+        // intentionally ignore errors here since we're already in a panic
+        let _ = restore_tui();
+        original_hook(panic_info);
+    }));
+}
+
+pub fn init_tui() -> io::Result<Terminal<impl Backend>> {
+    enable_raw_mode()?;
+    execute!(stdout(), EnterAlternateScreen)?;
+    Terminal::new(CrosstermBackend::new(stdout()))
+}
+
+pub fn restore_tui() -> io::Result<()> {
+    disable_raw_mode()?;
+    execute!(stdout(), LeaveAlternateScreen)?;
+    Ok(())
 }

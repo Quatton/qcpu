@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types)]
 
-use strum::VariantArray;
 pub mod error;
 pub mod macros;
 pub mod parser;
@@ -8,6 +7,8 @@ pub mod reg;
 pub use macros::*;
 pub use parser::*;
 pub use reg::*;
+
+use strum::VariantArray as _;
 
 rop! {
   0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD

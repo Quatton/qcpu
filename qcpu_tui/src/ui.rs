@@ -36,13 +36,19 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(1), Constraint::Percentage(40)])
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Percentage(50),
+            Constraint::Min(1),
+        ])
         .split(frame.area());
 
     let mut list_items = Vec::new();
 
     let idx = app.snapshot_idx;
-    let ss = app.simulator.ctx.history.get(idx).unwrap();
+    let history = &app.simulator.ctx.history;
+    let len = history.len();
+    let ss = history.get(idx).unwrap();
 
     for (i, &op) in app.simulator.ctx.program.iter().enumerate() {
         list_items.push(
@@ -69,7 +75,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                             .get_label(i)
                             .map_or("", |v| v)
                     ),
-                    if idx > 0 && ss.pc == i * 4 {
+                    if idx > 0 && ss.fetch_result.base_pc == i * 4 {
                         Style::default().fg(Color::Yellow)
                     } else {
                         Style::default()
@@ -92,7 +98,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         },
                     )
                     .fg(
-                        if idx > 0 && ss.pc == i * 4 + app.simulator.ctx.program_offset {
+                        if idx > 0
+                            && ss.fetch_result.base_pc == i * 4 + app.simulator.ctx.program_offset
+                        {
                             Color::Yellow
                         } else {
                             Color::White
@@ -102,7 +110,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
         );
     }
 
-    let list = Table::new(
+    let program_list = Table::new(
         list_items,
         [
             Constraint::Length(2),
@@ -125,12 +133,36 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     let reg_table = Table::new(rows, widths).block(
         Block::bordered()
-            .title_bottom(Line::from(format!(" PC: 0x{:05x} ", ss.pc)).centered())
+            .title_bottom(Line::from(format!(" PC: 0x{:05x} ", ss.fetch_result.base_pc)).centered())
             .title_bottom(Line::from(format!(" Snapshot: {:05} ", idx)).centered())
             .title_bottom(Line::from(format!(" Done: {:05} ", app.done)).centered()),
     );
 
-    frame.render_widget(list, chunks[1]);
+    let window = 2;
+    let history_window = history[idx.saturating_sub(window).max(1)..len.min(idx + window)].to_vec();
+    let target_length = history_window.len() + 4;
+    let history_rows = history_window
+        .iter()
+        .enumerate()
+        .fold(vec![], |mut acc, (i, cur)| {
+            let mut row: Vec<Cell> = std::iter::repeat_n(Cell::new(""), i).collect();
+            row.push(Cell::from(format!("{:?}", cur.fetch_result)));
+            row.push(Cell::from(format!("{:?}", cur.decode_result)));
+            row.push(Cell::from(format!("{:?}", cur.execute_result)));
+            row.push(Cell::from(format!("{:?}", cur.memory_access_result)));
+            row.push(Cell::from(format!("{:?}", cur.write_back_result)));
+
+            acc.push(Row::from_iter(row).height(8));
+            acc
+        });
+    let pipeline = Table::new(
+        history_rows,
+        std::iter::repeat_n(Constraint::Min(1), target_length),
+    )
+    .block(Block::bordered());
+
+    frame.render_widget(program_list, chunks[2]);
+    frame.render_widget(pipeline, chunks[1]);
     frame.render_widget(reg_table, chunks[0]);
 
     if app.show_dialog {

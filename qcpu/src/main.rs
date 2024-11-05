@@ -121,6 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let tui = qcpu_tui::Tui::new()?
                     .tick_rate(100000.0) // 4 ticks per second
                     .frame_rate(30.0); // 30 frames per second
+
                 app.run(tui).await?;
             } else {
                 sim.run().unwrap();
