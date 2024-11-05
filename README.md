@@ -44,4 +44,10 @@ qcpu disasm -b <input_file_in_binary> -o <output_file>
 
 ```sh
 qcpu sim -b <input_file_in_binary>
+
+qcpu sim -s <input_file_in_assembly> # Just-in-time compilation (You get to have labels in the output)
+
+qcpu sim -s <input_file_in_assembly> -i # Interactive mode
+
+qcpu sim -s <input_file_in_assembly> -i -m 4096 # Interactive mode with 4096 bytes of memory
 ```
