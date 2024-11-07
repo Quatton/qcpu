@@ -39,9 +39,17 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .constraints([Constraint::Min(1), Constraint::Percentage(30)])
         .split(frame.area());
 
+    let upper = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(12)])
+        .split(chunks[0]);
+
     let mut list_items = Vec::new();
 
-    let idx = app.snapshot_idx;
+    let idx = app
+        .snapshot_idx
+        .saturating_sub(app.simulator.ctx.removed_cycles);
+
     let history = &app.simulator.ctx.history;
     let len = history.len();
     let ss = history.get(idx.min(len - 1)).unwrap();
@@ -143,19 +151,38 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let reg_table = Table::new(rows, widths).block(
         Block::bordered()
             .title_bottom(Line::from(format!(" PC: 0x{:05x} ", ss.fetch_result.base_pc)).centered())
-            .title_bottom(Line::from(format!(" Snapshot: {:05} ", idx)).centered())
-            .title_bottom(Line::from(format!(" Done: {:05} ", app.done)).centered()),
+            .title_bottom(
+                Line::from(format!(
+                    " Snapshot: {:05} ",
+                    app.simulator.ctx.removed_cycles + idx
+                ))
+                .centered(),
+            )
+            .title_bottom(Line::from(format!(" Done: {:05} ", app.done)).centered())
+            .title_bottom(Line::from(format!(" Mode: {:?} ", app.playmode)).centered()),
     );
 
-    let window = 2;
-    let history_window = history[idx.saturating_sub(window).max(1)..len.min(idx + window)].to_vec();
-    let target_length = history_window.len() + 4;
+    let window = 4;
+    let history_window = history[idx.saturating_sub(window).max(1)..(idx + 1).min(len)].to_vec();
+    let target_length = history_window.len() + window;
+
+    let mut lag = 0;
 
     let history_rows = history_window
         .iter()
         .enumerate()
         .fold(vec![], |mut acc, (i, cur)| {
-            let mut row: Vec<Cell> = std::iter::repeat_n(Cell::new(""), i).collect();
+            // Padding
+            let mut row: Vec<Cell> =
+                std::iter::repeat_n(Cell::new(""), target_length - i - 5).collect();
+
+            if cur.bubble || cur.fetch_result.stall {
+                lag += 1;
+            }
+            for _ in 0..lag {
+                row.push(Cell::new(""));
+            }
+
             row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)).style(if_style));
 
             if cur.bubble {
@@ -170,7 +197,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
             }
             row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
             row.push(Cell::from(format!("WB\n{:?}", cur.write_back_result)).style(wb_style));
-            acc.push(Row::from_iter(row).height(10));
+            acc.push(Row::from_iter(row).height(8));
             acc
         });
     let pipeline = Table::new(
@@ -179,13 +206,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
     )
     .block(Block::bordered());
 
-    let upper = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(12)])
-        .split(chunks[0]);
+    frame.render_widget(pipeline, upper[0]);
 
     frame.render_widget(program_list, chunks[1]);
-    frame.render_widget(pipeline, upper[0]);
     frame.render_widget(reg_table, upper[1]);
 
     if app.show_dialog {

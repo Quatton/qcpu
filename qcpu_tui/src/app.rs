@@ -14,6 +14,7 @@ use ratatui::{
     prelude::{Backend, CrosstermBackend},
     Terminal,
 };
+use strum::EnumString;
 
 use crate::{
     tui::{self, Action},
@@ -36,14 +37,13 @@ pub enum InputMode {
     Breakpoint,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, EnumString)]
+#[strum(serialize_all = "PascalCase")]
 pub enum PlayMode {
     #[default]
     Manual,
     ForwardUntilBreakpoint,
     BackwardUntilBreakpoint,
-    Forward,
-    Backward,
 }
 
 // pub trait Component {
@@ -147,6 +147,7 @@ impl App {
         match evt {
             tui::Event::Quit => Some(tui::Action::Quit),
             tui::Event::Tick => Some(tui::Action::Tick),
+            tui::Event::Backend => Some(tui::Action::Calc),
             tui::Event::Key(key_event) => Some(self.handle_key_events(key_event)),
             _ => None,
         }
@@ -154,23 +155,31 @@ impl App {
 
     fn tick(&mut self) {
         let curlen = self.simulator.ctx.history.len();
+        let rel_idx = self
+            .snapshot_idx
+            .saturating_sub(self.simulator.ctx.removed_cycles);
+        let speed_step = 1;
 
         match self.playmode {
             PlayMode::ForwardUntilBreakpoint => {
-                if let Some(ss) = self.simulator.ctx.history.get(self.snapshot_idx) {
+                if self.done && rel_idx == curlen - 1 {
+                    self.playmode = PlayMode::Manual;
+                    return;
+                } else if let Some(ss) = self.simulator.ctx.history.get(rel_idx) {
                     if self.breakpoint.contains(&ss.fetch_result.base_pc) {
                         self.playmode = PlayMode::Manual;
-                    } else {
-                        self.snapshot_idx += 1;
+                        return;
                     }
                 }
-                if self.done && self.snapshot_idx >= curlen {
-                    self.playmode = PlayMode::Manual;
-                }
+
+                self.snapshot_idx += 1;
             }
             PlayMode::BackwardUntilBreakpoint => {
-                if self.snapshot_idx > 0 {
-                    self.snapshot_idx -= 1;
+                if rel_idx > 0 {
+                    self.snapshot_idx = self
+                        .snapshot_idx
+                        .saturating_sub(speed_step)
+                        .max(self.simulator.ctx.removed_cycles + 1);
                     if let Some(ss) = self.simulator.ctx.history.get(self.snapshot_idx) {
                         if self.breakpoint.contains(&ss.fetch_result.base_pc) {
                             self.playmode = PlayMode::Manual;
@@ -180,38 +189,31 @@ impl App {
                     self.playmode = PlayMode::Manual;
                 }
             }
-            PlayMode::Forward => {
-                if self.done && self.snapshot_idx >= curlen {
-                    self.playmode = PlayMode::Manual;
-                } else {
-                    self.snapshot_idx += 1;
-                }
-            }
-            PlayMode::Backward => {
-                if self.snapshot_idx > 0 {
-                    self.snapshot_idx -= 1;
-                }
-                if self.snapshot_idx == 0 {
-                    self.playmode = PlayMode::Manual;
-                }
-            }
             _ => {}
         }
-        if self.snapshot_idx >= curlen {
-            if !self.done {
-                let mut i = curlen;
-                while i <= self.snapshot_idx {
+    }
+
+    fn calc(&mut self) {
+        if self.snapshot_idx <= self.simulator.ctx.removed_cycles {
+            self.snapshot_idx = self.simulator.ctx.removed_cycles + 1;
+        } else {
+            let max_aval = self.simulator.ctx.removed_cycles + self.simulator.ctx.history.len();
+
+            if self.snapshot_idx > max_aval {
+                if self.done {
+                    self.snapshot_idx = max_aval;
+                    return;
+                }
+                for _ in max_aval + 1..self.snapshot_idx {
                     match self.simulator.run_unit() {
-                        Ok(Some(_)) => {
-                            i += 1;
-                        }
-                        Ok(_) => {
-                            self.dialog_message = format!("Simulation ended at snapshot {}", i);
-                            self.done = true;
-                            self.show_dialog = true;
-                            self.snapshot_idx -= 1;
-                            break;
-                        }
+                        Ok(_) => {}
+                        // Ok(_) => {
+                        //     self.dialog_message = format!("Simulation ended at snapshot {}", i);
+                        //     self.done = true;
+                        //     self.show_dialog = true;
+                        //     self.snapshot_idx -= 1;
+                        //     break;
+                        // }
                         Err(e) => {
                             self.show_dialog = true;
                             self.dialog_message = format!("{:?}", e);
@@ -221,8 +223,6 @@ impl App {
                         }
                     }
                 }
-            } else {
-                self.snapshot_idx = curlen - 1;
             }
         }
     }
@@ -237,12 +237,15 @@ impl App {
                 self.tick();
                 None
             }
+            Action::Calc => {
+                self.calc();
+                None
+            }
             Action::Noop => None,
         }
     }
 
     fn handle_key_events(&mut self, key: crossterm::event::KeyEvent) -> tui::Action {
-        let curlen = self.simulator.ctx.history.len();
         match self.current_screen {
             CurrentScreen::Main => match key.code {
                 KeyCode::Char('q') => {
@@ -252,9 +255,7 @@ impl App {
                     Action::Noop
                 }
                 KeyCode::Right => {
-                    if self.input_mode == InputMode::Normal
-                        && (!self.done || self.snapshot_idx < curlen - 1)
-                    {
+                    if self.input_mode == InputMode::Normal {
                         self.snapshot_idx += 1;
                     }
                     Action::Noop

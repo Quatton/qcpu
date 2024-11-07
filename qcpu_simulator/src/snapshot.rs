@@ -80,6 +80,9 @@ impl Default for Snapshots {
 }
 
 impl Snapshots {
+    pub fn remove_front(&mut self) {
+        self.0.remove(0);
+    }
     pub fn new_snapshot(&self) -> Snapshot {
         let last = self.0.last().unwrap();
         let mut snapshot = Snapshot {

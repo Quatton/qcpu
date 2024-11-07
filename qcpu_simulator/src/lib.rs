@@ -13,6 +13,7 @@ use snapshot::{Snapshot, Snapshots};
 #[derive(Default, Clone)]
 pub struct SimulationContext {
     pub program_offset: usize,
+    pub removed_cycles: usize,
     pub history: Snapshots,
     pub memory: Vec<u8>,
     pub program: Vec<u32>,
@@ -48,6 +49,7 @@ pub struct SimulationConfig {
     pub interactive: bool,
     pub memory_size: usize,
     pub parsing_context: ParsingContext,
+    pub low_memory: usize,
 }
 
 impl SimulationConfig {
@@ -57,6 +59,7 @@ impl SimulationConfig {
             interactive: false,
             memory_size: 4096,
             parsing_context: ParsingContext::default(),
+            low_memory: 32,
         }
     }
 
@@ -77,6 +80,11 @@ impl SimulationConfig {
 
     pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
         self.parsing_context = parsing_context;
+        self
+    }
+
+    pub fn low_memory(mut self, low_memory: usize) -> Self {
+        self.low_memory = low_memory;
         self
     }
 }
@@ -211,6 +219,11 @@ impl Simulator {
             && next.write_back_result.is_none();
 
         self.ctx.history.push(next);
+
+        if self.ctx.history.len() > self.config.low_memory {
+            self.ctx.history.remove_front();
+            self.ctx.removed_cycles += 1;
+        }
 
         if done {
             return Err("done");

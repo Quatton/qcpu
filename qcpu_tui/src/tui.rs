@@ -28,6 +28,7 @@ pub enum Event {
     Error,
     Closed,
     Tick,
+    Backend,
     Render,
     FocusGained,
     FocusLost,
@@ -41,6 +42,7 @@ pub enum Event {
 pub enum Action {
     Quit,
     Tick,
+    Calc,
     Noop,
 }
 
@@ -153,6 +155,7 @@ impl Tui {
                   },
                   _ = tick_delay => {
                       _event_tx.send(Event::Tick).unwrap();
+                      _event_tx.send(Event::Backend).unwrap();
                   },
                   _ = render_delay => {
                       _event_tx.send(Event::Render).unwrap();
