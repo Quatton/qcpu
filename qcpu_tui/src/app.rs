@@ -165,14 +165,15 @@ impl App {
                 if self.done && rel_idx == curlen - 1 {
                     self.playmode = PlayMode::Manual;
                     return;
-                } else if let Some(ss) = self.simulator.ctx.history.get(rel_idx) {
-                    if self.breakpoint.contains(&ss.fetch_result.base_pc) {
-                        self.playmode = PlayMode::Manual;
-                        return;
-                    }
                 }
 
-                self.snapshot_idx += 1;
+                if let Some(ss) = self.simulator.ctx.history.get(rel_idx) {
+                    if self.breakpoint.contains(&ss.fetch_result.base_pc) {
+                        self.playmode = PlayMode::Manual;
+                    } else {
+                        self.snapshot_idx += 1;
+                    }
+                }
             }
             PlayMode::BackwardUntilBreakpoint => {
                 if rel_idx > 0 {
@@ -199,12 +200,12 @@ impl App {
         } else {
             let max_aval = self.simulator.ctx.removed_cycles + self.simulator.ctx.history.len();
 
-            if self.snapshot_idx > max_aval {
+            if self.snapshot_idx >= max_aval {
                 if self.done {
                     self.snapshot_idx = max_aval;
                     return;
                 }
-                for _ in max_aval + 1..self.snapshot_idx {
+                for _ in max_aval..self.snapshot_idx + 1 {
                     match self.simulator.run_unit() {
                         Ok(_) => {}
                         // Ok(_) => {
