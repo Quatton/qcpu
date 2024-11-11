@@ -162,44 +162,49 @@ pub fn ui(frame: &mut Frame, app: &App) {
             .title_bottom(Line::from(format!(" Mode: {:?} ", app.playmode)).centered()),
     );
 
-    let window = 4;
-    let history_window = history[idx.saturating_sub(window).max(1)..(idx + 1).min(len)].to_vec();
+    let window = 5;
+    let history_window = history[idx.saturating_sub(window)..(idx + 1).min(len)].to_vec();
     let target_length = history_window.len() + window;
 
     let mut lag = 0;
 
-    let history_rows = history_window
-        .iter()
-        .enumerate()
-        .fold(vec![], |mut acc, (i, cur)| {
-            // Padding
-            let mut row: Vec<Cell> =
-                std::iter::repeat_n(Cell::new(""), target_length - i - 5).collect();
+    let history_rows = history_window.iter().fold(vec![], |mut acc, cur| {
+        let mut row: Vec<Cell> = vec![];
 
-            if cur.bubble || cur.fetch_result.stall {
-                lag += 1;
-            }
-            for _ in 0..lag {
-                row.push(Cell::new(""));
-            }
+        if cur.bubble || cur.fetch_result.stall {
+            lag -= 1;
+        }
 
-            row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)).style(if_style));
+        for _ in 0..lag {
+            row.push(Cell::new(""));
+        }
 
-            if cur.bubble {
-                row.push(Cell::from("DE\n🫧").style(de_style));
-                row.push(Cell::from("EX\n🫧").style(ex_style));
+        if cur.write_back_result.is_some() {
+            row.push(Cell::from("WB\n🫧").style(wb_style));
+        } else {
+            row.push(Cell::new("WB").style(wb_style));
+        }
 
-                // row.push(Cell::from("MA\n🫧"));
-                // row.push(Cell::from("WB\n🫧"));
-            } else {
-                row.push(Cell::from(format!("DE\n{:?}", cur.decode_result)).style(de_style));
-                row.push(Cell::from(format!("EX\n{:?}", cur.execute_result)).style(ex_style));
-            }
-            row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
-            row.push(Cell::from(format!("WB\n{:?}", cur.write_back_result)).style(wb_style));
-            acc.push(Row::from_iter(row).height(8));
-            acc
-        });
+        row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
+
+        if cur.bubble {
+            row.push(Cell::from("EX\n🫧").style(ex_style));
+            row.push(Cell::from("DE\n🫧").style(de_style));
+
+            // row.push(Cell::from("MA\n🫧"));
+            // row.push(Cell::from("WB\n🫧"));
+        } else {
+            row.push(Cell::from(format!("EX\n{:?}", cur.execute_result)).style(ex_style));
+            row.push(Cell::from(format!("DE\n{:?}", cur.decode_result)).style(de_style));
+        }
+
+        row.push(Cell::from(format!("IF\n{:?}", cur.fetch_result)).style(if_style));
+
+        lag += 1;
+
+        acc.push(Row::from_iter(row).height(8));
+        acc
+    });
     let pipeline = Table::new(
         history_rows,
         std::iter::repeat_n(Constraint::Min(1), target_length),
