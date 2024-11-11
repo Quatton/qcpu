@@ -10,6 +10,21 @@ pub enum MemoryAccessRequest {
     S(Range<usize>, i32),
 }
 
+impl Debug for MemoryAccessRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::L(_, addr, _) => {
+                writeln!(f, "L 0x{:05x}", addr)?;
+            }
+            Self::S(ref range, val) => {
+                writeln!(f, "S 0x{:05x} → {}", range.start, val)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 
 pub enum RegisterWriteBackRequest {
@@ -116,6 +131,9 @@ impl Debug for Execute {
             } else {
                 writeln!(f, "✅ 0x{:05x}", self.predicted_pc)?;
             }
+            if self.memory_access_request.is_some() {
+                write!(f, "{:?}", self.memory_access_request.as_ref().unwrap())?;
+            }
             if self.register_write_back_request.is_some() {
                 write!(f, "{:?}", self.register_write_back_request.unwrap())?;
             }
@@ -153,6 +171,7 @@ impl Execute {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct MemoryAccess {
+    pub req: Option<MemoryAccessRequest>,
     pub memory_transition: MemoryTransition,
     pub wb: Option<RegisterWriteBackRequest>,
     pub forward: bool,
@@ -165,6 +184,9 @@ impl Debug for MemoryAccess {
         }
         for (addr, _, val) in self.memory_transition.iter() {
             writeln!(f, "{:05x} → {:04x}", addr, val)?;
+        }
+        if self.req.is_some() {
+            writeln!(f, "{:?}", self.req.as_ref().unwrap())?;
         }
         if !self.memory_transition.is_empty() {
             writeln!(

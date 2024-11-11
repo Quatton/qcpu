@@ -162,9 +162,8 @@ pub fn ui(frame: &mut Frame, app: &App) {
             .title_bottom(Line::from(format!(" Mode: {:?} ", app.playmode)).centered()),
     );
 
-    let window = 4;
+    let window = 5;
     let history_window = history[idx.saturating_sub(window)..(idx + 1).min(len)].to_vec();
-    let target_length = history_window.len() + window;
 
     let mut lag = 0;
 
@@ -187,7 +186,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
             row.push(Cell::new("WB").style(wb_style));
         }
 
-        row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
+        if !cur.fetch_result.stall {
+            row.push(Cell::from(format!("MA\n{:?}", cur.memory_access_result)).style(ma_style));
+        }
 
         if cur.bubble {
             row.push(Cell::from("EX\n🫧").style(ex_style));
@@ -207,6 +208,8 @@ pub fn ui(frame: &mut Frame, app: &App) {
         acc.push(Row::from_iter(row).height(8));
         acc
     });
+
+    let target_length = 5 + lag - 1;
     let pipeline = Table::new(
         history_rows,
         std::iter::repeat_n(Constraint::Min(1), target_length),

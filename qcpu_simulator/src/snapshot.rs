@@ -74,6 +74,7 @@ impl Snapshots {
         };
         snapshot.memory_access_result = MemoryAccess {
             wb: last.execute_result.register_write_back_request,
+            req: last.execute_result.memory_access_request.clone(),
             ..Default::default()
         };
 

@@ -233,14 +233,14 @@ impl Simulator {
     }
 
     pub fn memory_access(&self, prev: &Snapshot, next: &mut Snapshot) {
-        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = prev.memory_access_result.wb {
+        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = next.memory_access_result.wb {
             if rd == IntReg::Zero {
                 return;
             }
             next.ireg[rd as usize] = value;
         }
 
-        if prev.execute_result.memory_access_request.is_none() {
+        if next.memory_access_result.req.is_none() {
             return;
         }
 
