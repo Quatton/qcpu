@@ -96,7 +96,19 @@ impl Snapshots {
             .iter_mut()
             .for_each(|d| *d = d.saturating_sub(1));
 
-        snapshot.decode_result = Decode::from_fetch(last.fetch_result);
+        snapshot.decode_result = Decode::from_fetch(
+            self.iter()
+                .rev()
+                .find_map(|s| {
+                    if s.decode_result.stall {
+                        None
+                    } else {
+                        Some(s.fetch_result)
+                    }
+                })
+                .unwrap_or_default(),
+        );
+
         snapshot.fetch_result = Fetch {
             base_pc: last.next_pc,
             ..Default::default()
@@ -108,7 +120,18 @@ impl Snapshots {
             snapshot.decode_result.stall = true;
             snapshot.fetch_result.stall = true;
         } else {
-            snapshot.execute_result = Execute::from_decode(last.decode_result.clone());
+            snapshot.execute_result = Execute::from_decode(
+                self.iter()
+                    .rev()
+                    .find_map(|s| {
+                        if s.execute_result.stall {
+                            None
+                        } else {
+                            Some(s.decode_result.clone())
+                        }
+                    })
+                    .unwrap_or_default(),
+            );
 
             snapshot.write_back_result = last.memory_access_result.wb;
         }
