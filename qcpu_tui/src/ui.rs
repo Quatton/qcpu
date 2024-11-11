@@ -180,7 +180,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
         }
 
         if cur.write_back_result.is_some() {
-            row.push(Cell::from("WB\n🫧").style(wb_style));
+            row.push(
+                Cell::from(format!("WB\n{:?}", cur.write_back_result.unwrap())).style(wb_style),
+            );
         } else {
             row.push(Cell::new("WB").style(wb_style));
         }

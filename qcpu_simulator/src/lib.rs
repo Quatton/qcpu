@@ -187,6 +187,10 @@ impl Simulator {
         let mut next = self.ctx.history.new_snapshot();
         let prev = self.ctx.history.last().unwrap();
 
+        self.memory_access(prev, &mut next);
+
+        self.write_back(prev, &mut next);
+
         self.instruction_fetch(prev, &mut next);
         let mut next_pc = Some(next.next_pc);
 
@@ -200,10 +204,6 @@ impl Simulator {
         }
 
         // execute
-
-        self.memory_access(prev, &mut next);
-
-        self.write_back(prev, &mut next);
 
         if self.config.verbose {
             self.ctx.log_registers();
@@ -307,6 +307,16 @@ impl Simulator {
             }
             next.ireg[rd] = value;
             next.write_back_result = Some(prev.memory_access_result.wb.unwrap());
+        }
+
+        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) =
+            prev.execute_result.register_write_back_request
+        {
+            if rd == 0 {
+                return;
+            }
+            next.ireg[rd] = value;
+            next.write_back_result = Some(prev.execute_result.register_write_back_request.unwrap());
         }
     }
 }

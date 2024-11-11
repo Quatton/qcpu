@@ -15,7 +15,6 @@ pub struct Snapshot {
     pub ireg_delay: [usize; 32],
 
     // for pipelining
-    // pub busy_registers: [bool; 32],
     pub bubble: bool,
 
     pub fetch_result: Fetch,
@@ -110,10 +109,6 @@ impl Snapshots {
             snapshot.fetch_result.stall = true;
         } else {
             snapshot.execute_result = Execute::from_decode(last.decode_result.clone());
-            snapshot.memory_access_result = MemoryAccess {
-                wb: last.execute_result.register_write_back_request,
-                ..Default::default()
-            };
 
             snapshot.write_back_result = last.memory_access_result.wb;
         }
