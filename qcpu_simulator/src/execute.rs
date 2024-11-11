@@ -1,3 +1,4 @@
+use qcpu_syntax::STOp;
 use qcpu_syntax::{parser::Op, BOp, FROp, IOp, ISOp, ROp};
 
 use crate::result::{MemoryAccessRequest, RegisterWriteBackRequest};
@@ -22,21 +23,18 @@ impl Simulator {
 
         match oop {
             Op::R(op, rd, rs1, rs2) => {
-                let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
 
-                if prev.ireg_delay[rs1] > 0 || prev.ireg_delay[rs2] > 0 {
+                if next.ireg_delay[rs1] > 0 || next.ireg_delay[rs2] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
 
-                let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
-                let (rs2_val, ef2, mf2) = prev.get_ireg(rs2);
-                next.execute_result.forward = ef1 || ef2;
-                next.memory_access_result.forward = mf1 || mf2;
+                let rs1_val = next.ireg[rs1];
+                let rs2_val = next.ireg[rs2];
                 let result = match op {
                     ROp::ADD => rs1_val + rs2_val,
                     ROp::SUB => rs1_val - rs2_val,
@@ -67,19 +65,16 @@ impl Simulator {
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
             Op::I(op, rd, rs1, imm) => {
-                let rd = rd as usize;
                 let rs1 = rs1 as usize;
 
-                if prev.ireg_delay[rs1] > 0 {
+                if next.ireg_delay[rs1] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
-                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                let rs1_val = next.ireg[rs1];
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
 
-                next.execute_result.forward = ef1;
-                next.memory_access_result.forward = mf1;
                 let result = match op {
                     IOp::ADDI => rs1_val + imm,
                     IOp::ANDI => rs1_val & imm,
@@ -106,19 +101,16 @@ impl Simulator {
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
             Op::IS(op, rd, rs1, shamt) => {
-                let rd = rd as usize;
                 let rs1 = rs1 as usize;
 
-                if prev.ireg_delay[rs1] > 0 {
+                if next.ireg_delay[rs1] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
-                next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                let rs1_val = next.ireg[rs1];
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
 
-                next.execute_result.forward = ef1;
-                next.memory_access_result.forward = mf1;
                 let result = match op {
                     ISOp::SLLI => rs1_val << shamt,
                     ISOp::SRLI => rs1_val >> shamt,
@@ -131,16 +123,13 @@ impl Simulator {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
 
-                if prev.ireg_delay[rs1] > 0 || prev.ireg_delay[rs2] > 0 {
+                if next.ireg_delay[rs1] > 0 || next.ireg_delay[rs2] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
-                let (rs2_val, ef2, mf2) = prev.get_ireg(rs2);
-
-                next.execute_result.forward = ef1 || ef2;
-                next.memory_access_result.forward = mf1 || mf2;
+                let rs1_val = next.ireg[rs1];
+                let rs2_val = next.ireg[rs2];
 
                 let jmp = match op {
                     BOp::BEQ => rs1_val == rs2_val,
@@ -161,49 +150,77 @@ impl Simulator {
                 }
             }
             Op::S(op, rs2, rs1, imm) => {
-                let rs1i = rs1 as usize;
-                let rs2i = rs2 as usize;
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
 
-                if prev.ireg_delay[rs1i] > 0 || prev.ireg_delay[rs2i] > 0 {
+                if next.ireg_delay[rs1] > 0 || next.ireg_delay[rs2] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
+                let addr = next.ireg[rs1] + imm;
+
+                // check addr out of bound
+                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
+                    panic!("out of bound memory access");
+                }
+
+                let addr = addr as usize;
+                let value = next.ireg[rs2];
+
+                let addr = match op {
+                    STOp::SB => addr..addr + 1,
+                    STOp::SH => addr..addr + 2,
+                    STOp::SW => addr..addr + 4,
+                };
+
                 next.execute_result
-                    .forward_to_memory_access(MemoryAccessRequest::S(op, rs2, rs1, imm));
+                    .forward_to_memory_access(MemoryAccessRequest::S(addr, value));
             }
             Op::L(op, rd, rs1, imm) => {
-                let rs1i = rs1 as usize;
+                let rs1 = rs1 as usize;
 
-                if prev.ireg_delay[rs1i] > 0 {
+                if next.ireg_delay[rs1] > 0 {
                     next.execute_result.stall = true;
                     return Some(next.execute_result.predicted_pc);
                 }
 
+                let addr = next.ireg[rs1] + imm;
+
+                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
+                    panic!("out of bound memory access");
+                }
+
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
                 next.execute_result
-                    .forward_to_memory_access(MemoryAccessRequest::L(op, rd, rs1, imm));
+                    .forward_to_memory_access(MemoryAccessRequest::L(op, addr as usize, rd));
             }
-            Op::J(_, rd, imm) => {
-                let rd = rd as usize;
+            Op::J(_, rd, ref imm) => {
                 // op is JOp::JAL anyway so idc
                 let target = base_pc as i32 + imm.offset().unwrap();
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteInt(base_pc as i32 + 4, rd));
+
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
                 let target = target.try_into().unwrap();
                 next.execute_result.set_predicted_pc(target);
                 next.next_pc = target;
                 return Some(target);
             }
-            Op::JR(_, rd, rs1, imm) => {
-                let rd = rd as usize;
+            Op::JR(_, rd, rs1, ref imm) => {
                 let rs1 = rs1 as usize;
-                let (rs1_val, ef1, mf1) = prev.get_ireg(rs1);
-                next.execute_result.forward = ef1;
-                next.memory_access_result.forward = mf1;
+
+                let rs1_val = next.ireg[rs1];
+
                 // op is JOp::JALR anyway so idc
                 let target = rs1_val + imm.offset().unwrap();
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteInt(base_pc as i32 + 4, rd));
+
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
                 let target = target.try_into().unwrap();
                 next.execute_result.set_predicted_pc(target);
                 next.next_pc = target;

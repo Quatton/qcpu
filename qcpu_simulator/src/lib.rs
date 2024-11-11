@@ -5,7 +5,7 @@ pub mod snapshot;
 
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
-    STOp,
+    IntReg,
 };
 use result::{MemoryAccessRequest, RegisterWriteBackRequest};
 use snapshot::{Snapshot, Snapshots};
@@ -187,9 +187,9 @@ impl Simulator {
         let mut next = self.ctx.history.new_snapshot();
         let prev = self.ctx.history.last().unwrap();
 
-        self.memory_access(prev, &mut next);
-
         self.write_back(prev, &mut next);
+
+        self.memory_access(prev, &mut next);
 
         self.instruction_fetch(prev, &mut next);
         let mut next_pc = Some(next.next_pc);
@@ -233,6 +233,13 @@ impl Simulator {
     }
 
     pub fn memory_access(&self, prev: &Snapshot, next: &mut Snapshot) {
+        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = prev.memory_access_result.wb {
+            if rd == IntReg::Zero {
+                return;
+            }
+            next.ireg[rd as usize] = value;
+        }
+
         if prev.execute_result.memory_access_request.is_none() {
             return;
         }
@@ -240,25 +247,7 @@ impl Simulator {
         let req = prev.execute_result.memory_access_request.clone().unwrap();
 
         match req {
-            MemoryAccessRequest::S(op, rs2, rs1, imm) => {
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
-                let addr = prev.ireg[rs1] + imm;
-
-                // check addr out of bound
-                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
-                    panic!("out of bound memory access");
-                }
-
-                let addr = addr as usize;
-                let value = prev.ireg[rs2];
-
-                let addr = match op {
-                    STOp::SB => addr..addr + 1,
-                    STOp::SH => addr..addr + 2,
-                    STOp::SW => addr..addr + 4,
-                };
-
+            MemoryAccessRequest::S(addr, value) => {
                 for (addr, value) in addr.clone().zip(value.to_le_bytes().iter()) {
                     next.memory_access_result.memory_transition.push((
                         addr,
@@ -267,17 +256,7 @@ impl Simulator {
                     ));
                 }
             }
-            MemoryAccessRequest::L(op, rd, rs1, imm) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let addr = prev.ireg[rs1] + imm;
-
-                // check addr out of bound
-                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
-                    panic!("out of bound memory access");
-                }
-
-                let addr = addr as usize;
+            MemoryAccessRequest::L(op, addr, rd) => {
                 let value = match op {
                     qcpu_syntax::LOp::LB => self.ctx.memory[addr] as i8 as i32,
                     qcpu_syntax::LOp::LH => {
@@ -302,21 +281,11 @@ impl Simulator {
 
     pub fn write_back(&self, prev: &Snapshot, next: &mut Snapshot) {
         if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = prev.memory_access_result.wb {
-            if rd == 0 {
+            if rd == IntReg::Zero {
                 return;
             }
-            next.ireg[rd] = value;
+            next.ireg[rd as usize] = value;
             next.write_back_result = Some(prev.memory_access_result.wb.unwrap());
-        }
-
-        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) =
-            prev.execute_result.register_write_back_request
-        {
-            if rd == 0 {
-                return;
-            }
-            next.ireg[rd] = value;
-            next.write_back_result = Some(prev.execute_result.register_write_back_request.unwrap());
         }
     }
 }

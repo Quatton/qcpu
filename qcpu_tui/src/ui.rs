@@ -162,7 +162,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
             .title_bottom(Line::from(format!(" Mode: {:?} ", app.playmode)).centered()),
     );
 
-    let window = 5;
+    let window = 4;
     let history_window = history[idx.saturating_sub(window)..(idx + 1).min(len)].to_vec();
     let target_length = history_window.len() + window;
 
@@ -171,9 +171,9 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let history_rows = history_window.iter().fold(vec![], |mut acc, cur| {
         let mut row: Vec<Cell> = vec![];
 
-        if cur.bubble || cur.fetch_result.stall {
-            lag -= 1;
-        }
+        // if cur.bubble || cur.fetch_result.stall {
+        //     lag -= 1;
+        // }
 
         for _ in 0..lag {
             row.push(Cell::new(""));

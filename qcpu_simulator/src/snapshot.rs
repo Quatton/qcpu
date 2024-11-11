@@ -24,36 +24,7 @@ pub struct Snapshot {
     pub write_back_result: Option<RegisterWriteBackRequest>,
 }
 
-impl Snapshot {
-    pub fn get_ireg(&self, i: usize) -> (i32, bool, bool) {
-        if i == 0 {
-            return (0, false, false);
-        }
-        let mut memory_forward = false;
-        let mut execute_forward = false;
-        let value = self
-            .memory_access_result
-            .wb
-            .filter(|&RegisterWriteBackRequest::WriteInt(_, j)| {
-                memory_forward = i == j;
-                memory_forward
-            })
-            .or_else(|| {
-                self.execute_result.register_write_back_request.filter(
-                    |&RegisterWriteBackRequest::WriteInt(_, j)| {
-                        execute_forward = i == j;
-                        execute_forward
-                    },
-                )
-            })
-            .map_or_else(
-                || self.ireg[i],
-                |RegisterWriteBackRequest::WriteInt(value, _)| value,
-            );
-
-        (value, execute_forward, memory_forward)
-    }
-}
+impl Snapshot {}
 
 #[derive(Clone)]
 pub struct Snapshots(Vec<Snapshot>);
@@ -101,6 +72,10 @@ impl Snapshots {
             base_pc: last.next_pc,
             ..Default::default()
         };
+        snapshot.memory_access_result = MemoryAccess {
+            wb: last.execute_result.register_write_back_request,
+            ..Default::default()
+        };
 
         if last.execute_result.stall {
             snapshot.execute_result = last.execute_result.clone();
@@ -109,7 +84,6 @@ impl Snapshots {
             snapshot.fetch_result.stall = true;
         } else {
             snapshot.execute_result = Execute::from_decode(last.decode_result.clone());
-
             snapshot.write_back_result = last.memory_access_result.wb;
         }
 

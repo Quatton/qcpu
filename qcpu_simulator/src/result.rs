@@ -1,28 +1,27 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Range};
 
-use qcpu_syntax::{IntReg, LOp, Op, STOp};
-use strum::VariantArray;
+use qcpu_syntax::{IntReg, LOp, Op};
 
 use crate::snapshot::MemoryTransition;
 
 #[derive(Clone, PartialEq)]
 pub enum MemoryAccessRequest {
-    L(LOp, IntReg, IntReg, i32),
-    S(STOp, IntReg, IntReg, i32),
+    L(LOp, usize, IntReg),
+    S(Range<usize>, i32),
 }
 
 #[derive(Clone, Copy, PartialEq)]
 
 pub enum RegisterWriteBackRequest {
     /// (value, reg)
-    WriteInt(i32, usize),
+    WriteInt(i32, IntReg),
 }
 
 impl Debug for RegisterWriteBackRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             &Self::WriteInt(arg0, arg1) => {
-                writeln!(f, "{} -> {}", IntReg::VARIANTS[arg1], arg0)?;
+                writeln!(f, "{} -> {}", arg1, arg0)?;
             }
         }
 
@@ -149,17 +148,6 @@ impl Execute {
 
     pub fn forward_to_memory_access(&mut self, memory_access_request: MemoryAccessRequest) {
         self.memory_access_request = Some(memory_access_request);
-    }
-
-    pub fn busy(&self, regs: &[IntReg]) -> bool {
-        if let Some(MemoryAccessRequest::L(_, rding, _, _)) = self.memory_access_request {
-            for &rs in regs {
-                if rding == rs {
-                    return true;
-                }
-            }
-        }
-        false
     }
 }
 
