@@ -167,8 +167,11 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     let mut lag = 0;
 
-    let history_rows = history_window.iter().fold(vec![], |mut acc, cur| {
+    let mut history_rows = vec![];
+
+    for (i, cur) in history_window.iter().enumerate() {
         let mut row: Vec<Cell> = vec![];
+        let prev = history_window.get(i.saturating_sub(1));
 
         // if cur.bubble || cur.fetch_result.stall {
         //     lag -= 1;
@@ -182,7 +185,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
             row.push(
                 Cell::from(format!("WB\n{:?}", cur.write_back_result.unwrap())).style(wb_style),
             );
-        } else {
+        } else if prev.is_some_and(|v| !v.decode_result.stall) {
             row.push(Cell::new("WB").style(wb_style));
         }
 
@@ -205,9 +208,8 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
         lag += 1;
 
-        acc.push(Row::from_iter(row).height(8));
-        acc
-    });
+        history_rows.push(Row::from_iter(row).height(8));
+    }
 
     let target_length = 5 + lag - 1;
     let pipeline = Table::new(
