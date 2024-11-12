@@ -244,6 +244,7 @@ impl Simulator {
                 //     RegisterWriteBackRequest::WriteInt(.try_into().unwrap(), rd),
                 // );
             }
+            Op::FC(_, _, _, _) => todo!(),
             Op::Exit(_) => return None,
         };
         Some(next.execute_result.predicted_pc)

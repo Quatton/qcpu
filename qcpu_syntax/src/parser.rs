@@ -16,7 +16,7 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, FROp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp};
+use crate::{BOp, FCOp, FROp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
@@ -185,6 +185,7 @@ pub enum Op {
     JR(JROp, IntReg, IntReg, JumpTarget),
 
     FR(FROp, FloatReg, FloatReg, FloatReg, RoundingMode),
+    FC(FCOp, FloatReg, FloatReg, FloatReg),
     Exit(u32),
 }
 
@@ -323,6 +324,7 @@ impl Op {
                 op.to_machine_code(*rd, imm)
             }
             Op::FR(op, rd, rs1, rs2, rm) => op.to_machine_code(*rd, *rs1, *rs2, *rm),
+            Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
             Op::Exit(mc) => *mc,
         }
     }
@@ -353,6 +355,7 @@ impl Op {
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
 
             Op::FR(op, rd, rs1, rs2, rm) => format!("{} {}, {}, {}, {}", op, rd, rs1, rs2, rm),
+            Op::FC(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::Exit(_) => String::new(),
         }
     }
