@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-use nom::character::complete::{alphanumeric1, char, one_of};
+use nom::bytes::complete::tag;
+use nom::character::complete::{alphanumeric1, char, hex_digit1, one_of};
 use nom::combinator::{opt, recognize, verify};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
@@ -16,13 +17,18 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, FCOp, FROp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp};
+use crate::{BOp, FCOp, FROp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp, UOp};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
-    map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
-        // println!("{:?} {:?}", s, d);
-        s.parse::<i32>()
-    })(input)
+    alt((
+        map_res(preceded(tag("0x"), hex_digit1), |s: &str| {
+            i32::from_str_radix(s, 16)
+        }),
+        map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
+            // println!("{:?} {:?}", s, d);
+            s.parse::<i32>()
+        }),
+    ))(input)
 }
 
 pub trait WithParser: std::str::FromStr {
@@ -183,6 +189,7 @@ pub enum Op {
     L(LOp, IntReg, IntReg, i32),
     J(JOp, IntReg, JumpTarget),
     JR(JROp, IntReg, IntReg, JumpTarget),
+    U(UOp, IntReg, JumpTarget),
 
     FR(FROp, FloatReg, FloatReg, FloatReg, RoundingMode),
     FC(FCOp, FloatReg, FloatReg, FloatReg),
@@ -301,6 +308,34 @@ impl Op {
                 )),
                 |(op, rd, imm, rs1)| Op::L(op, rd, rs1, imm),
             ),
+            // frop
+            map(
+                tuple((
+                    delimited(multispace0, FROp::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace0),
+                )),
+                |(op, rd, rs1, rs2)| Op::FR(op, rd, rs1, rs2, RoundingMode::RNE),
+            ), // fcop
+            map(
+                tuple((
+                    delimited(multispace0, FCOp::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace0),
+                )),
+                |(op, rd, rs1, rs2)| Op::FC(op, rd, rs1, rs2),
+            ),
+            // uop
+            map(
+                tuple((
+                    delimited(multispace0, UOp::parse, multispace1),
+                    delimited(multispace0, IntReg::parse, multispace1),
+                    delimited(multispace0, JumpTarget::parse, multispace0),
+                )),
+                |(op, rd, imm)| Op::U(op, rd, imm),
+            ),
         ))(input)
     }
 
@@ -323,6 +358,7 @@ impl Op {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rd, imm)
             }
+            Op::U(op, rd, imm) => op.to_machine_code(*rd, imm.offset().unwrap()),
             Op::FR(op, rd, rs1, rs2, rm) => op.to_machine_code(*rd, *rs1, *rs2, *rm),
             Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
             Op::Exit(mc) => *mc,
@@ -353,6 +389,7 @@ impl Op {
             Op::L(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
             Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
+            Op::U(op, rd, imm) => format!("{op} {rd}, {imm}"),
 
             Op::FR(op, rd, rs1, rs2, rm) => format!("{} {}, {}, {}, {}", op, rd, rs1, rs2, rm),
             Op::FC(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),

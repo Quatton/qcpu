@@ -11,6 +11,15 @@ use qcpu_syntax::{
     parser::{Node, Op, ParsingContext},
 };
 
+pub fn assemble(input: &str) -> Result<(Vec<Op>, ParsingContext), ParseError> {
+    let mut ctx = ParsingContext::new();
+    let input = normalize(input);
+
+    let ops = parse_tree(input.as_str(), &mut ctx)?;
+
+    Ok((ops, ctx))
+}
+
 pub fn normalize(input: &str) -> String {
     // clean up
     format!("{}\n", input.trim().replace(",", " ").to_ascii_lowercase())
@@ -25,9 +34,9 @@ pub fn overnormalize_for_test(input: String) -> String {
 }
 
 pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
-    let input = normalize(input);
+    let input = &normalize(input);
     let comment = opt(delimited(multispace0, char('!'), not_line_ending));
-    let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input.as_str())?;
+    let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input)?;
     if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {
             input: input.to_string(),
@@ -316,5 +325,31 @@ main:
         for (op, dis) in ops.into_iter().zip(dis_ops) {
             assert_eq!(op, dis)
         }
+    }
+
+    #[test]
+    fn floats() {
+        let code = "
+        addi    sp, sp, -32
+        sw      ra, 28(sp)
+        sw      s0, 24(sp)
+        addi    s0, sp, 32
+        lui     a0, 255181
+        addi    a0, a0, -819
+        sw      a0, -12(s0)
+        lui     a0, 253133
+        addi    a0, a0, -819
+        sw      a0, -16(s0)
+        fadd    fa5, fa5, fa4
+        addi    a0, a0, 0
+        lw      ra, 28(sp)
+        lw      s0, 24(sp)
+        addi    sp, sp, 32
+        jalr    zero, ra, 0
+";
+
+        let (ops, _ctx) = assemble(code).unwrap();
+
+        println!("{ops:?}");
     }
 }

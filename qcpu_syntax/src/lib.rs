@@ -38,6 +38,11 @@ isop!(
   0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
 );
 
+uop!(
+    imm[31:12] rd 0b0110111 LUI
+    imm[31:12] rd 0b0010111 AUIPC
+);
+
 bop!(
   imm[12|10:5] rs2 rs1 0b000 imm[4:1|11] 0b1100011 BEQ
   imm[12|10:5] rs2 rs1 0b001 imm[4:1|11] 0b1100011 BNE
@@ -131,5 +136,14 @@ mod test {
         println!("{imm20:1b} {imm10:10b} {imm11:1b} {imm19:8b}");
         println!("{:032b}", mc);
         println!("{:032b}", dismc);
+    }
+
+    #[test]
+    fn hex() {
+        let code = "addi a0 a0 0x123";
+
+        let (_, op) = Op::parse(code).unwrap();
+
+        println!("{:?}", op);
     }
 }

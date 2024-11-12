@@ -244,6 +244,7 @@ impl Simulator {
                 //     RegisterWriteBackRequest::WriteInt(.try_into().unwrap(), rd),
                 // );
             }
+            Op::U(_, _, _) => todo!(),
             Op::FC(_, _, _, _) => todo!(),
             Op::Exit(_) => return None,
         };

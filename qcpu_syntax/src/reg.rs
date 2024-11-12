@@ -115,16 +115,18 @@ pub enum RoundingMode {
 
 impl FloatReg {
     fn from_str_custom(s: &str) -> Result<Self, ParseError> {
-        if &s[..1] == "f" {
-            let num = u8::from_str(&s[1..]).map_err(|_| ParseError::InvalidFloatReg)?;
-            if num < 32 {
-                Ok(Self::VARIANTS[num as usize])
+        Self::from_str(s).or_else(|_| {
+            if &s[..1] == "f" {
+                let num = u8::from_str(&s[1..]).map_err(|_| ParseError::InvalidFloatReg)?;
+                if num < 32 {
+                    Ok(Self::VARIANTS[num as usize])
+                } else {
+                    Err(ParseError::InvalidFloatReg)
+                }
             } else {
                 Err(ParseError::InvalidFloatReg)
             }
-        } else {
-            Self::from_str(s).map_err(|_| ParseError::InvalidFloatReg)
-        }
+        })
     }
 }
 

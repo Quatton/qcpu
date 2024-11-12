@@ -317,6 +317,52 @@ macro_rules! stop {
     }
 }
 
+#[macro_export]
+macro_rules! uop {
+    ($(imm[31:12] rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        pub enum UOp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for UOp {}
+
+        impl UOp {
+            pub fn to_machine_code(self, rd: reg::IntReg, imm: i32) -> u32 {
+                match self {
+                    $(
+                        UOp::$name => {
+                            let opcode = $opcode;
+                            let rd = rd as u32;
+                            let imm32 = (imm >> 12) as u32;
+
+                            imm32 << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for UOp {
+            fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+                let opcode =      0b00000000000000000000000001111111  & mc;
+                let rd =         (0b00000000000000000000111110000000 & mc) >> 7;
+                let imm =        (0b11111111111111111111000000000000 & mc);
+
+                let rd = reg::IntReg::VARIANTS[rd as usize];
+
+                match opcode {
+                    $(
+                        $opcode => Ok(parser::Op::U(UOp::$name, rd, parser::JumpTarget::from_offset(imm as i32))),
+                    )*
+                    _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+                }
+            }
+        }
+    };
+}
+
 #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum JOp {
