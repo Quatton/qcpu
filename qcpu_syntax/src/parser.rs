@@ -17,7 +17,9 @@ use nom::{
 
 use crate::error::ParseError;
 use crate::reg::IntReg;
-use crate::{BOp, FCOp, FROp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp, UOp};
+use crate::{
+    BOp, FCOp, FLOp, FROp, FSOp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp, UOp,
+};
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     alt((
@@ -191,6 +193,8 @@ pub enum Op {
     JR(JROp, IntReg, IntReg, JumpTarget),
     U(UOp, IntReg, JumpTarget),
 
+    FS(FSOp, FloatReg, IntReg, i32),
+    FL(FLOp, FloatReg, IntReg, i32),
     FR(FROp, FloatReg, FloatReg, FloatReg, RoundingMode),
     FC(FCOp, FloatReg, FloatReg, FloatReg),
     Exit(u32),
@@ -327,6 +331,24 @@ impl Op {
                 )),
                 |(op, rd, rs1, rs2)| Op::FC(op, rd, rs1, rs2),
             ),
+            map(
+                tuple((
+                    delimited(multispace0, FSOp::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    preceded(multispace0, parse_i32),
+                    terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+                )),
+                |(op, rs2, imm, rs1)| Op::FS(op, rs2, rs1, imm),
+            ),
+            map(
+                tuple((
+                    delimited(multispace0, FLOp::parse, multispace1),
+                    delimited(multispace0, FloatReg::parse, multispace1),
+                    preceded(multispace0, parse_i32),
+                    terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+                )),
+                |(op, rd, imm, rs1)| Op::FL(op, rd, rs1, imm),
+            ),
             // uop
             map(
                 tuple((
@@ -361,6 +383,8 @@ impl Op {
             Op::U(op, rd, imm) => op.to_machine_code(*rd, imm.offset().unwrap()),
             Op::FR(op, rd, rs1, rs2, rm) => op.to_machine_code(*rd, *rs1, *rs2, *rm),
             Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
+            &Op::FS(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
+            &Op::FL(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
             Op::Exit(mc) => *mc,
         }
     }
@@ -393,6 +417,9 @@ impl Op {
 
             Op::FR(op, rd, rs1, rs2, rm) => format!("{} {}, {}, {}, {}", op, rd, rs1, rs2, rm),
             Op::FC(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
+            Op::FS(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
+            Op::FL(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
+
             Op::Exit(_) => String::new(),
         }
     }

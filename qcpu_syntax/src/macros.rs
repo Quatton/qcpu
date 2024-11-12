@@ -643,3 +643,102 @@ macro_rules! fcop {
           }
     };
 }
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FLOp {
+    FLW,
+}
+
+impl crate::parser::WithParser for FLOp {}
+
+impl FLOp {
+    pub fn to_machine_code(self, rd: reg::FloatReg, rs1: reg::IntReg, imm: i32) -> u32 {
+        match self {
+            FLOp::FLW => {
+                let opcode = 0b0000111;
+                let funct3 = 0b010;
+                let rd = rd as u32;
+                let rs1 = rs1 as u32;
+                let imm = i32_to_i12(imm);
+                imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+            }
+        }
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FLOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let rdi = ((0b00000000000000000000111110000000 & mc) >> 7) as usize;
+        let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+        let rs1i = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let imm = (0b11111111111100000000000000000000 & mc) >> 20;
+
+        let imm = i12_to_i32(imm);
+        let rd = reg::FloatReg::VARIANTS[rdi];
+        let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+        match (funct3, opcode) {
+            (0b010, 0b0000111) => Ok(crate::parser::Op::FL(FLOp::FLW, rd, rs1, imm)),
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FSOp {
+    FSW,
+}
+
+impl crate::parser::WithParser for FSOp {}
+
+impl FSOp {
+    pub fn to_machine_code(self, rs2: reg::FloatReg, rs1: reg::IntReg, imm: i32) -> u32 {
+        match self {
+            FSOp::FSW => {
+                let opcode = 0b0100111;
+                let funct3 = 0b010;
+                let rs2 = rs2 as u32;
+                let rs1 = rs1 as u32;
+
+                let imm4 = (imm & 0b11111) as u32;
+                let imm11 = ((imm >> 5) & 0b1111111) as u32;
+
+                imm11 << 25 | rs2 << 20 | rs1 << 15 | funct3 << 12 | imm4 << 7 | opcode
+            }
+        }
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FSOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let imm11 = (0b11111110000000000000000000000000 & mc) >> 25;
+        let rs2i = ((0b00000001111100000000000000000000 & mc) >> 20) as usize;
+        let rs1i = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+        let imm4 = (0b00000000000000000000111110000000 & mc) >> 7;
+
+        let imm = i12_to_i32(imm11 << 5 | imm4);
+
+        let rs2 = reg::FloatReg::VARIANTS[rs2i];
+        let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+        match (funct3, opcode) {
+            (0b010, 0b0100111) => Ok(crate::parser::Op::FS(FSOp::FSW, rs2, rs1, imm)),
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
+    }
+}

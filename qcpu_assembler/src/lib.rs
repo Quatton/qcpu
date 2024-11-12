@@ -340,7 +340,10 @@ main:
         lui     a0, 253133
         addi    a0, a0, -819
         sw      a0, -16(s0)
+        flw     fa5, -12(s0)
+        flw     fa4, -16(s0)
         fadd    fa5, fa5, fa4
+        fsw     fa5, -20(s0)
         addi    a0, a0, 0
         lw      ra, 28(sp)
         lw      s0, 24(sp)

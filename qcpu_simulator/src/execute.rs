@@ -246,6 +246,8 @@ impl Simulator {
             }
             Op::U(_, _, _) => todo!(),
             Op::FC(_, _, _, _) => todo!(),
+            Op::FL(_, _, _, _) => todo!(),
+            Op::FS(_, _, _, _) => todo!(),
             Op::Exit(_) => return None,
         };
         Some(next.execute_result.predicted_pc)
