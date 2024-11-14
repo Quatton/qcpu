@@ -1,6 +1,6 @@
 use strum::VariantArray;
 
-use crate::{parser::JumpTarget, reg};
+use crate::{parser::JumpTarget, reg, RoundingMode};
 
 extern crate proc_macro;
 
@@ -601,7 +601,7 @@ macro_rules! fcop {
         impl parser::WithParser for FCOp {}
 
         impl FCOp {
-            pub fn to_machine_code(self, rd: reg::FloatReg, rs1: reg::FloatReg, rs2: reg::FloatReg) -> u32 {
+            pub fn to_machine_code(self, rd: usize, rs1: reg::FloatReg, rs2: reg::FloatReg) -> u32 {
                 match self {
                     $(
                         FCOp::$name => {
@@ -627,7 +627,7 @@ macro_rules! fcop {
               let rs2i =    ((0b00000001111100000000000000000000  & mc) >> 20) as usize;
               let funct7 =   (0b11111110000000000000000000000000  & mc) >> 25;
 
-              let rd = reg::FloatReg::VARIANTS[rdi];
+              let rd = rdi;
               let rs1 = reg::FloatReg::VARIANTS[rs1i];
               let rs2 = reg::FloatReg::VARIANTS[rs2i];
               let funct3 = rm;
@@ -740,5 +740,73 @@ impl crate::parser::FromMachineCode<'_> for FSOp {
                 mc
             ))),
         }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FXOp {
+    #[strum(serialize = "fcvt.s.w", serialize = "fcvtsw")]
+    FCVTSW,
+    #[strum(serialize = "fcvt.w.s", serialize = "fcvtws")]
+    FCVTWS,
+    FSQRT,
+}
+
+impl crate::parser::WithParser for FXOp {}
+
+impl FXOp {
+    pub fn to_machine_code(self, rd: usize, rs1: usize, rm: RoundingMode) -> u32 {
+        let opcode = 0b1010011;
+        let rs2 = 0b00000;
+        let rd = rd as u32;
+        let rm = rm as u32;
+        let rs1 = rs1 as u32;
+
+        let funct7 = match self {
+            FXOp::FSQRT => 0b0101100,
+            FXOp::FCVTSW => 0b1101000,
+            FXOp::FCVTWS => 0b1100000,
+        };
+
+        funct7 << 25 | rs2 << 20 | rs1 << 15 | rm << 12 | rd << 7 | opcode
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FXOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let funct7 = (0b11111110000000000000000000000000 & mc) >> 25;
+        let rd = ((0b00000000000000000000111110000000 & mc) >> 20) as usize;
+        let rs1 = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let rm = ((0b00000000000000000111000000000000 & mc) >> 12) as usize;
+
+        if opcode != 0b1010011 {
+            return Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            )));
+        }
+
+        let op = match funct7 {
+            0b0101100 => FXOp::FSQRT,
+            0b1101000 => FXOp::FCVTSW,
+            0b1100000 => FXOp::FCVTWS,
+            _ => {
+                return Err(crate::error::ParseError::DisassemblerError(format!(
+                    "{:032b}",
+                    mc
+                )))
+            }
+        };
+
+        Ok(crate::parser::Op::FX(
+            op,
+            rd,
+            rs1,
+            RoundingMode::from_repr(rm).unwrap(),
+        ))
     }
 }

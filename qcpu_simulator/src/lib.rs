@@ -27,6 +27,7 @@ impl SimulationContext {
     pub fn log_registers(&self) {
         let last = self.history.last().unwrap();
         println!("{:?}", last.ireg);
+        println!("{:?}", last.freg);
     }
 
     pub fn load_program(mut self, program: Vec<u32>, addr: usize) -> Self {

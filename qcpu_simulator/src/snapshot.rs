@@ -13,6 +13,7 @@ pub struct Snapshot {
     pub ireg: IntRegisters,
     pub freg: FloatRegisters,
     pub ireg_delay: [usize; 32],
+    pub freg_delay: [usize; 32],
 
     // for pipelining
     pub bubble: bool,
@@ -64,6 +65,11 @@ impl Snapshots {
 
         snapshot
             .ireg_delay
+            .iter_mut()
+            .for_each(|d| *d = d.saturating_sub(1));
+
+        snapshot
+            .freg_delay
             .iter_mut()
             .for_each(|d| *d = d.saturating_sub(1));
 

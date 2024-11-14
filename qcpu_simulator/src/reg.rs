@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use qcpu_syntax::IntReg;
+use qcpu_syntax::{FloatReg, IntReg};
 use strum::VariantArray as _;
 
 type _IntRegisters = [i32; 32];
@@ -63,6 +63,18 @@ impl FloatRegisters {
 impl std::fmt::Debug for IntRegisters {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, r) in IntReg::VARIANTS.iter().enumerate() {
+            write!(f, "{:<5}: {:<10} ", r, self[i])?;
+            if (i + 1) % 4 == 0 {
+                writeln!(f)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for FloatRegisters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, r) in FloatReg::VARIANTS.iter().enumerate() {
             write!(f, "{:<5}: {:<10} ", r, self[i])?;
             if (i + 1) % 4 == 0 {
                 writeln!(f)?;

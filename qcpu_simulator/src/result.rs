@@ -1,6 +1,6 @@
 use std::{fmt::Debug, ops::Range};
 
-use qcpu_syntax::{IntReg, LOp, Op};
+use qcpu_syntax::{FloatReg, IntReg, LOp, Op};
 
 use crate::snapshot::MemoryTransition;
 
@@ -30,16 +30,19 @@ impl Debug for MemoryAccessRequest {
 pub enum RegisterWriteBackRequest {
     /// (value, reg)
     WriteInt(i32, IntReg),
+    WriteFloat(f32, FloatReg),
 }
 
 impl Debug for RegisterWriteBackRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            &Self::WriteInt(arg0, arg1) => {
+            Self::WriteInt(arg0, arg1) => {
+                writeln!(f, "{} -> {}", arg1, arg0)?;
+            }
+            Self::WriteFloat(arg0, arg1) => {
                 writeln!(f, "{} -> {}", arg1, arg0)?;
             }
         }
-
         Ok(())
     }
 }

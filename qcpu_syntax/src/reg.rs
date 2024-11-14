@@ -1,10 +1,10 @@
 use crate::error::ParseError;
 use nom::{character::complete::alphanumeric1, combinator::map_res, IResult};
 use std::str::FromStr;
-use strum::VariantArray as _;
+use strum::{FromRepr, VariantArray as _};
 use strum_macros::{Display, EnumIter, EnumString, VariantArray};
 
-#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray)]
+#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray, FromRepr)]
 #[strum(serialize_all = "lowercase")]
 pub enum IntReg {
     Zero,
@@ -63,7 +63,7 @@ impl crate::parser::WithParser for IntReg {
     }
 }
 
-#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray)]
+#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray, FromRepr)]
 #[strum(serialize_all = "lowercase")]
 pub enum FloatReg {
     Ft0,
@@ -100,7 +100,7 @@ pub enum FloatReg {
     Ft11,
 }
 
-#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray)]
+#[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray, FromRepr)]
 #[strum(serialize_all = "lowercase")]
 pub enum RoundingMode {
     RNE,
@@ -134,4 +134,10 @@ impl crate::parser::WithParser for FloatReg {
     fn parse(input: &str) -> IResult<&str, Self> {
         map_res(alphanumeric1, |s: &str| Self::from_str_custom(s))(input)
     }
+}
+#[derive(Display, PartialEq, Clone, Copy, Debug)]
+
+pub enum Reg {
+    I(IntReg),
+    F(FloatReg),
 }

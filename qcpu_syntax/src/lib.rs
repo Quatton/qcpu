@@ -24,6 +24,7 @@ rop! {
 }
 
 iop! {
+  // 13
   imm[11:0] rs1 0b000 rd 0b0010011 ADDI
   imm[11:0] rs1 0b010 rd 0b0010011 SLTI
   imm[11:0] rs1 0b011 rd 0b0010011 SLTIU
@@ -39,6 +40,7 @@ isop!(
 );
 
 uop!(
+    // 22 6 4
     imm[31:12] rd 0b0110111 LUI
     imm[31:12] rd 0b0010111 AUIPC
 );

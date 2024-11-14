@@ -1,5 +1,5 @@
-use qcpu_syntax::STOp;
 use qcpu_syntax::{parser::Op, BOp, FROp, IOp, ISOp, ROp};
+use qcpu_syntax::{FCOp, FloatReg, IntReg, STOp};
 
 use crate::result::{MemoryAccessRequest, RegisterWriteBackRequest};
 use crate::snapshot::Snapshot;
@@ -8,12 +8,13 @@ use crate::Simulator;
 impl Simulator {
     fn get_instruction_latency(&self, op: &Op) -> usize {
         match op {
-            Op::L(_, _, _, _) => 2, // Load instructions have 2-cycle latency
-            _ => 1,                 // Default latency of 1 cycle for other instructions
+            Op::L(_, _, _, _) => 2,
+            Op::FL(_, _, _, _) => 2,
+            _ => 1,
         }
     }
 
-    pub fn execute(&self, prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
+    pub fn execute(&self, _prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
         if next.execute_result.intr.is_none() || next.execute_result.stall {
             return Some(next.execute_result.predicted_pc);
         }
@@ -226,28 +227,92 @@ impl Simulator {
                 next.next_pc = target;
                 return Some(target);
             }
-            Op::FR(op, rd, rs1, rs2, _rm) => {
+            Op::FR(op, rs1, rs2, rd, _rm) => {
                 // we ignore _rm at this point because idk how
-                let rd = rd as usize;
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
-                let rs1_d = prev.freg[rs1];
-                let rs2_d = prev.freg[rs2];
+
+                if next.freg_delay[rs1] > 0 || next.freg_delay[rs2] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
+
+                let rs1_d = next.freg[rs1];
+                let rs2_d = next.freg[rs2];
+
+                next.freg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
                 let res = match op {
                     FROp::FADD => rs1_d + rs2_d,
                     FROp::FSUB => rs1_d - rs2_d,
                     FROp::FMUL => rs1_d * rs2_d,
                     FROp::FDIV => rs1_d / rs2_d,
                 };
-                next.freg[rd] = res;
-                // next.execute_result.register_write_back_request = Some(
-                //     RegisterWriteBackRequest::WriteInt(.try_into().unwrap(), rd),
-                // );
+
+                next.execute_result.register_write_back_request =
+                    Some(RegisterWriteBackRequest::WriteFloat(res, rd));
             }
-            Op::U(_, _, _) => todo!(),
-            Op::FC(_, _, _, _) => todo!(),
+            Op::U(_op, _rs1, _) => todo!(),
+            Op::FC(op, rd, rs1, rs2) => {
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+
+                if next.freg_delay[rs1] > 0 || next.freg_delay[rs2] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
+
+                let rs1_d = next.freg[rs1];
+                let rs2_d = next.freg[rs2];
+
+                match op {
+                    FCOp::FEQ | FCOp::FLE | FCOp::FLT => {
+                        let res = match op {
+                            FCOp::FEQ => rs1_d == rs2_d,
+                            FCOp::FLE => rs1_d <= rs2_d,
+                            FCOp::FLT => rs1_d < rs2_d,
+                            _ => unreachable!(),
+                        } as i32;
+
+                        next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                        next.execute_result.register_write_back_request = Some(
+                            RegisterWriteBackRequest::WriteInt(res, IntReg::from_repr(rd)?),
+                        );
+                    }
+
+                    _ => {
+                        let res = match op {
+                            FCOp::FMAX => {
+                                if rs1_d > rs2_d {
+                                    rs1_d
+                                } else {
+                                    rs2_d
+                                }
+                            }
+                            FCOp::FMIN => {
+                                if rs1_d < rs2_d {
+                                    rs1_d
+                                } else {
+                                    rs2_d
+                                }
+                            }
+                            FCOp::FSGNJ => rs2_d.signum() * rs1_d.abs(),
+                            FCOp::FSGNJN => -rs2_d.signum() * rs1_d.abs(),
+                            FCOp::FSGNJX => rs2_d.signum() * rs1_d,
+                            _ => unreachable!(),
+                        };
+
+                        next.freg_delay[rd] = self.get_instruction_latency(&oop);
+
+                        next.execute_result.register_write_back_request = Some(
+                            RegisterWriteBackRequest::WriteFloat(res, FloatReg::from_repr(rd)?),
+                        );
+                    }
+                };
+            }
             Op::FL(_, _, _, _) => todo!(),
             Op::FS(_, _, _, _) => todo!(),
+            Op::FX(_, _, _, _) => todo!(),
             Op::Exit(_) => return None,
         };
         Some(next.execute_result.predicted_pc)

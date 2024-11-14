@@ -18,7 +18,8 @@ use nom::{
 use crate::error::ParseError;
 use crate::reg::IntReg;
 use crate::{
-    BOp, FCOp, FLOp, FROp, FSOp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode, STOp, UOp,
+    BOp, FCOp, FLOp, FROp, FSOp, FXOp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode,
+    STOp, UOp,
 };
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
@@ -31,6 +32,17 @@ pub fn parse_i32(input: &str) -> IResult<&str, i32> {
             s.parse::<i32>()
         }),
     ))(input)
+}
+
+pub fn parse_both(input: &str) -> IResult<&str, usize> {
+    let (input, reg) = opt(IntReg::parse)(input)?;
+    match reg {
+        Some(reg) => Ok((input, reg as usize)),
+        None => {
+            let (input, reg) = FloatReg::parse(input)?;
+            Ok((input, reg as usize))
+        }
+    }
 }
 
 pub trait WithParser: std::str::FromStr {
@@ -196,7 +208,8 @@ pub enum Op {
     FS(FSOp, FloatReg, IntReg, i32),
     FL(FLOp, FloatReg, IntReg, i32),
     FR(FROp, FloatReg, FloatReg, FloatReg, RoundingMode),
-    FC(FCOp, FloatReg, FloatReg, FloatReg),
+    FC(FCOp, usize, FloatReg, FloatReg),
+    FX(FXOp, usize, usize, RoundingMode),
     Exit(u32),
 }
 
@@ -325,7 +338,7 @@ impl Op {
             map(
                 tuple((
                     delimited(multispace0, FCOp::parse, multispace1),
-                    delimited(multispace0, FloatReg::parse, multispace1),
+                    delimited(multispace0, parse_both, multispace1),
                     delimited(multispace0, FloatReg::parse, multispace1),
                     delimited(multispace0, FloatReg::parse, multispace0),
                 )),
@@ -358,6 +371,14 @@ impl Op {
                 )),
                 |(op, rd, imm)| Op::U(op, rd, imm),
             ),
+            map(
+                tuple((
+                    delimited(multispace0, FXOp::parse, multispace1),
+                    delimited(multispace0, parse_both, multispace1),
+                    delimited(multispace0, parse_both, multispace0),
+                )),
+                |(op, rd, rs1)| Op::FX(op, rd, rs1, RoundingMode::RNE),
+            ),
         ))(input)
     }
 
@@ -385,6 +406,7 @@ impl Op {
             Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
             &Op::FS(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
             &Op::FL(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
+            Op::FX(op, rd, rs1, rm) => op.to_machine_code(*rd, *rs1, *rm),
             Op::Exit(mc) => *mc,
         }
     }
@@ -399,6 +421,10 @@ impl Op {
             0b1101111 => JOp::from_machine_code(input),
             0b0100011 => STOp::from_machine_code(input),
             0b0000011 => LOp::from_machine_code(input),
+            0b0000111 => FLOp::from_machine_code(input),
+            0b0100111 => FSOp::from_machine_code(input),
+            0b0110111 | 0b0010111 => UOp::from_machine_code(input),
+            0b1010011 => FCOp::from_machine_code(input).or_else(|_| FXOp::from_machine_code(input)),
             _ => Ok(Op::Exit(input)),
         }
     }
@@ -415,10 +441,11 @@ impl Op {
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
             Op::U(op, rd, imm) => format!("{op} {rd}, {imm}"),
 
-            Op::FR(op, rd, rs1, rs2, rm) => format!("{} {}, {}, {}, {}", op, rd, rs1, rs2, rm),
+            Op::FR(op, rd, rs1, rs2, _) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::FC(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::FS(op, rs2, rs1, imm) => format!("{op} {rs2}, {imm}({rs1})"),
             Op::FL(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
+            Op::FX(op, rd, rs1, _) => format!("{op} {rd}, {rs1}"),
 
             Op::Exit(_) => String::new(),
         }
