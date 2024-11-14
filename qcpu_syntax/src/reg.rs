@@ -57,6 +57,18 @@ impl IntReg {
     }
 }
 
+impl From<IntReg> for usize {
+    fn from(reg: IntReg) -> Self {
+        reg as usize
+    }
+}
+
+impl From<FloatReg> for usize {
+    fn from(reg: FloatReg) -> Self {
+        reg as usize
+    }
+}
+
 impl crate::parser::WithParser for IntReg {
     fn parse(input: &str) -> IResult<&str, Self> {
         map_res(alphanumeric1, |s: &str| Self::from_str_custom(s))(input)
@@ -135,8 +147,8 @@ impl crate::parser::WithParser for FloatReg {
         map_res(alphanumeric1, |s: &str| Self::from_str_custom(s))(input)
     }
 }
-#[derive(Display, PartialEq, Clone, Copy, Debug)]
 
+#[derive(Display, PartialEq, Clone, Copy, Debug)]
 pub enum Reg {
     I(IntReg),
     F(FloatReg),

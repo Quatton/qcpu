@@ -60,6 +60,7 @@ impl Snapshots {
             ireg: last.ireg,
             freg: last.freg,
             ireg_delay: last.ireg_delay,
+            freg_delay: last.freg_delay,
             ..Default::default()
         };
 

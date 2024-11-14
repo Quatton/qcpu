@@ -1,12 +1,12 @@
 use std::{fmt::Debug, ops::Range};
 
-use qcpu_syntax::{FloatReg, IntReg, LOp, Op};
+use qcpu_syntax::{FloatReg, IntReg, LOp, Op, Reg};
 
 use crate::snapshot::MemoryTransition;
 
 #[derive(Clone, PartialEq)]
 pub enum MemoryAccessRequest {
-    L(LOp, usize, IntReg),
+    L(LOp, usize, Reg),
     S(Range<usize>, i32),
 }
 

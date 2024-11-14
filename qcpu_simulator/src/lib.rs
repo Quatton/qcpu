@@ -5,7 +5,7 @@ pub mod snapshot;
 
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
-    IntReg,
+    IntReg, Reg,
 };
 use result::{MemoryAccessRequest, RegisterWriteBackRequest};
 use snapshot::{Snapshot, Snapshots};
@@ -275,17 +275,29 @@ impl Simulator {
                     }
                 };
 
-                next.memory_access_result.wb = Some(RegisterWriteBackRequest::WriteInt(value, rd));
+                next.memory_access_result.wb = Some(match rd {
+                    Reg::I(rd) => RegisterWriteBackRequest::WriteInt(value, rd),
+                    Reg::F(rd) => {
+                        RegisterWriteBackRequest::WriteFloat(f32::from_bits(value as u32), rd)
+                    }
+                });
             }
         }
     }
 
     pub fn write_back(&self, prev: &Snapshot, next: &mut Snapshot) {
-        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = prev.memory_access_result.wb {
-            if rd == IntReg::Zero {
-                return;
+        if let Some(thing) = prev.memory_access_result.wb {
+            match thing {
+                RegisterWriteBackRequest::WriteInt(value, rd) => {
+                    if rd == IntReg::Zero {
+                        return;
+                    }
+                    next.ireg[rd as usize] = value;
+                }
+                RegisterWriteBackRequest::WriteFloat(value, rd) => {
+                    next.freg[rd as usize] = value;
+                }
             }
-            next.ireg[rd as usize] = value;
             next.write_back_result = Some(prev.memory_access_result.wb.unwrap());
         }
     }
@@ -414,5 +426,14 @@ min_caml_print_int:
             .load_program(mc);
 
         sim.run().unwrap();
+    }
+
+    #[test]
+    fn just_testing() {
+        let float_int_repr = 1036831949;
+        let float = f32::from_bits(float_int_repr);
+
+        println!("{float_int_repr:32b}");
+        println!("{float}");
     }
 }

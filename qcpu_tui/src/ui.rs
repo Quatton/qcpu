@@ -1,4 +1,4 @@
-use qcpu_syntax::{parser::Op, reg::IntReg};
+use qcpu_syntax::{parser::Op, reg::IntReg, FloatReg};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -34,15 +34,15 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 pub fn ui(frame: &mut Frame, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(1), Constraint::Percentage(30)])
-        .split(frame.area());
-
     let upper = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(12)])
-        .split(chunks[0]);
+        .split(frame.area());
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(1), Constraint::Percentage(30)])
+        .split(upper[0]);
 
     let mut list_items = Vec::new();
 
@@ -125,16 +125,16 @@ pub fn ui(frame: &mut Frame, app: &App) {
     )
     .block(Block::bordered());
 
-    let regs: Vec<Cell> = ss
+    let mut iregs: Vec<Cell> = ss
         .ireg
         .iter()
         .enumerate()
         .map(|(i, val)| {
             Cell::from(format!(
-                "{:<5}: {:<10} [+{}]",
+                "{}{:<4}: {:<10}",
+                ss.ireg_delay[i],
                 IntReg::VARIANTS[i],
                 val,
-                ss.ireg_delay[i]
             ))
             .style(if ss.ireg_delay[i] > 0 {
                 Style::default().fg(Color::Red)
@@ -144,9 +144,29 @@ pub fn ui(frame: &mut Frame, app: &App) {
         })
         .collect();
 
-    let rows = regs.chunks_exact(4).map(|c| Row::new(Vec::from(c)));
+    let mut fregs: Vec<Cell> = ss
+        .freg
+        .iter()
+        .enumerate()
+        .map(|(i, val)| {
+            Cell::from(format!(
+                "{}{:<4}: {:<10}",
+                ss.freg_delay[i],
+                FloatReg::from_repr(i).unwrap(),
+                val,
+            ))
+            .style(if ss.freg_delay[i] > 0 {
+                Style::default().fg(Color::Red)
+            } else {
+                Style::default()
+            })
+        })
+        .collect();
 
-    let widths = [Constraint::Min(1); 4];
+    iregs.append(&mut fregs);
+    let rows = iregs.chunks_exact(8).map(|c| Row::new(Vec::from(c)));
+
+    let widths = [Constraint::Min(1); 8];
 
     let reg_table = Table::new(rows, widths).block(
         Block::bordered()
@@ -218,7 +238,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     )
     .block(Block::bordered());
 
-    frame.render_widget(pipeline, upper[0]);
+    frame.render_widget(pipeline, chunks[0]);
 
     frame.render_widget(program_list, chunks[1]);
     frame.render_widget(reg_table, upper[1]);

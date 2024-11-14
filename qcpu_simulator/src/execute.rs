@@ -1,5 +1,5 @@
 use qcpu_syntax::{parser::Op, BOp, FROp, IOp, ISOp, ROp};
-use qcpu_syntax::{FCOp, FloatReg, IntReg, STOp};
+use qcpu_syntax::{FCOp, FloatReg, IntReg, Reg, STOp, UOp};
 
 use crate::result::{MemoryAccessRequest, RegisterWriteBackRequest};
 use crate::snapshot::Snapshot;
@@ -195,7 +195,11 @@ impl Simulator {
                 next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
 
                 next.execute_result
-                    .forward_to_memory_access(MemoryAccessRequest::L(op, addr as usize, rd));
+                    .forward_to_memory_access(MemoryAccessRequest::L(
+                        op,
+                        addr as usize,
+                        Reg::I(rd),
+                    ));
             }
             Op::J(_, rd, ref imm) => {
                 // op is JOp::JAL anyway so idc
@@ -227,7 +231,7 @@ impl Simulator {
                 next.next_pc = target;
                 return Some(target);
             }
-            Op::FR(op, rs1, rs2, rd, _rm) => {
+            Op::FR(op, rd, rs1, rs2, _rm) => {
                 // we ignore _rm at this point because idk how
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
@@ -252,7 +256,17 @@ impl Simulator {
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteFloat(res, rd));
             }
-            Op::U(_op, _rs1, _) => todo!(),
+            Op::U(op, rd, ref imm) => {
+                next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
+                let imm = match op {
+                    UOp::LUI => imm.offset().unwrap() << 12,
+                    _ => todo!("AUIPC Not implemented"),
+                };
+
+                next.execute_result.register_write_back_request =
+                    Some(RegisterWriteBackRequest::WriteInt(imm, rd));
+            }
             Op::FC(op, rd, rs1, rs2) => {
                 let rs1 = rs1 as usize;
                 let rs2 = rs2 as usize;
@@ -310,9 +324,89 @@ impl Simulator {
                     }
                 };
             }
-            Op::FL(_, _, _, _) => todo!(),
-            Op::FS(_, _, _, _) => todo!(),
-            Op::FX(_, _, _, _) => todo!(),
+            Op::FS(_, rs2, rs1, imm) => {
+                let rs1 = rs1 as usize;
+                let rs2 = rs2 as usize;
+
+                if next.ireg_delay[rs1] > 0 || next.freg_delay[rs2] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
+
+                let addr = next.ireg[rs1] + imm;
+
+                // check addr out of bound
+                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
+                    panic!("out of bound memory access");
+                }
+
+                let addr = addr as usize;
+                let value = next.freg[rs2];
+
+                let addr = addr..addr + 4;
+
+                next.execute_result
+                    .forward_to_memory_access(MemoryAccessRequest::S(addr, value.to_bits() as i32));
+            }
+            Op::FL(_op, rd, rs1, imm) => {
+                let rs1 = rs1 as usize;
+
+                if next.ireg_delay[rs1] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
+
+                let addr = next.ireg[rs1] + imm;
+
+                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
+                    panic!("out of bound memory access");
+                }
+
+                next.freg_delay[rd as usize] = self.get_instruction_latency(&oop);
+
+                next.execute_result
+                    .forward_to_memory_access(MemoryAccessRequest::L(
+                        qcpu_syntax::LOp::LW,
+                        addr as usize,
+                        Reg::F(rd),
+                    ));
+            }
+            Op::FX(op, rd, rs1, _) => {
+                if next.ireg_delay[rs1] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
+
+                match op {
+                    qcpu_syntax::FXOp::FSQRT => {
+                        next.freg_delay[rd] = self.get_instruction_latency(&oop);
+                        let rs1_d = next.freg[rs1];
+                        next.execute_result.register_write_back_request =
+                            Some(RegisterWriteBackRequest::WriteFloat(
+                                rs1_d.sqrt(),
+                                FloatReg::from_repr(rd).unwrap(),
+                            ))
+                    }
+                    qcpu_syntax::FXOp::FCVTSW => {
+                        next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                        let rs1_d = next.freg[rs1];
+                        next.execute_result.register_write_back_request =
+                            Some(RegisterWriteBackRequest::WriteInt(
+                                rs1_d.to_bits() as i32,
+                                IntReg::from_repr(rd).unwrap(),
+                            ))
+                    }
+                    qcpu_syntax::FXOp::FCVTWS => {
+                        next.freg_delay[rd] = self.get_instruction_latency(&oop);
+                        let rs1_d = next.ireg[rs1];
+                        next.execute_result.register_write_back_request =
+                            Some(RegisterWriteBackRequest::WriteFloat(
+                                f32::from_bits(rs1_d as u32),
+                                FloatReg::from_repr(rd).unwrap(),
+                            ))
+                    }
+                }
+            }
             Op::Exit(_) => return None,
         };
         Some(next.execute_result.predicted_pc)
