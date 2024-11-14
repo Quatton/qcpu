@@ -10,6 +10,12 @@ pub enum ParseError {
     InvalidFloatReg,
 }
 
+#[derive(Debug)]
+pub struct ParseErrorContext {
+    pub error: ParseError,
+    pub line: usize,
+}
+
 impl From<nom::Err<Error<&str>>> for ParseError {
     fn from(err: nom::Err<Error<&str>>) -> Self {
         match err {

@@ -7,7 +7,7 @@ use nom::{
     sequence::delimited,
 };
 use qcpu_syntax::{
-    error::ParseError,
+    error::{ParseError, ParseErrorContext},
     parser::{Node, Op, ParsingContext},
 };
 
@@ -89,12 +89,24 @@ pub fn to_assembly(input: Vec<Op>) -> String {
     result
 }
 
-pub fn from_machine_code(input: Vec<u32>, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
+pub fn from_machine_code(
+    input: Vec<u32>,
+    ctx: &mut ParsingContext,
+) -> Result<Vec<Op>, ParseErrorContext> {
     let mut ops = Vec::new();
 
-    for mc in input {
-        let op = Op::from_machine_code(mc, ctx)?;
-        ops.push(op);
+    for (i, mc) in input.into_iter().enumerate() {
+        match Op::from_machine_code(mc, ctx) {
+            Ok(op) => {
+                ops.push(op);
+            }
+            Err(err) => {
+                return Err(ParseErrorContext {
+                    error: err,
+                    line: i + 1,
+                });
+            }
+        }
     }
 
     Ok(ops)
@@ -351,8 +363,13 @@ main:
         jalr    zero, ra, 0
 ";
 
-        let (ops, _ctx) = assemble(code).unwrap();
+        let (ops, mut ctx) = assemble(code).unwrap();
 
-        println!("{ops:?}");
+        let mc = to_machine_code(&ops, &ctx).unwrap();
+        let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
+
+        for (op, dis) in ops.into_iter().zip(dis_ops) {
+            assert_eq!(op, dis)
+        }
     }
 }

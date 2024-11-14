@@ -1,8 +1,8 @@
 use crate::error::ParseError;
 use nom::{character::complete::alphanumeric1, combinator::map_res, IResult};
 use std::str::FromStr;
-use strum::{FromRepr, VariantArray as _};
-use strum_macros::{Display, EnumIter, EnumString, VariantArray};
+use strum::VariantArray as _;
+use strum_macros::{Display, EnumIter, EnumString, FromRepr, VariantArray};
 
 #[derive(Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray, FromRepr)]
 #[strum(serialize_all = "lowercase")]

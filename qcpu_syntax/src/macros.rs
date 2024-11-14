@@ -335,7 +335,7 @@ macro_rules! uop {
                         UOp::$name => {
                             let opcode = $opcode;
                             let rd = rd as u32;
-                            let imm32 = (imm >> 12) as u32;
+                            let imm32 = imm as u32;
 
                             imm32 << 12 | rd << 7 | opcode
                         }
@@ -348,7 +348,7 @@ macro_rules! uop {
             fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
                 let opcode =      0b00000000000000000000000001111111  & mc;
                 let rd =         (0b00000000000000000000111110000000 & mc) >> 7;
-                let imm =        (0b11111111111111111111000000000000 & mc);
+                let imm =        (0b11111111111111111111000000000000 & mc) >> 12;
 
                 let rd = reg::IntReg::VARIANTS[rd as usize];
 

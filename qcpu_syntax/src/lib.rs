@@ -74,7 +74,6 @@ frop!(
     0b0001000 rs2 rs1 rm rd 0b1010011 FMUL
     0b0001100 rs2 rs1 rm rd 0b1010011 FDIV
     // 0b0101100 0b00000 rs1 rm rd 0b1010011 FSQRT_S
-
     // 0b1100000 0b00000 rs1 rm rd 0b1010011 FCVT_W_S
     // 0b1100000 0b00001 rs1 rm rd 0b1010011 FCVT_WU_S
     // 0b1101000 0b00000 rs1 rm rd 0b1010011 FCVT_S_W
