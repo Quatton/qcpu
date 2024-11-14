@@ -123,7 +123,7 @@ macro_rules! iop {
 
             match (funct3, opcode) {
                 $(
-                    ($funct3, $opcode) => Ok(parser::Op::I(IOp::$name, rd, rs1, imm)),
+                    ($funct3, $opcode) => Ok(parser::Op::I(IOp::$name, rd, rs1, JumpTarget::from_offset(imm))),
                 )*
                 _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
             }
@@ -682,7 +682,12 @@ impl crate::parser::FromMachineCode<'_> for FLOp {
         let rs1 = reg::IntReg::VARIANTS[rs1i];
 
         match (funct3, opcode) {
-            (0b010, 0b0000111) => Ok(crate::parser::Op::FL(FLOp::FLW, rd, rs1, imm)),
+            (0b010, 0b0000111) => Ok(crate::parser::Op::FL(
+                FLOp::FLW,
+                rd,
+                rs1,
+                JumpTarget::from_offset(imm),
+            )),
             _ => Err(crate::error::ParseError::DisassemblerError(format!(
                 "{:032b}",
                 mc
@@ -779,7 +784,7 @@ impl crate::parser::FromMachineCode<'_> for FXOp {
     ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
         let opcode = 0b00000000000000000000000001111111 & mc;
         let funct7 = (0b11111110000000000000000000000000 & mc) >> 25;
-        let rd = ((0b00000000000000000000111110000000 & mc) >> 20) as usize;
+        let rd = ((0b00000000000000000000111110000000 & mc) >> 7) as usize;
         let rs1 = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
         let rm = ((0b00000000000000000111000000000000 & mc) >> 12) as usize;
 

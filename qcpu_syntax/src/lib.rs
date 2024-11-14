@@ -97,6 +97,13 @@ fcop!(
 
 #[cfg(test)]
 mod test {
+    use nom::{
+        bytes::complete::tag,
+        character::complete::{char, multispace0, multispace1},
+        combinator::map,
+        sequence::{delimited, preceded, terminated, tuple},
+    };
+
     use super::*;
 
     #[test]
@@ -146,5 +153,34 @@ mod test {
         let (_, op) = Op::parse(code).unwrap();
 
         println!("{:?}", op);
+    }
+
+    #[test]
+    fn parse_both_test() {
+        let code = "\n\t.word\t0x401bb646\n";
+
+        let (_, op) = map(
+            delimited(
+                tuple((multispace0, tag(".word"), multispace1)),
+                parse_i32,
+                multispace1,
+            ),
+            |w| Op::Raw(w as u32),
+        )(code)
+        .unwrap();
+
+        println!("{:?}", op);
+    }
+
+    #[test]
+    fn pi_zero() {
+        let label = tuple((
+            delimited(multispace0, FLOp::parse, multispace1),
+            delimited(multispace0, FloatReg::parse, multispace1),
+            delimited(multispace0, JumpTarget::parse, char('(')),
+            // terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+        ))("flw fa1  pi(");
+
+        println!("{:?}", label);
     }
 }

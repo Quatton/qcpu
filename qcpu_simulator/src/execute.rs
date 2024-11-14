@@ -65,7 +65,7 @@ impl Simulator {
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
-            Op::I(op, rd, rs1, imm) => {
+            Op::I(op, rd, rs1, ref imm) => {
                 let rs1 = rs1 as usize;
 
                 if next.ireg_delay[rs1] > 0 {
@@ -75,6 +75,7 @@ impl Simulator {
 
                 let rs1_val = next.ireg[rs1];
                 next.ireg_delay[rd as usize] = self.get_instruction_latency(&oop);
+                let imm = imm.offset().unwrap();
 
                 let result = match op {
                     IOp::ADDI => rs1_val + imm,
@@ -348,7 +349,7 @@ impl Simulator {
                 next.execute_result
                     .forward_to_memory_access(MemoryAccessRequest::S(addr, value.to_bits() as i32));
             }
-            Op::FL(_op, rd, rs1, imm) => {
+            Op::FL(_op, rd, rs1, ref imm) => {
                 let rs1 = rs1 as usize;
 
                 if next.ireg_delay[rs1] > 0 {
@@ -356,7 +357,7 @@ impl Simulator {
                     return Some(next.execute_result.predicted_pc);
                 }
 
-                let addr = next.ireg[rs1] + imm;
+                let addr = next.ireg[rs1] + imm.offset().unwrap();
 
                 if addr < 0 || addr >= self.ctx.memory.len() as i32 {
                     panic!("out of bound memory access");
@@ -407,7 +408,7 @@ impl Simulator {
                     }
                 }
             }
-            Op::Exit(_) => return None,
+            Op::Raw(_) => return None,
         };
         Some(next.execute_result.predicted_pc)
     }

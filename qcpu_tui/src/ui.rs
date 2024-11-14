@@ -86,7 +86,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                 )),
                 Cell::from(
                     Op::from_machine_code(op, &app.simulator.config.parsing_context)
-                        .unwrap()
+                        .unwrap_or(Op::Raw(op))
                         .to_asm(),
                 ),
             ])
@@ -228,7 +228,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
         lag += 1;
 
-        history_rows.push(Row::from_iter(row).height(8));
+        history_rows.push(Row::from_iter(row).height(4));
     }
 
     let target_length = 5 + lag - 1;

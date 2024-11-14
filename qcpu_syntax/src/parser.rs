@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 use nom::bytes::complete::tag;
-use nom::character::complete::{alphanumeric1, char, hex_digit1, one_of};
+use nom::character::complete::{char, hex_digit1, one_of};
 use nom::combinator::{opt, recognize, verify};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
@@ -47,7 +47,7 @@ pub fn parse_both(input: &str) -> IResult<&str, usize> {
 
 pub trait WithParser: std::str::FromStr {
     fn parse(input: &str) -> IResult<&str, Self> {
-        map_res(alphanumeric1, |s: &str| Self::from_str(s))(input)
+        map_res(identifier, |s: &str| Self::from_str(s))(input)
     }
 }
 
@@ -55,6 +55,7 @@ pub trait FromMachineCode<'a> {
     fn from_machine_code(input: u32) -> Result<Op, ParseError>;
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct LabelMap(HashMap<String, usize>, HashMap<usize, String>);
 
 impl LabelMap {
@@ -147,7 +148,7 @@ impl JumpTarget {
                 .map(|x| (*x as i32))
         })
     }
-    fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> IResult<&str, Self> {
         let (input, offset) = opt(parse_i32)(input)?;
         if let Some(offset) = offset {
             return Ok((input, Self::from_offset(offset)));
@@ -196,7 +197,7 @@ impl ParsingContext {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Op {
     R(ROp, IntReg, IntReg, IntReg),
-    I(IOp, IntReg, IntReg, i32),
+    I(IOp, IntReg, IntReg, JumpTarget),
     IS(ISOp, IntReg, IntReg, i32),
     B(BOp, IntReg, IntReg, JumpTarget),
     S(STOp, IntReg, IntReg, i32),
@@ -206,11 +207,11 @@ pub enum Op {
     U(UOp, IntReg, JumpTarget),
 
     FS(FSOp, FloatReg, IntReg, i32),
-    FL(FLOp, FloatReg, IntReg, i32),
+    FL(FLOp, FloatReg, IntReg, JumpTarget),
     FR(FROp, FloatReg, FloatReg, FloatReg, RoundingMode),
     FC(FCOp, usize, FloatReg, FloatReg),
     FX(FXOp, usize, usize, RoundingMode),
-    Exit(u32),
+    Raw(u32),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -227,10 +228,10 @@ pub fn identifier<'a, E: nom::error::ParseError<&'a str>>(
     verify(
         recognize(pair(
             alt((one_of(
-                "_.()abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
             ),)),
             many0(alt((one_of(
-                "_.()abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
             ),))),
         )),
         |s: &str| !s.chars().next().unwrap().is_numeric(),
@@ -268,7 +269,7 @@ impl Op {
                     delimited(multispace0, IOp::parse, multispace1),
                     delimited(multispace0, IntReg::parse, multispace1),
                     delimited(multispace0, IntReg::parse, multispace1),
-                    delimited(multispace0, parse_i32, multispace0),
+                    delimited(multispace0, JumpTarget::parse, multispace0),
                 )),
                 |(op, rd, rs1, imm)| Op::I(op, rd, rs1, imm),
             ),
@@ -357,7 +358,7 @@ impl Op {
                 tuple((
                     delimited(multispace0, FLOp::parse, multispace1),
                     delimited(multispace0, FloatReg::parse, multispace1),
-                    preceded(multispace0, parse_i32),
+                    preceded(multispace0, JumpTarget::parse),
                     terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
                 )),
                 |(op, rd, imm, rs1)| Op::FL(op, rd, rs1, imm),
@@ -379,13 +380,24 @@ impl Op {
                 )),
                 |(op, rd, rs1)| Op::FX(op, rd, rs1, RoundingMode::RNE),
             ),
+            map(
+                delimited(
+                    tuple((multispace0, tag(".word"), multispace1)),
+                    parse_i32,
+                    multispace1,
+                ),
+                |w| Op::Raw(w as u32),
+            ),
         ))(input)
     }
 
     pub fn to_machine_code(&self, ctx: &ParsingContext) -> u32 {
         match self {
             &Op::R(op, rd, rs1, rs2) => op.to_machine_code(rd, rs1, rs2),
-            &Op::I(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
+            Op::I(op, rd, rs1, imm) => {
+                let imm = imm.offset_or_lookup(ctx).unwrap(); // then just panic idc
+                op.to_machine_code(*rd, *rs1, imm)
+            }
             &Op::IS(op, rd, rs1, shamt) => op.to_machine_code(rd, rs1, shamt),
             Op::B(op, rs2, rs1, label) => {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
@@ -405,9 +417,12 @@ impl Op {
             Op::FR(op, rd, rs1, rs2, rm) => op.to_machine_code(*rd, *rs1, *rs2, *rm),
             Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
             &Op::FS(op, rs2, rs1, imm) => op.to_machine_code(rs2, rs1, imm),
-            &Op::FL(op, rd, rs1, imm) => op.to_machine_code(rd, rs1, imm),
+            Op::FL(op, rd, rs1, imm) => {
+                let imm = imm.offset_or_lookup(ctx).unwrap(); // then just panic idc
+                op.to_machine_code(*rd, *rs1, imm)
+            }
             Op::FX(op, rd, rs1, rm) => op.to_machine_code(*rd, *rs1, *rm),
-            Op::Exit(mc) => *mc,
+            Op::Raw(mc) => *mc,
         }
     }
 
@@ -427,7 +442,7 @@ impl Op {
             0b1010011 => FROp::from_machine_code(input).or_else(|_| {
                 FCOp::from_machine_code(input).or_else(|_| FXOp::from_machine_code(input))
             }),
-            _ => Ok(Op::Exit(input)),
+            _ => Ok(Op::Raw(input)),
         }
     }
 
@@ -449,7 +464,7 @@ impl Op {
             Op::FL(op, rd, rs1, imm) => format!("{op} {rd}, {imm}({rs1})"),
             Op::FX(op, rd, rs1, _) => format!("{op} {rd}, {rs1}"),
 
-            Op::Exit(_) => String::new(),
+            Op::Raw(input) => format!(".word 0x{input:08x}"),
         }
     }
 
@@ -458,6 +473,8 @@ impl Op {
             Op::B(_, _, _, label) => label,
             Op::J(_, _, label) => label,
             Op::JR(_, _, _, label) => label,
+            Op::FL(_, _, _, label) => label,
+            Op::I(_, _, _, label) => label,
             _ => return Ok(()),
         };
 
