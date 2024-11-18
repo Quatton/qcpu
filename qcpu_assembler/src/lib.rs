@@ -20,6 +20,22 @@ pub fn assemble(input: &str) -> Result<(Vec<Op>, ParsingContext), ParseError> {
     Ok((ops, ctx))
 }
 
+pub fn disassemble(input: Vec<u32>) -> Result<Vec<Op>, ParseErrorContext> {
+    let mut ops = Vec::new();
+    let ctx = ParsingContext::default();
+
+    for mc in input {
+        match Op::from_machine_code(mc, &ctx) {
+            Ok(op) => {
+                ops.push(op);
+            }
+            Err(_) => ops.push(Op::Raw(mc)),
+        }
+    }
+
+    Ok(ops)
+}
+
 pub fn normalize(input: &str) -> String {
     // clean up
     format!("{}\n", input.trim().replace(",", " ").to_ascii_lowercase())
@@ -88,27 +104,20 @@ pub fn to_assembly(input: Vec<Op>) -> String {
     }
     result
 }
-
 pub fn from_machine_code(
     input: Vec<u32>,
     ctx: &mut ParsingContext,
 ) -> Result<Vec<Op>, ParseErrorContext> {
     let mut ops = Vec::new();
 
-    for (i, mc) in input.into_iter().enumerate() {
+    for mc in input {
         match Op::from_machine_code(mc, ctx) {
             Ok(op) => {
                 ops.push(op);
             }
-            Err(err) => match ctx.label_map.get_label(i) {
-                Some(_) => ops.push(Op::Raw(mc)),
-                _ => {
-                    return Err(ParseErrorContext {
-                        error: err,
-                        line: i + 1,
-                    });
-                }
-            },
+            Err(_) => {
+                ops.push(Op::Raw(mc));
+            }
         }
     }
 
