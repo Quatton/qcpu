@@ -82,5 +82,9 @@ pub enum OpType {
 
 pub struct Op {
     optype: OpType,
-    
+    rd: usize,
+    funct3: usize,
+    rs1: usize,
+    rs2: usize,
+    funct7: usize,
 }

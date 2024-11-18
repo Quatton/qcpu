@@ -473,7 +473,7 @@ impl Op {
             Op::B(_, _, _, label) => (label, false),
             Op::J(_, _, label) => (label, false),
             Op::JR(_, _, _, label) => (label, false),
-            Op::FL(_, _, _, label) => (label, false),
+            Op::FL(_, _, _, label) => (label, true),
             Op::I(_, _, _, label) => (label, true),
             _ => return Ok(()),
         };
