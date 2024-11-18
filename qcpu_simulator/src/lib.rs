@@ -234,11 +234,18 @@ impl Simulator {
     }
 
     pub fn memory_access(&self, prev: &Snapshot, next: &mut Snapshot) {
-        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = next.memory_access_result.wb {
-            if rd == IntReg::Zero {
-                return;
+        if let Some(thing) = next.memory_access_result.wb {
+            match thing {
+                RegisterWriteBackRequest::WriteInt(value, rd) => {
+                    if rd == IntReg::Zero {
+                        return;
+                    }
+                    next.ireg[rd as usize] = value;
+                }
+                RegisterWriteBackRequest::WriteFloat(value, rd) => {
+                    next.freg[rd as usize] = value;
+                }
             }
-            next.ireg[rd as usize] = value;
         }
 
         if next.memory_access_result.req.is_none() {
