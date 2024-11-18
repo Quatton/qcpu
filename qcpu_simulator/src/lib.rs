@@ -3,6 +3,11 @@ pub mod reg;
 mod result;
 pub mod snapshot;
 
+use std::{
+    collections::VecDeque,
+    io::{stdin, Read as _},
+};
+
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
     IntReg, Reg,
@@ -17,6 +22,8 @@ pub struct SimulationContext {
     pub history: Snapshots,
     pub memory: Vec<u8>,
     pub program: Vec<u32>,
+    pub in_buffer: VecDeque<u8>,
+    pub out_buffer: VecDeque<u8>,
 }
 
 impl SimulationContext {
@@ -52,6 +59,7 @@ pub struct SimulationConfig {
     pub parsing_context: ParsingContext,
     pub low_memory: usize,
     pub output: Option<String>,
+    pub input: Option<String>,
 }
 
 impl SimulationConfig {
@@ -63,6 +71,7 @@ impl SimulationConfig {
             parsing_context: ParsingContext::default(),
             low_memory: 32,
             output: None,
+            input: None,
         }
     }
 
@@ -189,18 +198,28 @@ impl Simulator {
 
     pub fn run_unit(&mut self) -> Result<Option<usize>, &str> {
         let mut next = self.ctx.history.new_snapshot();
-        let prev = self.ctx.history.last().unwrap();
+        let prev = self.ctx.history.last().unwrap().clone();
 
-        self.write_back(prev, &mut next);
+        if prev.io_block {
+            if self.config.input.is_some() {
+                return Err("Reached EOF");
+            } else {
+                let mut bfr = [0];
+                stdin().read_exact(&mut bfr).unwrap();
+                self.ctx.in_buffer.push_back(bfr[0]);
+            }
+        }
 
-        self.memory_access(prev, &mut next);
+        self.write_back(&prev, &mut next);
 
-        self.instruction_fetch(prev, &mut next);
+        self.memory_access(&prev, &mut next);
+
+        self.instruction_fetch(&prev, &mut next);
         let mut next_pc = Some(next.next_pc);
 
         if !next.bubble {
-            self.instruction_decode(prev, &mut next);
-            next_pc = self.execute(prev, &mut next);
+            self.instruction_decode(&prev, &mut next);
+            next_pc = self.execute(&prev, &mut next);
 
             if prev.execute_result.stall {
                 next.next_pc = next.execute_result.predicted_pc;

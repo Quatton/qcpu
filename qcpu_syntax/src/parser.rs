@@ -449,7 +449,7 @@ impl Op {
             0b0000111 => FLOp::from_machine_code(input),
             0b0100111 => FSOp::from_machine_code(input),
             0b0110111 | 0b0010111 => UOp::from_machine_code(input),
-            0b0001010 => OOp::from_machine_code(input),
+            0b0001010 | 0b0001001 => OOp::from_machine_code(input),
             0b1010011 => FROp::from_machine_code(input).or_else(|_| {
                 FCOp::from_machine_code(input).or_else(|_| FXOp::from_machine_code(input))
             }),

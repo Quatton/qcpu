@@ -60,8 +60,8 @@ enum Commands {
         verbose: bool,
 
         /// Interactive mode (overrides verbose mode)
-        #[arg(short, long, default_value = "false")]
-        interactive: bool,
+        #[arg(long, default_value = "false")]
+        it: bool,
 
         /// Low-memory mode. You can't go back too far in the program.
         #[arg(short, long, default_value = "32")]
@@ -75,6 +75,9 @@ enum Commands {
 
         #[arg(short, long)]
         output: Option<String>,
+
+        #[arg(short, long)]
+        input: Option<String>,
     },
 }
 
@@ -87,11 +90,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             bin,
             source,
             verbose,
-            interactive,
+            it,
             memory_size,
             entry_point,
             low_memory,
             output,
+            input,
         } => {
             let mut ctx = ParsingContext::default().with_main_label(entry_point);
             let ops: Vec<Op> = if let Some(source) = source {
@@ -118,12 +122,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let cfg = qcpu_simulator::SimulationConfig {
-                verbose: if interactive { false } else { verbose },
-                interactive,
+                verbose: if it { false } else { verbose },
+                interactive: it,
                 memory_size,
                 parsing_context: ctx,
                 low_memory,
                 output,
+                input,
             };
 
             let mut sim = qcpu_simulator::Simulator::new()
@@ -131,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .load_program(code);
 
             sim.init();
-            if interactive {
+            if it {
                 let mut app = App::new().load_simulator(sim);
                 let tui = qcpu_tui::Tui::new()?.tick_rate(1000000.0).frame_rate(30.0);
 

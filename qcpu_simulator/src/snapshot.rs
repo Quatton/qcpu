@@ -17,6 +17,7 @@ pub struct Snapshot {
 
     // for pipelining
     pub bubble: bool,
+    pub io_block: bool,
 
     pub fetch_result: Fetch,
     pub decode_result: Decode,

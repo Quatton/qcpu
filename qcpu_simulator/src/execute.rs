@@ -1,6 +1,3 @@
-use std::fs::OpenOptions;
-use std::io::Write as _;
-
 use qcpu_syntax::{parser::Op, BOp, FROp, IOp, ISOp, ROp};
 use qcpu_syntax::{FCOp, FloatReg, IntReg, OOp, Reg, STOp, UOp};
 
@@ -17,7 +14,7 @@ impl Simulator {
         }
     }
 
-    pub fn execute(&self, prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
+    pub fn execute(&mut self, _prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
         if next.execute_result.intr.is_none() || next.execute_result.stall {
             return Some(next.execute_result.predicted_pc);
         }
@@ -411,35 +408,35 @@ impl Simulator {
                     }
                 }
             }
-            Op::O(op, rd) => {
-                let out = &self.config.output;
+            Op::O(op, rd) => match op {
+                OOp::OUTB => {
+                    let out = &mut self.ctx.out_buffer;
 
-                if next.ireg_delay[rd] > 0 {
-                    next.execute_result.stall = true;
-                    return Some(next.execute_result.predicted_pc);
-                }
-
-                let outval = match op {
-                    OOp::OUTB => next.ireg[rd],
-                };
-
-                match out {
-                    Some(path) => {
-                        let file = OpenOptions::new()
-                            .create(true)
-                            .append(true)
-                            .open(path)
-                            .unwrap();
-
-                        let mut file = std::io::BufWriter::new(file);
-
-                        file.write_all(&[outval as u8]).unwrap();
+                    if next.ireg_delay[rd] > 0 {
+                        next.execute_result.stall = true;
+                        return Some(next.execute_result.predicted_pc);
                     }
-                    None => {
-                        print!("{}", outval as u8 as char);
-                    }
+
+                    let outval = next.ireg[rd];
+
+                    out.push_back((outval & 0xff) as u8);
                 }
-            }
+                OOp::INB => {
+                    let input = &mut self.ctx.in_buffer;
+
+                    if input.is_empty() {
+                        next.io_block = true;
+                        return Some(next.execute_result.predicted_pc);
+                    }
+
+                    let inval = input.pop_front().unwrap();
+
+                    next.ireg_delay[rd] = self.get_instruction_latency(&oop);
+                    next.execute_result.register_write_back_request = Some(
+                        RegisterWriteBackRequest::WriteInt(inval as i32, IntReg::from_repr(rd)?),
+                    );
+                }
+            },
             Op::Raw(_) => return None,
         };
         Some(next.execute_result.predicted_pc)
