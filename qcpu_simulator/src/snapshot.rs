@@ -75,13 +75,16 @@ impl Snapshots {
             .for_each(|d| *d = d.saturating_sub(1));
 
         snapshot.decode_result = if last.decode_result.stall {
-            last.decode_result.clone()
+            let mut c = last.decode_result.clone();
+            c.stall = false;
+            c
         } else {
             Decode::from_fetch(last.fetch_result)
         };
 
         snapshot.fetch_result = if last.fetch_result.stall {
-            last.fetch_result
+            let c = last.fetch_result;
+            Fetch { stall: false, ..c }
         } else {
             Fetch {
                 base_pc: last.next_pc,
