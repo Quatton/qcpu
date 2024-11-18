@@ -18,7 +18,7 @@ use nom::{
 use crate::error::ParseError;
 use crate::reg::IntReg;
 use crate::{
-    BOp, FCOp, FLOp, FROp, FSOp, FXOp, FloatReg, IOp, ISOp, JOp, JROp, LOp, ROp, RoundingMode,
+    BOp, FCOp, FLOp, FROp, FSOp, FXOp, FloatReg, IOp, ISOp, JOp, JROp, LOp, OOp, ROp, RoundingMode,
     STOp, UOp,
 };
 
@@ -205,6 +205,7 @@ pub enum Op {
     J(JOp, IntReg, JumpTarget),
     JR(JROp, IntReg, IntReg, JumpTarget),
     U(UOp, IntReg, JumpTarget),
+    O(OOp, usize),
 
     FS(FSOp, FloatReg, IntReg, i32),
     FL(FLOp, FloatReg, IntReg, JumpTarget),
@@ -326,6 +327,13 @@ impl Op {
                 )),
                 |(op, rd, imm, rs1)| Op::L(op, rd, rs1, imm),
             ),
+            map(
+                tuple((
+                    delimited(multispace0, OOp::parse, multispace1),
+                    delimited(multispace0, parse_both, multispace0),
+                )),
+                |(op, rd)| Op::O(op, rd),
+            ),
             // frop
             map(
                 tuple((
@@ -413,6 +421,7 @@ impl Op {
                 let imm = label.offset_or_lookup(ctx).unwrap(); // then just panic idc
                 op.to_machine_code(*rd, imm)
             }
+            Op::O(op, rd) => op.to_machine_code(*rd),
             Op::U(op, rd, imm) => op.to_machine_code(*rd, imm.offset().unwrap()),
             Op::FR(op, rd, rs1, rs2, rm) => op.to_machine_code(*rd, *rs1, *rs2, *rm),
             Op::FC(op, rd, rs1, rs2) => op.to_machine_code(*rd, *rs1, *rs2),
@@ -422,6 +431,7 @@ impl Op {
                 op.to_machine_code(*rd, *rs1, imm)
             }
             Op::FX(op, rd, rs1, rm) => op.to_machine_code(*rd, *rs1, *rm),
+
             Op::Raw(mc) => *mc,
         }
     }
@@ -439,6 +449,7 @@ impl Op {
             0b0000111 => FLOp::from_machine_code(input),
             0b0100111 => FSOp::from_machine_code(input),
             0b0110111 | 0b0010111 => UOp::from_machine_code(input),
+            0b0001010 => OOp::from_machine_code(input),
             0b1010011 => FROp::from_machine_code(input).or_else(|_| {
                 FCOp::from_machine_code(input).or_else(|_| FXOp::from_machine_code(input))
             }),
@@ -457,6 +468,7 @@ impl Op {
             Op::J(op, rd, imm) => format!("{op} {rd}, {imm}"),
             Op::JR(op, rd, rs1, imm) => format!("{op} {rd}, {rs1}, {imm}"),
             Op::U(op, rd, imm) => format!("{op} {rd}, {imm}"),
+            Op::O(op, rd) => format!("{op} {rd}"),
 
             Op::FR(op, rd, rs1, rs2, _) => format!("{} {}, {}, {}", op, rd, rs1, rs2),
             Op::FC(op, rd, rs1, rs2) => format!("{} {}, {}, {}", op, rd, rs1, rs2),

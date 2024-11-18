@@ -1,4 +1,9 @@
+use crate::{Register, RoundingMode};
+
+#[derive(Default, Debug, PartialEq)]
+
 pub enum ROp {
+    #[default]
     Add,
     Sub,
     Sll,
@@ -10,8 +15,10 @@ pub enum ROp {
     Or,
     And,
 }
+#[derive(Default, Debug, PartialEq)]
 
 pub enum IOp {
+    #[default]
     Addi,
     Slti,
     Sltiu,
@@ -23,23 +30,29 @@ pub enum IOp {
 
     Jalr,
 }
+#[derive(Default, Debug, PartialEq)]
 
 pub enum SOp {
+    #[default]
     Slli,
     Srli,
     Srai,
 }
+#[derive(Default, Debug, PartialEq)]
 
 pub enum UOp {
+    #[default]
     Lui,
     Auipc,
 }
-
+#[derive(Default, Debug, PartialEq)]
 pub enum JOp {
+    #[default]
     Jal,
 }
-
+#[derive(Default, Debug, PartialEq)]
 pub enum BOp {
+    #[default]
     Beq,
     Bne,
     Blt,
@@ -47,8 +60,10 @@ pub enum BOp {
     Bltu,
     Bgeu,
 }
+#[derive(Default, Debug, PartialEq)]
 
 pub enum FOp {
+    #[default]
     Fadd,
     Fsub,
     Fmul,
@@ -64,10 +79,14 @@ pub enum FOp {
     Fcvtsw,
 }
 
+#[derive(Default, Debug, PartialEq)]
 pub enum OOp {
+    #[default]
     Inw,
     Outb,
 }
+
+#[derive(Debug, PartialEq)]
 
 pub enum OpType {
     R(ROp),
@@ -80,11 +99,9 @@ pub enum OpType {
     O(OOp),
 }
 
-pub struct Op {
+#[derive(Debug, PartialEq)]
+pub struct OpInfo {
     optype: OpType,
-    rd: usize,
-    funct3: usize,
-    rs1: usize,
-    rs2: usize,
-    funct7: usize,
+    funct3: Option<usize>,
+    funct7: Option<usize>,
 }

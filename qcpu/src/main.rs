@@ -72,6 +72,9 @@ enum Commands {
 
         #[arg(short, long, default_value = "_min_caml_start")]
         entry_point: String,
+
+        #[arg(short, long)]
+        output: Option<String>,
     },
 }
 
@@ -88,6 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             memory_size,
             entry_point,
             low_memory,
+            output,
         } => {
             let mut ctx = ParsingContext::default().with_main_label(entry_point);
             let ops: Vec<Op> = if let Some(source) = source {
@@ -109,12 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let code = ops.into_iter().map(|op| op.to_machine_code(&ctx)).collect();
 
+            if let Some(ref file) = output {
+                std::fs::File::create(file).unwrap();
+            };
+
             let cfg = qcpu_simulator::SimulationConfig {
                 verbose: if interactive { false } else { verbose },
                 interactive,
                 memory_size,
                 parsing_context: ctx,
                 low_memory,
+                output,
             };
 
             let mut sim = qcpu_simulator::Simulator::new()

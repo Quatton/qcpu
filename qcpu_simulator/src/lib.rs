@@ -51,6 +51,7 @@ pub struct SimulationConfig {
     pub memory_size: usize,
     pub parsing_context: ParsingContext,
     pub low_memory: usize,
+    pub output: Option<String>,
 }
 
 impl SimulationConfig {
@@ -61,6 +62,7 @@ impl SimulationConfig {
             memory_size: 4096,
             parsing_context: ParsingContext::default(),
             low_memory: 32,
+            output: None,
         }
     }
 
@@ -180,6 +182,7 @@ impl Simulator {
             i += 1;
         }
 
+        println!();
         println!("======finished in {} cycles======", i);
         Ok(())
     }
