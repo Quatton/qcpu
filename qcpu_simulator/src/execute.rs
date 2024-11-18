@@ -17,7 +17,7 @@ impl Simulator {
         }
     }
 
-    pub fn execute(&self, _prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
+    pub fn execute(&self, prev: &Snapshot, next: &mut Snapshot) -> Option<usize> {
         if next.execute_result.intr.is_none() || next.execute_result.stall {
             return Some(next.execute_result.predicted_pc);
         }

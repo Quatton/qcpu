@@ -74,23 +74,21 @@ impl Snapshots {
             .iter_mut()
             .for_each(|d| *d = d.saturating_sub(1));
 
-        snapshot.decode_result = Decode::from_fetch(
-            self.iter()
-                .rev()
-                .find_map(|s| {
-                    if s.fetch_result.stall {
-                        None
-                    } else {
-                        Some(s.fetch_result)
-                    }
-                })
-                .unwrap_or_default(),
-        );
-
-        snapshot.fetch_result = Fetch {
-            base_pc: last.next_pc,
-            ..Default::default()
+        snapshot.decode_result = if last.decode_result.stall {
+            last.decode_result.clone()
+        } else {
+            Decode::from_fetch(last.fetch_result)
         };
+
+        snapshot.fetch_result = if last.fetch_result.stall {
+            last.fetch_result
+        } else {
+            Fetch {
+                base_pc: last.next_pc,
+                ..Default::default()
+            }
+        };
+
         snapshot.memory_access_result = MemoryAccess {
             wb: last.execute_result.register_write_back_request,
             req: last.execute_result.memory_access_request.clone(),
