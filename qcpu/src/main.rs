@@ -63,6 +63,10 @@ enum Commands {
         #[arg(short, long, default_value = "false")]
         interactive: bool,
 
+        /// Low-memory mode. You can't go back too far in the program.
+        #[arg(short, long, default_value = "32")]
+        low_memory: usize,
+
         #[arg(short, long, default_value = "1048576")]
         memory_size: usize,
 
@@ -83,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             interactive,
             memory_size,
             entry_point,
+            low_memory,
         } => {
             let mut ctx = ParsingContext::default().with_main_label(entry_point);
             let ops: Vec<Op> = if let Some(source) = source {
@@ -109,6 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 interactive,
                 memory_size,
                 parsing_context: ctx,
+                low_memory,
             };
 
             let mut sim = qcpu_simulator::Simulator::new()
@@ -118,9 +124,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             sim.init();
             if interactive {
                 let mut app = App::new().load_simulator(sim);
-                let tui = qcpu_tui::Tui::new()?
-                    .tick_rate(100000.0) // 4 ticks per second
-                    .frame_rate(30.0); // 30 frames per second
+                let tui = qcpu_tui::Tui::new()?.tick_rate(1000000.0).frame_rate(30.0);
+
                 app.run(tui).await?;
             } else {
                 sim.run().unwrap();

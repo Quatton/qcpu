@@ -1,3 +1,11 @@
+## [1.0.0] - 2024-11-06
+- Pipeline processor
+- Some FPU
+
+## [0.5.0] - 2024-10-29
+- Load/Store
+- TUI with breakpoints 😆
+
 ## [0.4.0] - 2024-10-22
 - Branch
 ```rs

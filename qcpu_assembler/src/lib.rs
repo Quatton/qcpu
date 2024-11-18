@@ -7,9 +7,18 @@ use nom::{
     sequence::delimited,
 };
 use qcpu_syntax::{
-    error::ParseError,
+    error::{ParseError, ParseErrorContext},
     parser::{Node, Op, ParsingContext},
 };
+
+pub fn assemble(input: &str) -> Result<(Vec<Op>, ParsingContext), ParseError> {
+    let mut ctx = ParsingContext::new();
+    let input = normalize(input);
+
+    let ops = parse_tree(input.as_str(), &mut ctx)?;
+
+    Ok((ops, ctx))
+}
 
 pub fn normalize(input: &str) -> String {
     // clean up
@@ -25,9 +34,9 @@ pub fn overnormalize_for_test(input: String) -> String {
 }
 
 pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
-    let input = normalize(input);
+    let input = &normalize(input);
     let comment = opt(delimited(multispace0, char('!'), not_line_ending));
-    let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input.as_str())?;
+    let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input)?;
     if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {
             input: input.to_string(),
@@ -80,12 +89,27 @@ pub fn to_assembly(input: Vec<Op>) -> String {
     result
 }
 
-pub fn from_machine_code(input: Vec<u32>, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
+pub fn from_machine_code(
+    input: Vec<u32>,
+    ctx: &mut ParsingContext,
+) -> Result<Vec<Op>, ParseErrorContext> {
     let mut ops = Vec::new();
 
-    for mc in input {
-        let op = Op::from_machine_code(mc, ctx)?;
-        ops.push(op);
+    for (i, mc) in input.into_iter().enumerate() {
+        match Op::from_machine_code(mc, ctx) {
+            Ok(op) => {
+                ops.push(op);
+            }
+            Err(err) => match ctx.label_map.get_label(i) {
+                Some(_) => ops.push(Op::Raw(mc)),
+                _ => {
+                    return Err(ParseErrorContext {
+                        error: err,
+                        line: i + 1,
+                    });
+                }
+            },
+        }
     }
 
     Ok(ops)
@@ -310,6 +334,114 @@ main:
         // for i in mc.iter() {
         //     println!("{:032b}", i);
         // }
+
+        let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
+
+        for (op, dis) in ops.into_iter().zip(dis_ops) {
+            assert_eq!(op, dis)
+        }
+    }
+
+    #[test]
+    fn floats() {
+        let code = "
+        addi    sp, sp, -32
+        sw      ra, 28(sp)
+        sw      s0, 24(sp)
+        addi    s0, sp, 32
+        lui     a0, 255181
+        addi    a0, a0, -819
+        sw      a0, -12(s0)
+        lui     a0, 253133
+        addi    a0, a0, -819
+        sw      a0, -16(s0)
+        flw     fa5, -12(s0)
+        flw     fa4, -16(s0)
+        fadd    fa5, fa5, fa4
+        fsw     fa5, -20(s0)
+        addi    a0, a0, 0
+        lw      ra, 28(sp)
+        lw      s0, 24(sp)
+        addi    sp, sp, 32
+        jalr    zero, ra, 0
+";
+
+        let (ops, mut ctx) = assemble(code).unwrap();
+
+        let mc = to_machine_code(&ops, &ctx).unwrap();
+        let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
+
+        for (op, dis) in ops.into_iter().zip(dis_ops) {
+            assert_eq!(op, dis)
+        }
+    }
+
+    #[test]
+    fn test_float() {
+        let code = "
+_min_caml_start:
+	addi	ra, zero, _min_caml_finish
+	sw  	ra, 0(sp)
+	addi	sp, sp, 4
+	addi 	a0, zero, l.12 !4
+	addi	t0, a0, 0 !4
+	flw  	fa0, 0(t0) !4
+	addi 	a0, zero, l.14 !4 <1
+	addi	t0, a0, 0 !4
+	flw  	fa1, 0(t0) !4
+	jal 	ra, float_add.5 !4
+	fcvt.w.s a0, fa0
+	jal 	ra, print_int !4
+	addi	sp, sp, -4
+	lw  	ra, 0(sp)
+	jalr	zero, ra, 0
+        float_add.5:
+	sw  	ra, 0(sp)
+	fadd	fa0, fa0, fa1 !2
+	lw  	ra, 0(sp)
+	jalr	zero, ra, 0
+        l.14:	! 2.433000
+	.word	0x401bb646
+        l.12:	! 2.564000
+	.word	0x40241893
+        print_int:
+	addi	a1, a0, 0
+	addi	a2, zero, 1
+	addi	a3, zero, 10
+        print_int_calc_digits:
+	blt 	a1, a3, print_int_body
+            addi    a4, a1, 0
+            addi    a1, zero, 0
+        print_int_calc_digits_div:
+            addi    a4, a4, -10
+            addi    a1, a1, 1
+            bge     a4, a3, print_int_calc_digits_div
+	addi	a2, a2, 1
+	jal  	zero, print_int_calc_digits
+        print_int_body:
+	addi	a1, a0, 0
+            add     fp, fp, a2
+            addi    a5, fp, 0
+        print_int_body_loop:
+	bge 	zero, a2, print_int_finish
+            addi    a4, a1, 0
+            addi    a1, zero, 0
+        print_int_body_div:
+            sub     a4, a4, a3
+            addi    a1, a1, 1
+            bge     a4, a3, print_int_body_div
+            addi    a5, a5, -1
+            sb      a4, 0(a5)
+	addi	a2, a2, -1
+	jal  	zero, print_int_body_loop
+        print_int_finish:
+	jalr	zero, ra, 0
+        _min_caml_finish:
+";
+
+        let (ops, mut ctx) = assemble(code).unwrap();
+
+        let mc = to_machine_code(&ops, &ctx).unwrap();
 
         let dis_ops = from_machine_code(mc, &mut ctx).unwrap();
 

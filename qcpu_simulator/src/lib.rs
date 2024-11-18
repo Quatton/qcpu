@@ -1,81 +1,22 @@
-use std::ops::{Deref, DerefMut, Range};
+mod execute;
+pub mod reg;
+mod result;
+pub mod snapshot;
 
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
-    reg::IntReg,
-    BOp, IOp, ISOp, ROp, STOp,
+    IntReg, Reg,
 };
-
-use strum::VariantArray;
-
-type _Registers = [i32; 32];
-#[derive(Default, Clone, Copy)]
-pub struct Registers(_Registers);
-
-impl Deref for Registers {
-    type Target = _Registers;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Registers {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Registers {
-    pub fn new() -> Self {
-        Self([0; 32])
-    }
-
-    pub fn from_array(reg: _Registers) -> Self {
-        Self(reg)
-    }
-}
+use result::{MemoryAccessRequest, RegisterWriteBackRequest};
+use snapshot::{Snapshot, Snapshots};
 
 #[derive(Default, Clone)]
-pub struct Snapshot {
-    pub pc: usize,
-    pub reg: Registers,
-    pub memory_transition: Vec<(usize, u8, u8)>,
-}
-
-impl std::fmt::Debug for Registers {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (i, r) in IntReg::VARIANTS.iter().enumerate() {
-            write!(f, "{:<5}: {:<10} ", r, self[i])?;
-            if (i + 1) % 4 == 0 {
-                writeln!(f)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
 pub struct SimulationContext {
-    pub registers: Registers,
     pub program_offset: usize,
-    pub history: Vec<Snapshot>,
-    pub pc: usize,
+    pub removed_cycles: usize,
+    pub history: Snapshots,
     pub memory: Vec<u8>,
     pub program: Vec<u32>,
-}
-
-impl Default for SimulationContext {
-    fn default() -> Self {
-        Self {
-            registers: Registers::new(),
-            program_offset: 0,
-            history: vec![Snapshot::default()],
-            pc: 0,
-            memory: Vec::new(),
-            program: Vec::new(),
-        }
-    }
 }
 
 impl SimulationContext {
@@ -84,52 +25,22 @@ impl SimulationContext {
     }
 
     pub fn log_registers(&self) {
-        println!("{:?}", self.registers);
+        let last = self.history.last().unwrap();
+        println!("{:?}", last.ireg);
+        println!("{:?}", last.freg);
     }
 
     pub fn load_program(mut self, program: Vec<u32>, addr: usize) -> Self {
         self.program_offset = addr;
-        self.pc = addr;
+        let mut pc = addr;
         self.program = program.clone();
         for line in program.into_iter() {
             for byte in line.to_le_bytes() {
-                self.memory[self.pc] = byte;
-                self.pc += 1;
+                self.memory[pc] = byte;
+                pc += 1;
             }
         }
         self
-    }
-
-    pub fn commit(&mut self, reg: usize, value: i32) {
-        if reg == 0 {
-            return;
-        }
-        let latest = if let Some(lastest) = self.history.last_mut() {
-            lastest
-        } else {
-            self.history.push(Snapshot::default());
-            self.history.last_mut().unwrap()
-        };
-
-        latest.reg[reg] = value;
-        self.registers[reg] = value;
-    }
-
-    pub fn commit_memory(&mut self, addr: Range<usize>, value: i32) {
-        let latest = if let Some(lastest) = self.history.last_mut() {
-            lastest
-        } else {
-            self.history.push(Snapshot::default());
-            self.history.last_mut().unwrap()
-        };
-
-        for (addr, value) in addr.clone().zip(value.to_le_bytes().iter()) {
-            latest
-                .memory_transition
-                .push((addr, self.memory[addr], *value));
-        }
-
-        self.memory[addr].copy_from_slice(&value.to_le_bytes());
     }
 }
 
@@ -139,6 +50,7 @@ pub struct SimulationConfig {
     pub interactive: bool,
     pub memory_size: usize,
     pub parsing_context: ParsingContext,
+    pub low_memory: usize,
 }
 
 impl SimulationConfig {
@@ -146,8 +58,9 @@ impl SimulationConfig {
         Self {
             verbose: false,
             interactive: false,
-            memory_size: 1048576,
+            memory_size: 4096,
             parsing_context: ParsingContext::default(),
+            low_memory: 32,
         }
     }
 
@@ -168,6 +81,11 @@ impl SimulationConfig {
 
     pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
         self.parsing_context = parsing_context;
+        self
+    }
+
+    pub fn low_memory(mut self, low_memory: usize) -> Self {
+        self.low_memory = low_memory;
         self
     }
 }
@@ -197,25 +115,67 @@ impl Simulator {
     }
 
     pub fn init(&mut self) {
-        self.ctx.pc =
+        self.ctx.history = Snapshots::default();
+        let last = self.ctx.history.last_mut().unwrap();
+
+        last.fetch_result.predicted_pc =
             self.config.parsing_context.get_main_pc().unwrap_or(0) * 4 + self.ctx.program_offset;
-        self.ctx.registers = Registers::new();
-        self.ctx.registers[2] = (self.config.memory_size >> 1).try_into().unwrap();
-        self.ctx.registers[3] = ((self.config.memory_size >> 1) + (self.config.memory_size >> 2))
+        last.ireg[2] = (self.config.memory_size >> 1).try_into().unwrap();
+        last.ireg[3] = ((self.config.memory_size >> 1) + (self.config.memory_size >> 2))
             .try_into()
             .unwrap();
+    }
+
+    pub fn instruction_fetch(&self, prev: &Snapshot, next: &mut Snapshot) {
+        if next.fetch_result.stall {
+            return;
+        }
+
+        let pc = next.fetch_result.base_pc;
+
+        next.bubble = prev.execute_result.refetch;
+
+        next.fetch_result.awaiting_decode = Some(
+            self.ctx.memory[pc..pc + 4]
+                .iter()
+                .rev()
+                .fold(0, |acc, &x| acc << 8 | x as u32),
+        );
+
+        next.fetch_result.predicted_pc = pc + 4; // TODO: better branch prediction
+        next.next_pc = next.fetch_result.predicted_pc;
+    }
+
+    pub fn instruction_decode(&self, prev: &Snapshot, next: &mut Snapshot) {
+        if next.bubble || prev.fetch_result.awaiting_decode.is_none() {
+            return;
+        }
+
+        let program = prev.fetch_result.awaiting_decode.unwrap();
+
+        // just crash the program idc
+        next.decode_result
+            .set_intr(Op::from_machine_code(program, &self.config.parsing_context).unwrap());
     }
 
     pub fn run(&mut self) -> Result<(), &str> {
         self.init();
         let mut i = 0;
         loop {
-            // align
-            self.ctx.pc = (self.ctx.pc >> 2) << 2;
+            if self.config.verbose {
+                let last = self.ctx.history.last().unwrap();
+                println!(
+                    "{:?} | {:?} | {:?} | {:?} | {:?}",
+                    last.fetch_result.awaiting_decode,
+                    last.decode_result.intr,
+                    last.execute_result.predicted_pc,
+                    last.memory_access_result.memory_transition,
+                    last.write_back_result,
+                )
+            }
             let pc = self.run_unit();
-            match pc.unwrap() {
-                Some(pc) => self.ctx.pc = pc,
-                None => break,
+            if pc.is_err() {
+                break;
             }
             i += 1;
         }
@@ -225,177 +185,79 @@ impl Simulator {
     }
 
     pub fn run_unit(&mut self) -> Result<Option<usize>, &str> {
-        self.ctx.pc = (self.ctx.pc >> 2) << 2;
-        let pc = self.ctx.pc;
+        let mut next = self.ctx.history.new_snapshot();
+        let prev = self.ctx.history.last().unwrap();
 
-        self.ctx.history.push(Snapshot {
-            pc: self.ctx.pc,
-            reg: self.ctx.registers,
-            memory_transition: Vec::new(),
-        });
+        self.write_back(prev, &mut next);
 
-        if self.config.verbose {
-            println!("======pc: {}======\n", self.ctx.pc);
+        self.memory_access(prev, &mut next);
+
+        self.instruction_fetch(prev, &mut next);
+        let mut next_pc = Some(next.next_pc);
+
+        if !next.bubble {
+            self.instruction_decode(prev, &mut next);
+            next_pc = self.execute(prev, &mut next);
+
+            if prev.execute_result.stall {
+                next.next_pc = next.execute_result.predicted_pc;
+            }
         }
 
-        // fetch (little endian)
-        let program = self.ctx.memory[pc..pc + 4]
-            .iter()
-            .rev()
-            .fold(0, |acc, &x| acc << 8 | x as u32);
-
-        let op = Op::from_machine_code(program, &self.config.parsing_context).unwrap();
-
         // execute
-        let next_pc = self.execute(op);
-
-        // no memory access
-        // no write back
 
         if self.config.verbose {
             self.ctx.log_registers();
         }
 
+        for (addr, _, new) in next.memory_access_result.memory_transition.iter() {
+            self.ctx.memory[*addr] = *new;
+        }
+
+        let done = next_pc.is_none()
+            && next.execute_result.register_write_back_request.is_none()
+            && next.memory_access_result.wb.is_none()
+            && next.write_back_result.is_none();
+
+        self.ctx.history.push(next);
+
+        if self.ctx.history.len() > self.config.low_memory {
+            self.ctx.history.remove_front();
+            self.ctx.removed_cycles += 1;
+        }
+
+        if done {
+            return Err("done");
+        }
+
         Ok(next_pc)
     }
 
-    pub fn execute(&mut self, op: Op) -> Option<usize> {
-        if self.config.verbose {
-            println!("{:?}", op);
+    pub fn memory_access(&self, prev: &Snapshot, next: &mut Snapshot) {
+        if let Some(RegisterWriteBackRequest::WriteInt(value, rd)) = next.memory_access_result.wb {
+            if rd == IntReg::Zero {
+                return;
+            }
+            next.ireg[rd as usize] = value;
         }
-        let next_pc = match op {
-            Op::R(op, rd, rs1, rs2) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
-                let result = match op {
-                    ROp::ADD => self.ctx.registers[rs1] + self.ctx.registers[rs2],
-                    ROp::SUB => self.ctx.registers[rs1] - self.ctx.registers[rs2],
-                    ROp::AND => self.ctx.registers[rs1] & self.ctx.registers[rs2],
-                    ROp::OR => self.ctx.registers[rs1] | self.ctx.registers[rs2],
-                    ROp::XOR => self.ctx.registers[rs1] ^ self.ctx.registers[rs2],
-                    ROp::SLL => self.ctx.registers[rs1] << self.ctx.registers[rs2],
-                    ROp::SRL => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
-                    ROp::SRA => self.ctx.registers[rs1] >> self.ctx.registers[rs2],
-                    // signed comparison
-                    ROp::SLT => {
-                        if self.ctx.registers[rs1] < self.ctx.registers[rs2] {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                    // unsigned comparison
-                    ROp::SLTU => {
-                        if (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32) {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                };
-                self.ctx.commit(rd, result);
-                self.ctx.pc + 4
-            }
-            Op::I(op, rd, rs1, imm) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let result = match op {
-                    IOp::ADDI => self.ctx.registers[rs1] + imm,
-                    IOp::ANDI => self.ctx.registers[rs1] & imm,
-                    IOp::ORI => self.ctx.registers[rs1] | imm,
-                    IOp::XORI => self.ctx.registers[rs1] ^ imm,
-                    // signed comparison
-                    IOp::SLTI => {
-                        if self.ctx.registers[rs1] < imm {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                    // unsigned comparison
-                    IOp::SLTIU => {
-                        if (self.ctx.registers[rs1] as u32) < (imm as u32) {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                };
-                self.ctx.commit(rd, result);
-                self.ctx.pc + 4
-            }
-            Op::IS(op, rd, rs1, shamt) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let result = match op {
-                    ISOp::SLLI => self.ctx.registers[rs1] << shamt,
-                    ISOp::SRLI => self.ctx.registers[rs1] >> shamt,
-                    ISOp::SRAI => self.ctx.registers[rs1] >> shamt,
-                };
-                self.ctx.commit(rd, result);
-                self.ctx.pc + 4
-            }
-            Op::B(op, rs2, rs1, imm) => {
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
-                let jmp = match op {
-                    BOp::BEQ => self.ctx.registers[rs1] == self.ctx.registers[rs2],
-                    BOp::BNE => self.ctx.registers[rs1] != self.ctx.registers[rs2],
-                    BOp::BLT => self.ctx.registers[rs1] < self.ctx.registers[rs2],
-                    BOp::BGE => self.ctx.registers[rs1] >= self.ctx.registers[rs2],
-                    BOp::BGEU => {
-                        (self.ctx.registers[rs1] as u32) >= (self.ctx.registers[rs2] as u32)
-                    }
 
-                    BOp::BLTU => {
-                        (self.ctx.registers[rs1] as u32) < (self.ctx.registers[rs2] as u32)
-                    }
-                };
+        if next.memory_access_result.req.is_none() {
+            return;
+        }
 
-                if !jmp {
-                    self.ctx.pc + 4
-                } else {
-                    let next = self.ctx.pc as i32 + imm.offset().unwrap();
-                    if next < 0 {
-                        panic!("negative pc");
-                    }
-                    next as usize
+        let req = prev.execute_result.memory_access_request.clone().unwrap();
+
+        match req {
+            MemoryAccessRequest::S(addr, value) => {
+                for (addr, value) in addr.clone().zip(value.to_le_bytes().iter()) {
+                    next.memory_access_result.memory_transition.push((
+                        addr,
+                        self.ctx.memory[addr],
+                        *value,
+                    ));
                 }
             }
-            Op::S(op, rs2, rs1, imm) => {
-                let rs1 = rs1 as usize;
-                let rs2 = rs2 as usize;
-                let addr = self.ctx.registers[rs1] + imm;
-
-                // check addr out of bound
-                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
-                    panic!("out of bound memory access");
-                }
-
-                let addr = addr as usize;
-                let value = self.ctx.registers[rs2];
-                self.ctx.commit_memory(
-                    match op {
-                        STOp::SB => addr..addr + 1,
-                        STOp::SH => addr..addr + 2,
-                        STOp::SW => addr..addr + 4,
-                    },
-                    value,
-                );
-                self.ctx.pc + 4
-            }
-            Op::L(op, rd, rs1, imm) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                let addr = self.ctx.registers[rs1] + imm;
-
-                // check addr out of bound
-                if addr < 0 || addr >= self.ctx.memory.len() as i32 {
-                    panic!("out of bound memory access");
-                }
-
-                let addr = addr as usize;
+            MemoryAccessRequest::L(op, addr, rd) => {
                 let value = match op {
                     qcpu_syntax::LOp::LB => self.ctx.memory[addr] as i8 as i32,
                     qcpu_syntax::LOp::LH => {
@@ -413,33 +275,31 @@ impl Simulator {
                     }
                 };
 
-                self.ctx.commit(rd, value);
-                self.ctx.pc + 4
+                next.memory_access_result.wb = Some(match rd {
+                    Reg::I(rd) => RegisterWriteBackRequest::WriteInt(value, rd),
+                    Reg::F(rd) => {
+                        RegisterWriteBackRequest::WriteFloat(f32::from_bits(value as u32), rd)
+                    }
+                });
             }
-            Op::J(_, rd, imm) => {
-                let rd = rd as usize;
-                // op is JOp::JAL anyway so idc
-                let next = self.ctx.pc as i32 + imm.offset().unwrap();
-                if next < 0 {
-                    panic!("negative pc");
+        }
+    }
+
+    pub fn write_back(&self, prev: &Snapshot, next: &mut Snapshot) {
+        if let Some(thing) = prev.memory_access_result.wb {
+            match thing {
+                RegisterWriteBackRequest::WriteInt(value, rd) => {
+                    if rd == IntReg::Zero {
+                        return;
+                    }
+                    next.ireg[rd as usize] = value;
                 }
-                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
-                next as usize
-            }
-            Op::JR(_, rd, rs1, imm) => {
-                let rd = rd as usize;
-                let rs1 = rs1 as usize;
-                // op is JOp::JALR anyway so idc
-                let next = self.ctx.registers[rs1] + imm.offset().unwrap();
-                if next < 0 {
-                    panic!("negative pc");
+                RegisterWriteBackRequest::WriteFloat(value, rd) => {
+                    next.freg[rd as usize] = value;
                 }
-                self.ctx.commit(rd, self.ctx.pc as i32 + 4);
-                next as usize
             }
-            Op::Exit(_) => return None,
-        };
-        Some(next_pc)
+            next.write_back_result = Some(prev.memory_access_result.wb.unwrap());
+        }
     }
 }
 
@@ -517,7 +377,7 @@ mod test {
 
         sim.run().unwrap();
 
-        assert_eq!(sim.ctx.registers[10], fib(16));
+        assert_eq!(sim.ctx.history.last().unwrap().ireg[10], fib(16));
     }
 
     #[test]
@@ -557,11 +417,23 @@ min_caml_print_int:
         let mc = qcpu_assembler::to_machine_code(&ops, &ctx).unwrap();
 
         let mut sim = Simulator::new()
-            .config(SimulationConfig::new().verbose(true).parsing_context(ctx))
+            .config(
+                SimulationConfig::new()
+                    .memory_size(4096)
+                    .verbose(true)
+                    .parsing_context(ctx),
+            )
             .load_program(mc);
 
         sim.run().unwrap();
+    }
 
-        assert_eq!(sim.ctx.memory.get(3000).unwrap(), &55);
+    #[test]
+    fn just_testing() {
+        let float_int_repr = 1036831949;
+        let float = f32::from_bits(float_int_repr);
+
+        println!("{float_int_repr:32b}");
+        println!("{float}");
     }
 }

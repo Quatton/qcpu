@@ -1,4 +1,5 @@
-use strum::VariantArray;
+#![allow(non_camel_case_types)]
+
 pub mod error;
 pub mod macros;
 pub mod parser;
@@ -6,6 +7,8 @@ pub mod reg;
 pub use macros::*;
 pub use parser::*;
 pub use reg::*;
+
+use strum::VariantArray as _;
 
 rop! {
   0b0000000 rs2 rs1 0b000 rd 0b0110011 ADD
@@ -21,6 +24,7 @@ rop! {
 }
 
 iop! {
+  // 13
   imm[11:0] rs1 0b000 rd 0b0010011 ADDI
   imm[11:0] rs1 0b010 rd 0b0010011 SLTI
   imm[11:0] rs1 0b011 rd 0b0010011 SLTIU
@@ -33,6 +37,12 @@ isop!(
   0b0000000 shamt rs1 0b001 rd 0b0010011 SLLI
   0b0000000 shamt rs1 0b101 rd 0b0010011 SRLI
   0b0100000 shamt rs1 0b101 rd 0b0010011 SRAI
+);
+
+uop!(
+    // 22 6 4
+    imm[31:12] rd 0b0110111 LUI
+    imm[31:12] rd 0b0010111 AUIPC
 );
 
 bop!(
@@ -58,8 +68,42 @@ lop!(
     imm[11:0] rs1 0b101 rd 0b0000011 LHU
 );
 
+frop!(
+    0b0000000 rs2 rs1 rm rd 0b1010011 FADD
+    0b0000100 rs2 rs1 rm rd 0b1010011 FSUB
+    0b0001000 rs2 rs1 rm rd 0b1010011 FMUL
+    0b0001100 rs2 rs1 rm rd 0b1010011 FDIV
+    // 0b0101100 0b00000 rs1 rm rd 0b1010011 FSQRT_S
+    // 0b1100000 0b00000 rs1 rm rd 0b1010011 FCVT_W_S
+    // 0b1100000 0b00001 rs1 rm rd 0b1010011 FCVT_WU_S
+    // 0b1101000 0b00000 rs1 rm rd 0b1010011 FCVT_S_W
+    // 0b1101000 0b00001 rs1 rm rd 0b1010011 FCVT_S_WU
+
+    // 0b1110000 0b00000 rs1 0b000 rd 0b1010011 FMV_X_W
+    // 0b1110000 0b00000 rs1 0b001 rd 0b1010011 FCLASS_S
+    // 0b1111000 0b00000 rs1 0b000 rd 0b1010011 FMV_W_X
+);
+
+fcop!(
+    0b1010000 rs2 rs1 0b010 rd 0b1010011 FEQ
+    0b1010000 rs2 rs1 0b001 rd 0b1010011 FLT
+    0b1010000 rs2 rs1 0b000 rd 0b1010011 FLE
+    0b0010000 rs2 rs1 0b000 rd 0b1010011 FSGNJ
+    0b0010000 rs2 rs1 0b001 rd 0b1010011 FSGNJN
+    0b0010000 rs2 rs1 0b010 rd 0b1010011 FSGNJX
+    0b0010100 rs2 rs1 0b000 rd 0b1010011 FMIN
+    0b0010100 rs2 rs1 0b001 rd 0b1010011 FMAX
+);
+
 #[cfg(test)]
 mod test {
+    use nom::{
+        bytes::complete::tag,
+        character::complete::{char, multispace0, multispace1},
+        combinator::map,
+        sequence::{delimited, preceded, terminated, tuple},
+    };
+
     use super::*;
 
     #[test]
@@ -100,5 +144,43 @@ mod test {
         println!("{imm20:1b} {imm10:10b} {imm11:1b} {imm19:8b}");
         println!("{:032b}", mc);
         println!("{:032b}", dismc);
+    }
+
+    #[test]
+    fn hex() {
+        let code = "addi a0 a0 0x123";
+
+        let (_, op) = Op::parse(code).unwrap();
+
+        println!("{:?}", op);
+    }
+
+    #[test]
+    fn parse_both_test() {
+        let code = "\n\t.word\t0x401bb646\n";
+
+        let (_, op) = map(
+            delimited(
+                tuple((multispace0, tag(".word"), multispace1)),
+                parse_i32,
+                multispace1,
+            ),
+            |w| Op::Raw(w as u32),
+        )(code)
+        .unwrap();
+
+        println!("{:?}", op);
+    }
+
+    #[test]
+    fn pi_zero() {
+        let label = tuple((
+            delimited(multispace0, FLOp::parse, multispace1),
+            delimited(multispace0, FloatReg::parse, multispace1),
+            delimited(multispace0, JumpTarget::parse, char('(')),
+            // terminated(delimited(char('('), IntReg::parse, char(')')), multispace1),
+        ))("flw fa1  pi(");
+
+        println!("{:?}", label);
     }
 }

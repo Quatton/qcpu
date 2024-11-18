@@ -1,6 +1,6 @@
 use strum::VariantArray;
 
-use crate::{parser::JumpTarget, reg};
+use crate::{parser::JumpTarget, reg, RoundingMode};
 
 extern crate proc_macro;
 
@@ -123,7 +123,7 @@ macro_rules! iop {
 
             match (funct3, opcode) {
                 $(
-                    ($funct3, $opcode) => Ok(parser::Op::I(IOp::$name, rd, rs1, imm)),
+                    ($funct3, $opcode) => Ok(parser::Op::I(IOp::$name, rd, rs1, JumpTarget::from_offset(imm))),
                 )*
                 _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
             }
@@ -317,6 +317,52 @@ macro_rules! stop {
     }
 }
 
+#[macro_export]
+macro_rules! uop {
+    ($(imm[31:12] rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        pub enum UOp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for UOp {}
+
+        impl UOp {
+            pub fn to_machine_code(self, rd: reg::IntReg, imm: i32) -> u32 {
+                match self {
+                    $(
+                        UOp::$name => {
+                            let opcode = $opcode;
+                            let rd = rd as u32;
+                            let imm32 = imm as u32;
+
+                            imm32 << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for UOp {
+            fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+                let opcode =      0b00000000000000000000000001111111  & mc;
+                let rd =         (0b00000000000000000000111110000000 & mc) >> 7;
+                let imm =        (0b11111111111111111111000000000000 & mc) >> 12;
+
+                let rd = reg::IntReg::VARIANTS[rd as usize];
+
+                match opcode {
+                    $(
+                        $opcode => Ok(parser::Op::U(UOp::$name, rd, parser::JumpTarget::from_offset(imm as i32))),
+                    )*
+                    _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+                }
+            }
+        }
+    };
+}
+
 #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum JOp {
@@ -484,5 +530,288 @@ macro_rules! lop {
             }
           }
         }
+    }
+}
+
+#[macro_export]
+macro_rules! frop {
+    ($($funct7:literal rs2 rs1 rm rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        #[allow(non_camel_case_types)]
+        pub enum FROp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for FROp {}
+
+        impl FROp {
+            pub fn to_machine_code(self, rd: reg::FloatReg, rs1: reg::FloatReg, rs2: reg::FloatReg, rm: reg::RoundingMode) -> u32 {
+                match self {
+                    $(
+                        FROp::$name => {
+                            let funct7 = $funct7;
+                            let opcode = $opcode;
+                            let rs2 = rs2 as u32;
+                            let rs1 = rs1 as u32;
+                            let rd = rd as u32;
+                            let rm = rm as u32;
+                            funct7 << 25 | rs2 << 20 | rs1 << 15 | rm << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for FROp {
+          fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+            let opcode =    0b00000000000000000000000001111111  & mc;
+            let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
+            let rm =      ((0b00000000000000000111000000000000  & mc) >> 12) as usize;
+            let rs1i =    ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+            let rs2i =    ((0b00000001111100000000000000000000  & mc) >> 20) as usize;
+            let funct7 =   (0b11111110000000000000000000000000  & mc) >> 25;
+
+            let rd = reg::FloatReg::VARIANTS[rdi];
+            let rs1 = reg::FloatReg::VARIANTS[rs1i];
+            let rs2 = reg::FloatReg::VARIANTS[rs2i];
+            let rm = reg::RoundingMode::VARIANTS[rm];
+
+            match (funct7, opcode) {
+                $(
+                    ($funct7, $opcode) => Ok(parser::Op::FR(FROp::$name, rd, rs1, rs2, rm)),
+                )*
+                _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+            }
+          }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! fcop {
+    ($($funct7:literal rs2 rs1 $funct3:literal rd $opcode:literal $name:ident)*) => {
+        #[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+        #[strum(serialize_all = "lowercase")]
+        #[allow(non_camel_case_types)]
+        pub enum FCOp {
+            $($name,)*
+        }
+
+        impl parser::WithParser for FCOp {}
+
+        impl FCOp {
+            pub fn to_machine_code(self, rd: usize, rs1: reg::FloatReg, rs2: reg::FloatReg) -> u32 {
+                match self {
+                    $(
+                        FCOp::$name => {
+                            let funct7 = $funct7;
+                            let opcode = $opcode;
+                            let rs2 = rs2 as u32;
+                            let rs1 = rs1 as u32;
+                            let rd = rd as u32;
+                            let rm = $funct3;
+                            funct7 << 25 | rs2 << 20 | rs1 << 15 | rm << 12 | rd << 7 | opcode
+                        }
+                    )*
+                }
+            }
+        }
+
+        impl parser::FromMachineCode<'_> for FCOp {
+            fn from_machine_code(mc: u32) -> std::result::Result<parser::Op, error::ParseError> {
+              let opcode =    0b00000000000000000000000001111111  & mc;
+              let rdi =     ((0b00000000000000000000111110000000  & mc) >> 7) as usize;
+              let rm =      ((0b00000000000000000111000000000000  & mc) >> 12) as usize;
+              let rs1i =    ((0b00000000000011111000000000000000  & mc) >> 15) as usize;
+              let rs2i =    ((0b00000001111100000000000000000000  & mc) >> 20) as usize;
+              let funct7 =   (0b11111110000000000000000000000000  & mc) >> 25;
+
+              let rd = rdi;
+              let rs1 = reg::FloatReg::VARIANTS[rs1i];
+              let rs2 = reg::FloatReg::VARIANTS[rs2i];
+              let funct3 = rm;
+
+
+              match (funct7, funct3, opcode) {
+                  $(
+                      ($funct7, $funct3, $opcode) => Ok(parser::Op::FC(FCOp::$name, rd, rs1, rs2)),
+                  )*
+                  _ => Err(error::ParseError::DisassemblerError(format!("{:032b}", mc))),
+              }
+            }
+          }
+    };
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FLOp {
+    FLW,
+}
+
+impl crate::parser::WithParser for FLOp {}
+
+impl FLOp {
+    pub fn to_machine_code(self, rd: reg::FloatReg, rs1: reg::IntReg, imm: i32) -> u32 {
+        match self {
+            FLOp::FLW => {
+                let opcode = 0b0000111;
+                let funct3 = 0b010;
+                let rd = rd as u32;
+                let rs1 = rs1 as u32;
+                let imm = i32_to_i12(imm);
+                imm << 20 | rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+            }
+        }
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FLOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let rdi = ((0b00000000000000000000111110000000 & mc) >> 7) as usize;
+        let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+        let rs1i = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let imm = (0b11111111111100000000000000000000 & mc) >> 20;
+
+        let imm = i12_to_i32(imm);
+        let rd = reg::FloatReg::VARIANTS[rdi];
+        let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+        match (funct3, opcode) {
+            (0b010, 0b0000111) => Ok(crate::parser::Op::FL(
+                FLOp::FLW,
+                rd,
+                rs1,
+                JumpTarget::from_offset(imm),
+            )),
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FSOp {
+    FSW,
+}
+
+impl crate::parser::WithParser for FSOp {}
+
+impl FSOp {
+    pub fn to_machine_code(self, rs2: reg::FloatReg, rs1: reg::IntReg, imm: i32) -> u32 {
+        match self {
+            FSOp::FSW => {
+                let opcode = 0b0100111;
+                let funct3 = 0b010;
+                let rs2 = rs2 as u32;
+                let rs1 = rs1 as u32;
+
+                let imm4 = (imm & 0b11111) as u32;
+                let imm11 = ((imm >> 5) & 0b1111111) as u32;
+
+                imm11 << 25 | rs2 << 20 | rs1 << 15 | funct3 << 12 | imm4 << 7 | opcode
+            }
+        }
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FSOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let imm11 = (0b11111110000000000000000000000000 & mc) >> 25;
+        let rs2i = ((0b00000001111100000000000000000000 & mc) >> 20) as usize;
+        let rs1i = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+        let imm4 = (0b00000000000000000000111110000000 & mc) >> 7;
+
+        let imm = i12_to_i32(imm11 << 5 | imm4);
+
+        let rs2 = reg::FloatReg::VARIANTS[rs2i];
+        let rs1 = reg::IntReg::VARIANTS[rs1i];
+
+        match (funct3, opcode) {
+            (0b010, 0b0100111) => Ok(crate::parser::Op::FS(FSOp::FSW, rs2, rs1, imm)),
+            _ => Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            ))),
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, strum_macros::EnumString, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum FXOp {
+    #[strum(serialize = "fcvt.s.w", serialize = "fcvtsw")]
+    FCVTSW,
+    #[strum(serialize = "fcvt.w.s", serialize = "fcvtws")]
+    FCVTWS,
+    FSQRT,
+}
+
+impl crate::parser::WithParser for FXOp {}
+
+impl FXOp {
+    pub fn to_machine_code(self, rd: usize, rs1: usize, rm: RoundingMode) -> u32 {
+        let opcode = 0b1010011;
+        let rs2 = 0b00000;
+        let rd = rd as u32;
+        let rm = rm as u32;
+        let rs1 = rs1 as u32;
+
+        let funct7 = match self {
+            FXOp::FSQRT => 0b0101100,
+            FXOp::FCVTSW => 0b1101000,
+            FXOp::FCVTWS => 0b1100000,
+        };
+
+        funct7 << 25 | rs2 << 20 | rs1 << 15 | rm << 12 | rd << 7 | opcode
+    }
+}
+
+impl crate::parser::FromMachineCode<'_> for FXOp {
+    fn from_machine_code(
+        mc: u32,
+    ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
+        let opcode = 0b00000000000000000000000001111111 & mc;
+        let funct7 = (0b11111110000000000000000000000000 & mc) >> 25;
+        let rd = ((0b00000000000000000000111110000000 & mc) >> 7) as usize;
+        let rs1 = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
+        let rm = ((0b00000000000000000111000000000000 & mc) >> 12) as usize;
+
+        if opcode != 0b1010011 {
+            return Err(crate::error::ParseError::DisassemblerError(format!(
+                "{:032b}",
+                mc
+            )));
+        }
+
+        let op = match funct7 {
+            0b0101100 => FXOp::FSQRT,
+            0b1101000 => FXOp::FCVTSW,
+            0b1100000 => FXOp::FCVTWS,
+            _ => {
+                return Err(crate::error::ParseError::DisassemblerError(format!(
+                    "{:032b}",
+                    mc
+                )))
+            }
+        };
+
+        Ok(crate::parser::Op::FX(
+            op,
+            rd,
+            rs1,
+            RoundingMode::from_repr(rm).unwrap(),
+        ))
     }
 }
