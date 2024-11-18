@@ -23,6 +23,8 @@ l.14:	! 2.433000
 	.word	0x401bb646
 l.12:	! 2.564000
 	.word	0x40241893
+AT3:
+  .word 0xbcaaaaaa
 print_int:
 	jalr	zero, ra, 0
 _min_caml_finish:

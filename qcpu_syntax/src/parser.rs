@@ -24,8 +24,8 @@ use crate::{
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     alt((
-        map_res(preceded(tag("0x"), hex_digit1), |s: &str| {
-            i32::from_str_radix(s, 16)
+        map(preceded(tag("0x"), hex_digit1), |s: &str| {
+            u32::from_str_radix(s, 16).unwrap() as i32
         }),
         map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
             // println!("{:?} {:?}", s, d);
