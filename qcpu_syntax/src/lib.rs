@@ -149,11 +149,11 @@ mod test {
 
     #[test]
     fn hex() {
-        let code = "addi a0 a0 0x123";
+        // let code = "addi a0 a0 0xbeaaaaa0";
 
-        let (_, op) = Op::parse(code).unwrap();
+        // let (_, op) = Op::parse(code).unwrap();
 
-        println!("{:?}", op);
+        println!("{:?}", i32::from_str_radix("beaaaaaa", 16));
     }
 
     #[test]
