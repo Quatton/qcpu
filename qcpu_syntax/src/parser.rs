@@ -469,12 +469,12 @@ impl Op {
     }
 
     pub fn resolve_labels(&mut self, ctx: &ParsingContext, idx: usize) -> Result<(), ParseError> {
-        let label = match self {
-            Op::B(_, _, _, label) => label,
-            Op::J(_, _, label) => label,
-            Op::JR(_, _, _, label) => label,
-            Op::FL(_, _, _, label) => label,
-            Op::I(_, _, _, label) => label,
+        let (label, abs) = match self {
+            Op::B(_, _, _, label) => (label, false),
+            Op::J(_, _, label) => (label, false),
+            Op::JR(_, _, _, label) => (label, false),
+            Op::FL(_, _, _, label) => (label, false),
+            Op::I(_, _, _, label) => (label, true),
             _ => return Ok(()),
         };
 
@@ -492,7 +492,11 @@ impl Op {
             }
 
             let target = ctx.label_map.get(label.label.as_ref().unwrap()).unwrap();
-            let offset = (*target as i32 - idx as i32) * 4;
+            let offset = if abs {
+                *target as i32 * 4
+            } else {
+                (*target as i32 - idx as i32) * 4
+            };
             label.offset = Some(offset);
         }
         Ok(())

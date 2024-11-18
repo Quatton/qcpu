@@ -4,6 +4,7 @@ pub mod error;
 pub mod macros;
 pub mod parser;
 pub mod reg;
+mod v2;
 pub use macros::*;
 pub use parser::*;
 pub use reg::*;
@@ -101,7 +102,7 @@ mod test {
         bytes::complete::tag,
         character::complete::{char, multispace0, multispace1},
         combinator::map,
-        sequence::{delimited, preceded, terminated, tuple},
+        sequence::{delimited, tuple},
     };
 
     use super::*;

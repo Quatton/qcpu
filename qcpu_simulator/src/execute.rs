@@ -388,21 +388,21 @@ impl Simulator {
                                 FloatReg::from_repr(rd).unwrap(),
                             ))
                     }
-                    qcpu_syntax::FXOp::FCVTSW => {
+                    qcpu_syntax::FXOp::FCVTWS => {
                         next.ireg_delay[rd] = self.get_instruction_latency(&oop);
                         let rs1_d = next.freg[rs1];
                         next.execute_result.register_write_back_request =
                             Some(RegisterWriteBackRequest::WriteInt(
-                                rs1_d.to_bits() as i32,
+                                rs1_d.floor() as i32,
                                 IntReg::from_repr(rd).unwrap(),
                             ))
                     }
-                    qcpu_syntax::FXOp::FCVTWS => {
+                    qcpu_syntax::FXOp::FCVTSW => {
                         next.freg_delay[rd] = self.get_instruction_latency(&oop);
                         let rs1_d = next.ireg[rs1];
                         next.execute_result.register_write_back_request =
                             Some(RegisterWriteBackRequest::WriteFloat(
-                                f32::from_bits(rs1_d as u32),
+                                rs1_d as f32,
                                 FloatReg::from_repr(rd).unwrap(),
                             ))
                     }
