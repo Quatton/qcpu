@@ -1,4 +1,7 @@
-## [1.2.0] - 2024-11-20
+## [1.2.1] - 2024-11-19
+- Execute should use previous stalled decode only when there isn't a refetch. (crazy)
+
+## [1.2.0] - 2024-11-19
 - I/O
 - Fixed: JALR doesn't care about stall
 
