@@ -33,7 +33,6 @@ newton.16:
 	addi	a7, a0, 0 !3
 	addi	sp, sp, 32 !3
 	lw  	t1, 0(a7) !3
-    add     zero, zero, zero !fix
 	jalr	ra, t1, 0 !3
 	addi	sp, sp, -32 !3
 	fsgnjx  fa0, fa0, fa0
@@ -42,7 +41,6 @@ newton.16:
 	beq 	t0, zero, bne_else.67 !3
 	flw  	fa0, 16(sp) !4
 	lw  	ra, 0(sp)
-    add     zero, zero, zero !fix
 	jalr	zero, ra, 0
 bne_else.67: !3
 	flw  	fa0, 16(sp) !6
@@ -57,7 +55,6 @@ bne_else.67: !3
 	fsgnj   fa0, fa1, fa1 !6
 	addi	sp, sp, 40 !6
 	lw  	t1, 0(a7) !6
-  add     zero, zero, zero !fix
 	jalr	ra, t1, 0 !6
 	addi	sp, sp, -40 !6
 	flw  	fa1, 32(sp) !6

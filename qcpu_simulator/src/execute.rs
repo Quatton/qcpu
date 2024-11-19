@@ -1,3 +1,5 @@
+use std::io::{stdin, Read};
+
 use qcpu_syntax::{parser::Op, BOp, FROp, IOp, ISOp, ROp};
 use qcpu_syntax::{FCOp, FloatReg, IntReg, OOp, Reg, STOp, UOp};
 
@@ -415,8 +417,6 @@ impl Simulator {
             }
             Op::O(op, rd) => match op {
                 OOp::OUTB => {
-                    let out = &mut self.ctx.out_buffer;
-
                     if next.ireg_delay[rd] > 0 {
                         next.execute_result.stall = true;
                         return Some(next.execute_result.predicted_pc);
@@ -424,14 +424,19 @@ impl Simulator {
 
                     let outval = next.ireg[rd];
 
-                    out.push_back((outval & 0xff) as u8);
+                    self.ctx.out_buffer.push_back(outval as u8);
                 }
                 OOp::INB => {
                     let input = &mut self.ctx.in_buffer;
 
                     if input.is_empty() {
-                        next.io_block = true;
-                        return Some(next.execute_result.predicted_pc);
+                        if self.config.input.is_some() {
+                            return None;
+                        } else {
+                            let mut buf = [0];
+                            stdin().read_exact(&mut buf).unwrap();
+                            input.push_back(buf[0]);
+                        }
                     }
 
                     let inval = input.pop_front().unwrap();

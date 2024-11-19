@@ -91,7 +91,7 @@ fn create_writer(path: &Option<String>) -> BufWriter<Box<dyn Write>> {
                 .open(file)
                 .unwrap(),
         )),
-        None => BufWriter::new(Box::new(stdout())),
+        None => BufWriter::new(Box::new(stdout().lock())),
     }
 }
 
@@ -172,6 +172,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             out_writer.write_all(ctx.out_buffer.as_slices().1)?;
+
+            println!("Output: ");
+            for c in ctx.out_buffer {
+                print!("{}", c as char);
+            }
         }
         Commands::Asm {
             source,

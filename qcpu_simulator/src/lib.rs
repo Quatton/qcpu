@@ -3,10 +3,7 @@ pub mod reg;
 mod result;
 pub mod snapshot;
 
-use std::{
-    collections::VecDeque,
-    io::{stdin, Read as _},
-};
+use std::{collections::VecDeque, io::Read as _};
 
 use qcpu_syntax::{
     parser::{Op, ParsingContext},
@@ -208,16 +205,6 @@ impl Simulator {
     pub fn run_unit(&mut self) -> Result<Option<usize>, &str> {
         let mut next = self.ctx.history.new_snapshot();
         let prev = self.ctx.history.last().unwrap().clone();
-
-        if prev.io_block {
-            if self.config.input.is_some() {
-                return Err("Reached EOF");
-            } else {
-                let mut bfr = [0];
-                stdin().read_exact(&mut bfr).unwrap();
-                self.ctx.in_buffer.push_back(bfr[0]);
-            }
-        }
 
         self.write_back(&prev, &mut next);
 
