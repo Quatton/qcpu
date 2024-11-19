@@ -99,10 +99,10 @@ pub enum OpType {
 
 #[derive(Debug, PartialEq)]
 pub struct OpInfo {
-    optype: OpType,
-    opcode: usize,
-    funct3: Option<usize>,
-    funct7: Option<usize>,
+    pub optype: OpType,
+    pub opcode: usize,
+    pub funct3: Option<usize>,
+    pub funct7: Option<usize>,
 }
 
 pub const ADD: OpInfo = OpInfo {

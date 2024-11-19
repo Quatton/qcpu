@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{stdout, BufWriter, Read, Write},
+    io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write},
     path::PathBuf,
 };
 
@@ -79,6 +79,15 @@ enum Commands {
         #[arg(short, long)]
         input: Option<String>,
     },
+
+    /// Parse input into a convenient binary
+    Conv {
+        #[arg(short, long)]
+        input: Option<String>,
+
+        #[arg(short, long)]
+        output: Option<String>,
+    },
 }
 
 fn create_writer(path: &Option<String>) -> BufWriter<Box<dyn Write>> {
@@ -95,11 +104,47 @@ fn create_writer(path: &Option<String>) -> BufWriter<Box<dyn Write>> {
     }
 }
 
+fn create_reader(path: &Option<String>) -> Box<dyn BufRead> {
+    match path {
+        Some(file) => Box::new(BufReader::new(
+            OpenOptions::new().read(true).open(file).unwrap(),
+        )),
+        None => Box::new(BufReader::new(stdin().lock())),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.command {
+        Commands::Conv { input, output } => {
+            let mut reader = create_reader(&input);
+            let mut writer = create_writer(&output);
+
+            let mut bfr = String::new();
+
+            reader.read_to_string(&mut bfr)?;
+
+            for c in bfr.split_ascii_whitespace() {
+                if let Ok(r) = c.parse::<u32>() {
+                    writer.write_all(&r.to_le_bytes())?;
+                    continue;
+                };
+
+                if let Ok(r) = c.parse::<i32>() {
+                    writer.write_all(&r.to_le_bytes())?;
+                    continue;
+                };
+
+                if let Ok(r) = c.parse::<f32>() {
+                    writer.write_all(&r.to_le_bytes())?;
+                    continue;
+                };
+
+                writer.write_all(c.as_bytes())?;
+            }
+        }
         Commands::Sim {
             bin,
             source,

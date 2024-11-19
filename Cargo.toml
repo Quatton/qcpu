@@ -22,6 +22,8 @@ tokio-util = "0.7.12"
 futures = "0.3.31"
 signal-hook = "0.3"
 
+bitvec = "1.0.1"
+
 qcpu_assembler = { path = "./qcpu_assembler" }
 qcpu_syntax = { path = "./qcpu_syntax" }
 qcpu_simulator = { path = "./qcpu_simulator" }

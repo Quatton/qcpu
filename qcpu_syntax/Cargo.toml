@@ -7,3 +7,4 @@ edition.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 nom.workspace = true
+bitvec.workspace = true
