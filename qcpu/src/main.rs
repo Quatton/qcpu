@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{Read, Write},
+    io::{stdout, BufWriter, Read, Write},
     path::PathBuf,
 };
 
@@ -81,6 +81,20 @@ enum Commands {
     },
 }
 
+fn create_writer(path: &Option<String>) -> BufWriter<Box<dyn Write>> {
+    match path {
+        Some(file) => BufWriter::new(Box::new(
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(file)
+                .unwrap(),
+        )),
+        None => BufWriter::new(Box::new(stdout())),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -121,6 +135,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::fs::File::create(file).unwrap();
             };
 
+            let mut out_writer = create_writer(&output);
+
             let cfg = qcpu_simulator::SimulationConfig {
                 verbose: if it { false } else { verbose },
                 interactive: it,
@@ -136,15 +152,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .load_program(code);
 
             sim.init();
-            if it {
+
+            let ctx = if it {
                 let mut app = App::new().load_simulator(sim);
                 let tui = qcpu_tui::Tui::new()?.tick_rate(1000000.0).frame_rate(30.0);
 
-                app.run(tui).await?;
+                if let Err(e) = app.run(tui).await {
+                    eprintln!("Error running TUI: {}", e);
+                }
+
+                app.simulator.ctx
             } else {
-                sim.run().unwrap();
+                if let Err(e) = sim.run() {
+                    eprintln!("Error running simulation: {}", e);
+                };
+
                 sim.ctx.log_registers();
-            }
+                sim.ctx
+            };
+
+            out_writer.write_all(ctx.out_buffer.as_slices().1)?;
         }
         Commands::Asm {
             source,

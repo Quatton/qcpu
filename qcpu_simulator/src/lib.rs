@@ -122,6 +122,15 @@ impl Simulator {
     pub fn config(mut self, config: SimulationConfig) -> Self {
         self.config = config;
         self.ctx.memory = vec![0; self.config.memory_size];
+
+        if self.config.input.is_some() {
+            self.ctx.in_buffer = std::fs::File::open(self.config.input.as_ref().unwrap())
+                .unwrap()
+                .bytes()
+                .map(|x| x.unwrap())
+                .collect();
+        }
+
         self
     }
 

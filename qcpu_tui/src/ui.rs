@@ -33,7 +33,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1] // Return the middle chunk
 }
 
-pub fn ui(frame: &mut Frame, app: &App) {
+pub fn ui(frame: &mut Frame, app: &mut App) {
     let upper = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(12)])
@@ -240,7 +240,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     frame.render_widget(pipeline, chunks[0]);
 
-    frame.render_widget(program_list, chunks[1]);
+    frame.render_stateful_widget(program_list, chunks[1], &mut app.program_table_state);
     frame.render_widget(reg_table, upper[1]);
 
     if app.show_dialog {

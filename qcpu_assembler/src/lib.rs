@@ -2,9 +2,8 @@
 
 use nom::{
     character::complete::{char, multispace0, not_line_ending},
-    combinator::opt,
     multi::many0,
-    sequence::delimited,
+    sequence::{delimited, terminated},
 };
 use qcpu_syntax::{
     error::{ParseError, ParseErrorContext},
@@ -51,7 +50,10 @@ pub fn overnormalize_for_test(input: String) -> String {
 
 pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, ParseError> {
     let input = &normalize(input);
-    let comment = opt(delimited(multispace0, char('!'), not_line_ending));
+    let comment = many0(terminated(
+        delimited(multispace0, char('!'), not_line_ending),
+        multispace0,
+    ));
     let (input, nodes) = many0(delimited(multispace0, Node::parse, comment))(input)?;
     if !input.trim().is_empty() {
         return Err(ParseError::NomError(nom::error::Error {

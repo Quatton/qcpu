@@ -12,6 +12,7 @@ use crossterm::{
 use qcpu_simulator::{SimulationConfig, Simulator};
 use ratatui::{
     prelude::{Backend, CrosstermBackend},
+    widgets::TableState,
     Terminal,
 };
 use strum::EnumString;
@@ -86,6 +87,8 @@ pub struct App {
     pub playmode: PlayMode,
     pub breakpoint_idx: usize,
     pub should_quit: bool,
+
+    pub program_table_state: TableState,
 }
 
 impl App {
@@ -93,6 +96,7 @@ impl App {
         App {
             done: false,
             simulator: Simulator::new().config(SimulationConfig::new().interactive(true)),
+            program_table_state: Default::default(),
             snapshot_idx: 0,
             current_screen: CurrentScreen::Main,
             show_dialog: false,
@@ -242,7 +246,19 @@ impl App {
                 self.calc();
                 None
             }
-            Action::Noop => None,
+            Action::Noop => {
+                self.program_table_state
+                    .select(if self.input_mode == InputMode::Breakpoint {
+                        Some(self.breakpoint_idx)
+                    } else {
+                        self.simulator
+                            .ctx
+                            .history
+                            .last()
+                            .map(|ss| ss.fetch_result.base_pc >> 2)
+                    });
+                None
+            }
         }
     }
 
