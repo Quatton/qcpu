@@ -83,7 +83,7 @@ impl Snapshots {
             Decode::from_fetch(last.fetch_result)
         };
 
-        snapshot.fetch_result = if last.fetch_result.stall {
+        snapshot.fetch_result = if last.fetch_result.stall && !last.execute_result.refetch {
             let c = last.fetch_result;
             Fetch { stall: false, ..c }
         } else {
@@ -105,18 +105,22 @@ impl Snapshots {
             snapshot.decode_result.stall = true;
             snapshot.fetch_result.stall = true;
         } else {
-            snapshot.execute_result = Execute::from_decode(
-                self.iter()
-                    .rev()
-                    .find_map(|s| {
-                        if s.decode_result.stall {
-                            None
-                        } else {
-                            Some(s.decode_result.clone())
-                        }
-                    })
-                    .unwrap_or_default(),
-            );
+            snapshot.execute_result = if !last.execute_result.refetch {
+                Execute::from_decode(
+                    self.iter()
+                        .rev()
+                        .find_map(|s| {
+                            if s.decode_result.stall {
+                                None
+                            } else {
+                                Some(s.decode_result.clone())
+                            }
+                        })
+                        .unwrap_or_default(),
+                )
+            } else {
+                Execute::from_decode(last.decode_result.clone())
+            };
 
             snapshot.write_back_result = last.memory_access_result.wb;
         }
