@@ -171,12 +171,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sim.ctx
             };
 
-            out_writer.write_all(ctx.out_buffer.as_slices().1)?;
+            println!("stdout: ");
+            out_writer.write_all(ctx.out_buffer.as_slices().0)?;
 
-            println!("Output: ");
-            for c in ctx.out_buffer {
-                print!("{}", c as char);
-            }
+            // for c in ctx.out_buffer {
+            //     print!("{}", c as char);
+            // }
         }
         Commands::Asm {
             source,
