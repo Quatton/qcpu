@@ -117,9 +117,10 @@ impl Simulator {
 
                 let result = match op {
                     ISOp::SLLI => rs1_val << shamt,
-                    ISOp::SRLI => rs1_val >> shamt,
-                    ISOp::SRAI => rs1_val >> shamt,
+                    ISOp::SRLI => (rs1_val >> shamt) & 0x7FFFFFFF,
+                    ISOp::SRAI => rs1_val >> shamt | (rs1_val as u32 & 0x80000000u32) as i32,
                 };
+
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteInt(result, rd));
             }
