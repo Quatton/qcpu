@@ -1,3 +1,26 @@
+## [1.2.0] - 2024-11-20
+- I/O
+- Fixed: JALR doesn't care about stall
+
+## [1.1.5] - 2024-11-18
+- Some critical stall bug that causes fetch to keep refetching the same instruction over and over
+
+## [1.1.4] - 2024-11-18
+- Floating point write back is not forwarded properly
+
+## [1.1.3] - 2024-11-18
+- Use absolute address for FL and I
+
+## [1.1.2] - 2024-11-18
+- Fixed unable to parse hex larger than max i32 -> use u32 instead
+
+## [1.1.1] - 2024-11-18
+- Fixed disassembler bug when there is no label map (just output raw)
+
+## [1.1.0] - 2024-11-13
+- Full FPU support
+- Condensed pipeline view with stall and forwarding
+
 ## [1.0.0] - 2024-11-06
 - Pipeline processor
 - Some FPU
