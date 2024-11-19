@@ -820,6 +820,7 @@ impl crate::parser::FromMachineCode<'_> for FXOp {
 #[strum(serialize_all = "lowercase")]
 pub enum OOp {
     INB,
+    INW,
     OUTB,
 }
 
@@ -829,6 +830,14 @@ impl OOp {
     pub fn to_machine_code(self, rs1: usize) -> u32 {
         match self {
             OOp::INB => {
+                let opcode = 0b0001001;
+                let rd = 0b00000;
+                let funct3 = 0b001;
+                let rs1 = rs1 as u32;
+
+                rs1 << 15 | funct3 << 12 | rd << 7 | opcode
+            }
+            OOp::INW => {
                 let opcode = 0b0001001;
                 let rd = 0b00000;
                 let funct3 = 0b010;
@@ -854,12 +863,13 @@ impl crate::parser::FromMachineCode<'_> for OOp {
     ) -> std::result::Result<crate::parser::Op, crate::error::ParseError> {
         let opcode = 0b00000000000000000000000001111111 & mc;
         let _rd = ((0b00000000000000000000111110000000 & mc) >> 7) as usize;
-        let _funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
+        let funct3 = (0b00000000000000000111000000000000 & mc) >> 12;
         let rs1 = ((0b00000000000011111000000000000000 & mc) >> 15) as usize;
 
-        match opcode {
-            0b0001001 => Ok(crate::parser::Op::O(OOp::INB, rs1)),
-            0b0001010 => Ok(crate::parser::Op::O(OOp::OUTB, rs1)),
+        match (opcode, funct3) {
+            (0b0001001, 0b001) => Ok(crate::parser::Op::O(OOp::INB, rs1)),
+            (0b0001001, 0b010) => Ok(crate::parser::Op::O(OOp::INW, rs1)),
+            (0b0001010, 0b001) => Ok(crate::parser::Op::O(OOp::OUTB, rs1)),
             _ => Err(crate::error::ParseError::DisassemblerError(format!(
                 "{:032b}",
                 mc

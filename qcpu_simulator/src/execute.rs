@@ -426,10 +426,16 @@ impl Simulator {
 
                     self.ctx.out_buffer.push_back(outval as u8);
                 }
-                OOp::INB => {
+                OOp::INB | OOp::INW => {
                     let input = &mut self.ctx.in_buffer;
 
-                    if input.is_empty() {
+                    let len = match op {
+                        OOp::INB => 1,
+                        OOp::INW => 4,
+                        _ => unreachable!(),
+                    };
+
+                    if input.len() < len {
                         if self.config.input.is_some() {
                             return None;
                         } else {
@@ -439,11 +445,16 @@ impl Simulator {
                         }
                     }
 
-                    let inval = input.pop_front().unwrap();
+                    let mut inval: i32 = 0;
+
+                    for i in 0..len {
+                        let byte = input.pop_front().unwrap() as u32;
+                        inval |= (byte << (i * 8)) as i32;
+                    }
 
                     next.ireg_delay[rd] = self.get_instruction_latency(&oop);
                     next.execute_result.register_write_back_request = Some(
-                        RegisterWriteBackRequest::WriteInt(inval as i32, IntReg::from_repr(rd)?),
+                        RegisterWriteBackRequest::WriteInt(inval, IntReg::from_repr(rd)?),
                     );
                 }
             },
