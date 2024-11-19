@@ -204,6 +204,7 @@ impl Simulator {
             }
             Op::J(_, rd, ref imm) => {
                 // op is JOp::JAL anyway so idc
+
                 let target = base_pc as i32 + imm.offset().unwrap();
                 next.execute_result.register_write_back_request =
                     Some(RegisterWriteBackRequest::WriteInt(base_pc as i32 + 4, rd));
@@ -217,6 +218,10 @@ impl Simulator {
             }
             Op::JR(_, rd, rs1, ref imm) => {
                 let rs1 = rs1 as usize;
+                if next.ireg_delay[rs1] > 0 {
+                    next.execute_result.stall = true;
+                    return Some(next.execute_result.predicted_pc);
+                }
 
                 let rs1_val = next.ireg[rs1];
 
