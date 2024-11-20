@@ -1,5 +1,8 @@
+## [2.0.0] - 2024-11-20
+- Original ISA
+
 ## [1.3.0] - 2024-11-19
-- Convert
+- Convert command
 
 ## [1.2.2] - 2024-11-19
 - Empty output bug
