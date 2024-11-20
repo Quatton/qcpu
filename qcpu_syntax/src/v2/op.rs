@@ -168,8 +168,29 @@ impl Op {
 
         let opname = OpName::VARIANTS
             .iter()
-            .find(|it| OpInfo::match_code(&opinfo, it))
+            .find(|it| {
+                OpInfo::match_code(&opinfo, it)
+                    && match it.optype {
+                        OpType::U => !bv[31] && !bv[30],
+                        OpType::J => !bv[31] && !bv[10],
+                        OpType::I => !bv[31],
+                        OpType::S => !bv[31],
+                        OpType::N => !bv[13..=31].any(),
+                        OpType::O => !bv[4..=9].any() && !bv[13..=18].any() && !bv[25..=31].any(),
+                        OpType::B => !bv[4],
+                        _ => true,
+                    }
+            })
             .unwrap_or(&OpName::RAW);
+
+        if opname == &OpName::RAW {
+            // println!("Parsing as raw with imm {}", bv.load::<i32>());
+            return Op {
+                o: *opname,
+                imm: Immediate::from_offset(bv.load::<i32>()),
+                ..Default::default()
+            };
+        }
 
         let rd = bv[4..=9].load::<usize>();
         let rs1 = bv[13..=18].load::<usize>();
@@ -218,7 +239,7 @@ impl Op {
                 op.imm = Immediate::from_offset(of.load::<i32>());
             }
             OpType::U => {
-                op.imm = Immediate::from_offset(bv[10..=29].load::<i32>() << 12);
+                op.imm = Immediate::from_offset(bv[10..=29].load::<i32>());
             }
             OpType::B => {
                 let mut of = bv[5..=9].to_bitvec();

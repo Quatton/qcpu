@@ -507,6 +507,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             sim.log_registers();
+
+            println!("========================================");
+            println!("stdout: ");
         }
     }
     Ok(())

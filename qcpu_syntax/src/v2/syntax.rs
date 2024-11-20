@@ -1,7 +1,6 @@
-use enum_properties::enum_properties;
-use strum_macros::{EnumString, VariantArray};
-
+use crate::enum_properties;
 use crate::WithParser;
+use strum_macros::{EnumString, VariantArray};
 
 impl OpInfo {
     pub fn match_code(first: &Self, other: &Self) -> bool {
@@ -148,6 +147,7 @@ enum_properties! {
       funct7: Some(0b0100000),
     },
 
+    #[strum(serialize = "flw", serialize = "lw")]
     LW {
       optype: OpType::L,
       opcode: 0b0010,
@@ -155,10 +155,53 @@ enum_properties! {
       funct7: None,
     },
 
+    LB {
+      optype: OpType::L,
+      opcode: 0b0010,
+      funct3: Some(0b000),
+      funct7: None,
+    },
+
+    LH {
+      optype: OpType::L,
+      opcode: 0b0010,
+      funct3: Some(0b001),
+      funct7: None,
+    },
+
+    LBU {
+      optype: OpType::L,
+      opcode: 0b0010,
+      funct3: Some(0b100),
+      funct7: None,
+    },
+
+    LHU {
+      optype: OpType::L,
+      opcode: 0b0010,
+      funct3: Some(0b101),
+      funct7: None,
+    },
+
+    #[strum(serialize = "fsw", serialize = "sw")]
     SW {
       optype: OpType::S,
       opcode: 0b0011,
       funct3: Some(0b010),
+      funct7: None,
+    },
+
+    SB {
+      optype: OpType::S,
+      opcode: 0b0011,
+      funct3: Some(0b000),
+      funct7: None,
+    },
+
+    SH {
+      optype: OpType::S,
+      opcode: 0b0011,
+      funct3: Some(0b001),
       funct7: None,
     },
 
@@ -288,6 +331,7 @@ enum_properties! {
       funct7: Some(0b0010000),
     },
 
+    #[strum(serialize = "ftoi", serialize = "fcvt.w.s", serialize = "fcvtws")]
     FCVTWS {
       optype: OpType::F,
       opcode: 0b1011,
@@ -316,6 +360,7 @@ enum_properties! {
       funct7: Some(0b1010000),
     },
 
+    #[strum(serialize = "itof", serialize = "fcvt.s.w", serialize = "fcvtsw")]
     FCVTSW {
       optype: OpType::F,
       opcode: 0b1011,

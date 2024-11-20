@@ -93,7 +93,7 @@ impl Simulator {
                 next_pc = (rs1u.wrapping_add_signed(imm)) as usize;
                 Some((self.ctx.pc + 4) as u32)
             }
-            OpName::LUI => Some(imm as u32),
+            OpName::LUI => Some((imm as u32) << 12),
             OpName::AUIPC => Some((self.ctx.pc as u32).wrapping_add(imm as u32)),
             OpName::FADD => Some(f32::to_bits(rs1f + rs2f)),
             OpName::FSUB => Some(f32::to_bits(rs1f - rs2f)),
@@ -108,7 +108,44 @@ impl Simulator {
             OpName::FLT => Some(if rs1f < rs2f { 1 } else { 0 }),
             OpName::FLE => Some(if rs1f <= rs2f { 1 } else { 0 }),
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
-            OpName::LW => Some(self.ctx.memory[rs1u.wrapping_add_signed(imm) as usize] as u32),
+            OpName::LW => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                Some(u32::from_le_bytes([
+                    self.ctx.memory[addr],
+                    self.ctx.memory[addr + 1],
+                    self.ctx.memory[addr + 2],
+                    self.ctx.memory[addr + 3],
+                ]))
+            }
+            OpName::LB => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                Some(self.ctx.memory[addr] as i8 as i32 as u32)
+            }
+            OpName::LBU => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                Some(self.ctx.memory[addr] as u32)
+            }
+            OpName::LH => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                Some(
+                    u16::from_le_bytes([self.ctx.memory[addr], self.ctx.memory[addr + 1]]) as i16
+                        as i32 as u32,
+                )
+            }
+            OpName::LHU => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                Some(u16::from_le_bytes([self.ctx.memory[addr], self.ctx.memory[addr + 1]]) as u32)
+            }
+            OpName::SB => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                mem = Some((addr..addr + 1, rs2u));
+                None
+            }
+            OpName::SH => {
+                let addr = rs1u.wrapping_add_signed(imm) as usize;
+                mem = Some((addr..addr + 2, rs2u));
+                None
+            }
             OpName::SW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 mem = Some((addr..addr + 4, rs2u));
@@ -125,7 +162,7 @@ impl Simulator {
                 Some(u32::from_le_bytes(buf))
             }
             OpName::OUTB => {
-                self.config.out_buffer.write_all(&[rs1u as u8]).unwrap();
+                self.config.out_buffer.write_all(&[rs2u as u8]).unwrap();
                 None
             }
         };
