@@ -8,3 +8,4 @@ strum.workspace = true
 strum_macros.workspace = true
 nom.workspace = true
 bitvec.workspace = true
+enum_properties.workspace = true

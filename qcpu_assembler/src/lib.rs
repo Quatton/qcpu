@@ -1,5 +1,7 @@
 #![allow(clippy::unusual_byte_groupings)]
 
+pub mod v2;
+
 use nom::{
     character::complete::{char, multispace0, not_line_ending},
     multi::many0,

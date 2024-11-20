@@ -267,6 +267,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
+name = "enum_properties"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b69918c4fbd88f3465ed16714c0270c442abb11dab4cfe4a511f5632d3614384"
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -666,6 +672,7 @@ name = "qcpu_syntax"
 version = "1.2.2"
 dependencies = [
  "bitvec",
+ "enum_properties",
  "nom",
  "strum",
  "strum_macros",

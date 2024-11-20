@@ -2,6 +2,7 @@ mod execute;
 pub mod reg;
 mod result;
 pub mod snapshot;
+pub mod v2;
 
 use std::{collections::VecDeque, io::Read as _};
 
