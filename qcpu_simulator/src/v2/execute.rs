@@ -97,7 +97,7 @@ impl Simulator {
                 Some((pc + 4) as u32)
             }
             OpName::LUI => Some((imm as u32) << 12),
-            OpName::AUIPC => Some((pc as u32).wrapping_add(imm as u32)),
+            OpName::AUIPC => Some((pc as u32).wrapping_add((imm as u32) << 12)),
             OpName::FADD => Some(f32::to_bits(rs1f + rs2f)),
             OpName::FSUB => Some(f32::to_bits(rs1f - rs2f)),
             OpName::FMUL => Some(f32::to_bits(rs1f * rs2f)),

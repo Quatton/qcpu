@@ -1,3 +1,6 @@
+## [2.2.1] - 2024-11-21
+- li still bugging
+
 ## [2.2.0] - 2024-11-21
 - li bug fix (why did i use auipc)
 - li with floats

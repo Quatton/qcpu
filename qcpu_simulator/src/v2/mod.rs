@@ -64,6 +64,7 @@ impl Simulator {
 
     pub fn run(&mut self) {
         loop {
+            self.run_once();
             self.ctx.current.pc = self.ctx.current.next_pc;
             if self.ctx.current.pc >= self.ctx.memory.len().min(self.ctx.program.len() * 4) {
                 println!("Program finished");

@@ -35,7 +35,7 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
                     imm,
                     o: OpName::ADDI,
                     rd: reg,
-                    rs1: Register::Zero,
+                    rs1: reg,
                     ..Default::default()
                 },
             ],
@@ -50,27 +50,37 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
 
     let mut ops = Vec::new();
 
-    if bv[11..=31].any() {
+    let lui = (bv[12..=31]
+        .load::<u32>()
+        .wrapping_add(bv[11..=11].load::<u32>())
+        << 12
+        >> 12) as i32;
+
+    if lui != 0 {
         ops.push(Op {
-            imm: Immediate::from_offset(
-                bv[12..=31]
-                    .load::<u32>()
-                    .wrapping_add(bv[11..=11].load::<u32>()) as i32,
-            ),
+            imm: Immediate::from_offset(lui),
             o: OpName::LUI,
             rd: reg,
             rs1: Register::Zero,
             ..Default::default()
         });
-    }
 
-    ops.push(Op {
-        imm: Immediate::from_offset(bv[0..=11].load::<i32>()),
-        o: OpName::ADDI,
-        rd: reg,
-        rs1: reg,
-        ..Default::default()
-    });
+        ops.push(Op {
+            imm: Immediate::from_offset(bv[0..=11].load::<i32>()),
+            o: OpName::ADDI,
+            rd: reg,
+            rs1: reg,
+            ..Default::default()
+        });
+    } else {
+        ops.push(Op {
+            imm: Immediate::from_offset(bv.load::<i32>()),
+            o: OpName::ADDI,
+            rd: reg,
+            rs1: Register::Zero,
+            ..Default::default()
+        });
+    }
 
     Ok((i, ops))
 }
