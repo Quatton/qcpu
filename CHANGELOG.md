@@ -1,3 +1,6 @@
+## [2.1.0] - 2024-11-20
+- li with better lui behavior
+
 ## [2.0.0] - 2024-11-20
 - Original ISA
 
