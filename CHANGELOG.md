@@ -1,3 +1,8 @@
+## [2.3.0] - 2024-11-22
+- Statistics
+  - You don't actually have to stall/flash. Just pretend to.
+- Faster decode
+
 ## [2.2.1] - 2024-11-21
 - li still bugging
 
