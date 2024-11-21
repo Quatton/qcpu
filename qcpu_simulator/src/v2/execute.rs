@@ -103,7 +103,7 @@ impl Simulator {
             OpName::FSGNJN => Some(rs1u & !(1 << 31) | (!rs2u & (1 << 31))),
             OpName::FSGNJX => Some(rs1u ^ (rs2u & (1 << 31))),
             OpName::FCVTWS => Some(rs1f.round_ties_even() as u32),
-            OpName::FCVTSW => Some(rs1i as f32),
+            OpName::FCVTSW => Some((rs1i as f32).to_bits()),
             OpName::FEQ => Some(if rs1f == rs2f { 1 } else { 0 }),
             OpName::FLT => Some(if rs1f < rs2f { 1 } else { 0 }),
             OpName::FLE => Some(if rs1f <= rs2f { 1 } else { 0 }),
