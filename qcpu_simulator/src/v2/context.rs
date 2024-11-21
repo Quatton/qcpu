@@ -146,8 +146,16 @@ pub struct SimulationConfig {
     pub verbose: bool,
     pub interactive: bool,
     pub memory_size: usize,
+
+    pub decode_cache: HashMap<u32, Op>,
+    pub fetch_cache: HashMap<usize, u32>,
+
     pub in_buffer: BufReader<Box<dyn Read>>,
     pub out_buffer: BufWriter<Box<dyn Write>>,
+}
+
+pub fn make_cache(mcs: Vec<u32>, ops: Vec<Op>) -> HashMap<u32, Op> {
+    mcs.into_iter().zip(ops).collect()
 }
 
 impl Default for SimulationConfig {
@@ -156,6 +164,8 @@ impl Default for SimulationConfig {
             verbose: false,
             interactive: false,
             memory_size: 4096,
+            decode_cache: HashMap::new(),
+            fetch_cache: HashMap::new(),
             in_buffer: BufReader::new(Box::new(std::io::stdin().lock())),
             out_buffer: BufWriter::new(Box::new(std::io::stdout().lock())),
         }
@@ -165,6 +175,11 @@ impl Default for SimulationConfig {
 impl SimulationConfig {
     pub fn verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn load_cache(mut self, cache: HashMap<u32, Op>) -> Self {
+        self.decode_cache = cache;
         self
     }
 

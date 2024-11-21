@@ -10,19 +10,34 @@ pub mod context;
 pub mod execute;
 
 impl Simulator {
-    fn fetch(&self) -> (u32, usize) {
+    fn fetch(&mut self) -> u32 {
         let mut pc = self.ctx.current.pc;
+
+        // if let Some(instr) = self.config.fetch_cache.get(&pc) {
+        //     return *instr;
+        // }
+
         let mut instr = 0u32;
         for i in 0..4 {
             instr |= (self.ctx.memory[pc] as u32) << (i * 8); // little fucking endian
             pc += 1;
         }
 
-        (instr, pc)
+        // self.config.fetch_cache.insert(pc, instr);
+
+        instr
     }
 
-    fn decode(&self, mc: u32) -> Op {
-        Op::decode(mc)
+    fn decode(&mut self, mc: u32) -> Op {
+        if let Some(op) = self.config.decode_cache.get(&mc) {
+            return op.clone();
+        }
+
+        let op = Op::decode(mc);
+
+        self.config.decode_cache.insert(mc, op.clone());
+
+        op
     }
 
     fn memory_access(&mut self, req: Option<(Range<usize>, u32)>) {
@@ -44,9 +59,11 @@ impl Simulator {
     }
 
     pub fn run_once(&mut self) {
-        let (instr, next_pc_predicted) = self.fetch();
+        let instr = self.fetch();
 
         let op = self.decode(instr);
+
+        let next_pc_predicted = self.ctx.current.pc.wrapping_add(4);
 
         self.ctx.current.next_pc = next_pc_predicted;
 
