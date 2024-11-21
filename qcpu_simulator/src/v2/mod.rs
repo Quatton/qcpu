@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use context::Simulator;
+use context::{BranchPredictionStrategy, Simulator};
 use qcpu_syntax::v2::{
     op::Op,
     syntax::{OpName, OpType},
@@ -58,50 +58,119 @@ impl Simulator {
         }
     }
 
+    pub fn predict_next_pc(&mut self, op: &Op) -> usize {
+        let pc = self.ctx.current.pc;
+        let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
+
+        match op.o.optype {
+            OpType::R
+            | OpType::U
+            | OpType::L
+            | OpType::E
+            | OpType::F
+            | OpType::N
+            | OpType::O
+            | OpType::S
+            | OpType::I
+            | OpType::Raw => pc + 4,
+            OpType::J => taken,
+            OpType::B => match &self.config.branch_prediction {
+                BranchPredictionStrategy::Ant => pc + 4,
+                BranchPredictionStrategy::At => taken,
+                BranchPredictionStrategy::Bm => {
+                    let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
+
+                    if *pred > 0 {
+                        taken
+                    } else {
+                        pc + 4
+                    }
+                }
+            },
+        }
+    }
+
     pub fn run_once(&mut self) {
         let instr = self.fetch();
 
         let op = self.decode(instr);
 
-        let next_pc_predicted = self.ctx.current.pc.wrapping_add(4);
-
-        self.ctx.current.next_pc = next_pc_predicted;
-
         if op.o == OpName::EBREAK {
             self.ctx.snapshots.push(self.ctx.current.clone());
+            self.ctx.current.next_pc = self.ctx.current.pc + 4;
             return;
         }
 
-        self.ctx.stat.cycle_count += 1;
-        self.ctx.current.reg_status.iter_mut().for_each(|d| {
-            if d == &0 {
-                *d = 0
-            } else {
-                *d = d.saturating_sub(1)
-            }
-        });
-
-        // might be zero anyway so we don't need to check
-        self.ctx.stat.hazard_stall_count += self.ctx.current.reg_status[op.rs1 as usize]
-            .max(self.ctx.current.reg_status[op.rs2 as usize]);
-
-        self.ctx.current.op = op.clone();
-
         let (rd_res, next_pc_true, wm) = self.execute();
 
-        self.ctx
-            .stat
-            .instr_count
-            .entry(op.o.optype)
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
+        // verbose stuff here
 
-        if rd_res.is_some() {
-            self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
-        }
+        if self.config.verbose {
+            let pc = self.ctx.current.pc;
+            let next_pc_predicted =
+                if self.config.branch_prediction == BranchPredictionStrategy::Ant {
+                    pc + 4
+                } else {
+                    self.predict_next_pc(&op)
+                };
 
-        if next_pc_predicted != next_pc_true && op.o.optype == OpType::B {
-            self.ctx.stat.flash_count += 1;
+            self.ctx.current.next_pc = next_pc_predicted;
+
+            self.ctx.stat.cycle_count += 1;
+            self.ctx.current.reg_status.iter_mut().for_each(|d| {
+                if d == &0 {
+                    *d = 0
+                } else {
+                    *d = d.saturating_sub(1)
+                }
+            });
+
+            // might be zero anyway so we don't need to check
+            let stall = self.ctx.current.reg_status[op.rs1 as usize]
+                .max(self.ctx.current.reg_status[op.rs2 as usize]);
+            self.ctx.stat.hazard_stall_count += stall;
+            self.ctx.stat.cycle_count += stall;
+
+            self.ctx.current.op = op.clone();
+
+            self.ctx
+                .stat
+                .instr_count
+                .entry(op.o.optype)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+
+            if rd_res.is_some() {
+                self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
+            }
+
+            if next_pc_predicted != next_pc_true {
+                self.ctx
+                    .stat
+                    .flash_count
+                    .entry(op.o.optype)
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                self.ctx.stat.cycle_count += 2;
+            }
+
+            if op.o.optype == OpType::B
+                && self.config.branch_prediction == BranchPredictionStrategy::Bm
+            {
+                if next_pc_true != pc + 4 {
+                    self.ctx
+                        .sc
+                        .entry(pc)
+                        .and_modify(|e| *e = (*e + 1).min(2))
+                        .or_insert(1);
+                } else {
+                    self.ctx
+                        .sc
+                        .entry(pc)
+                        .and_modify(|e| *e = (*e - 1).max(-1))
+                        .or_insert(0);
+                }
+            }
         }
 
         self.memory_access(wm);
@@ -111,6 +180,7 @@ impl Simulator {
     }
 
     pub fn run(&mut self) {
+        println!("Running program");
         loop {
             self.run_once();
             self.ctx.current.pc = self.ctx.current.next_pc;

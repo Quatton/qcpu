@@ -6,6 +6,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, parse_tree, to_assembly};
+use qcpu_simulator::v2::context::BranchPredictionStrategy;
 use qcpu_syntax::parser::{Op, ParsingContext};
 use qcpu_tui::app::App;
 
@@ -128,6 +129,9 @@ enum Commands {
 
         #[arg(short, long)]
         input: Option<String>,
+
+        #[arg(long)]
+        bp: Option<BranchPredictionStrategy>,
     },
 
     /// Parse input into a convenient binary
@@ -460,6 +464,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             output,
             input,
             it,
+            bp,
         } => {
             let (code, _ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
@@ -490,6 +495,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let cfg = qcpu_simulator::v2::context::SimulationConfig::default()
                 .memory_size(memory_size)
+                .branch_prediction(bp.unwrap_or_default())
                 .verbose(verbose)
                 .interactive(it)
                 .file_in(input)
@@ -514,7 +520,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 println!("Time elapsed: {:?}", t1 - t0);
                 sim.log_registers();
-                sim.log_statistics();
+
+                if verbose {
+                    sim.log_statistics();
+                }
             }
 
             println!("========================================");

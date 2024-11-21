@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 strum.workspace = true
+strum_macros.workspace = true
 qcpu_syntax.workspace = true
 qcpu_assembler.workspace = true
 bitvec.workspace = true

@@ -1,3 +1,7 @@
+## [2.4.0] - 2024-11-22
+- Branch predictor
+- Removed statistics calculation if --verbose is not set (faster?)
+
 ## [2.3.0] - 2024-11-22
 - Statistics
   - You don't actually have to stall/flash. Just pretend to.

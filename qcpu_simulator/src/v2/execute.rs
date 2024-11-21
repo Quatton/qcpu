@@ -23,7 +23,7 @@ impl Simulator {
 
         let imm = op.imm.raw().unwrap_or_default();
 
-        let mut next_pc = self.ctx.current.next_pc;
+        let mut next_pc = self.ctx.current.pc + 4;
         let mut mem = None;
 
         let pc = self.ctx.current.pc;

@@ -6,6 +6,7 @@ use std::{
 };
 
 use qcpu_syntax::v2::{op::Op, reg::Registers, syntax::OpType};
+use strum_macros::{EnumString, FromRepr};
 
 #[derive(Clone)]
 pub struct Snapshot {
@@ -33,6 +34,8 @@ pub struct SimulationContext {
     pub snapshots: Vec<Snapshot>,
     pub program: Vec<u32>,
     pub memory: Vec<u8>,
+
+    pub sc: HashMap<usize, i8>,
     pub stat: Stat,
 }
 
@@ -40,13 +43,37 @@ pub struct SimulationContext {
 pub struct Stat {
     pub instr_count: HashMap<OpType, usize>,
     pub cycle_count: usize,
-    pub flash_count: usize,
+    pub flash_count: HashMap<OpType, usize>,
     pub hazard_stall_count: usize,
+}
+
+#[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug)]
+#[strum(serialize_all = "lowercase")]
+pub enum BranchPredictionStrategy {
+    #[default]
+    Ant,
+    At,
+    Bm,
+}
+
+impl Display for BranchPredictionStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BranchPredictionStrategy::Ant => write!(f, "Always not taken"),
+            BranchPredictionStrategy::At => write!(f, "Always taken"),
+            BranchPredictionStrategy::Bm => write!(f, "Bimodal"),
+        }
+    }
 }
 
 impl Display for Stat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let b_count = self.instr_count.get(&OpType::B).unwrap_or(&0);
+        let flash_b_count = self.flash_count.get(&OpType::B).unwrap_or(&0);
+        let instr_count = self
+            .instr_count
+            .iter()
+            .fold(0, |acc, (_, count)| acc + count);
         writeln!(f, "Statistics:")?;
         writeln!(
             f,
@@ -58,14 +85,25 @@ impl Display for Stat {
         writeln!(f, "Cycle count: {}", self.cycle_count)?;
         writeln!(
             f,
-            "Flash count: {} out of {} B instructions ({}%)",
-            self.flash_count,
+            "Branch Prediction Miss: {} out of {} B instructions ({}%)",
+            flash_b_count,
             b_count,
             if b_count == &0 {
                 0
             } else {
-                self.flash_count * 100 / b_count
-            }
+                flash_b_count * 100 / b_count
+            },
+        )?;
+        writeln!(
+            f,
+            "Flash count for JALR: {} out of {} instructions ({}%)",
+            self.flash_count.get(&OpType::I).unwrap_or(&0),
+            instr_count,
+            if self.instr_count.get(&OpType::I).unwrap_or(&0) == &0 {
+                0
+            } else {
+                self.flash_count.get(&OpType::I).unwrap_or(&0) * 100 / instr_count
+            },
         )?;
         write!(f, "Hazard stall count: {}", self.hazard_stall_count)
     }
@@ -77,6 +115,7 @@ impl Default for SimulationContext {
             current: Snapshot::default(),
             snapshots: Vec::new(),
             program: Vec::new(),
+            sc: HashMap::new(),
             memory: vec![0; 4096],
             stat: Stat::default(),
         }
@@ -138,6 +177,10 @@ impl Simulator {
     }
 
     pub fn log_statistics(&self) {
+        println!(
+            "Branch prediction strategy: {}",
+            self.config.branch_prediction
+        );
         println!("{}", self.ctx.stat);
     }
 }
@@ -146,6 +189,8 @@ pub struct SimulationConfig {
     pub verbose: bool,
     pub interactive: bool,
     pub memory_size: usize,
+
+    pub branch_prediction: BranchPredictionStrategy,
 
     pub decode_cache: HashMap<u32, Op>,
     pub fetch_cache: HashMap<usize, u32>,
@@ -164,6 +209,7 @@ impl Default for SimulationConfig {
             verbose: false,
             interactive: false,
             memory_size: 4096,
+            branch_prediction: BranchPredictionStrategy::default(),
             decode_cache: HashMap::new(),
             fetch_cache: HashMap::new(),
             in_buffer: BufReader::new(Box::new(std::io::stdin().lock())),
@@ -173,6 +219,11 @@ impl Default for SimulationConfig {
 }
 
 impl SimulationConfig {
+    pub fn branch_prediction(mut self, strategy: BranchPredictionStrategy) -> Self {
+        self.branch_prediction = strategy;
+        self
+    }
+
     pub fn verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
