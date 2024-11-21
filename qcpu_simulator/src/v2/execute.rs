@@ -20,7 +20,7 @@ impl Simulator {
         let rs1f = f32::from_bits(rs1u);
         let rs2f = f32::from_bits(rs2u);
 
-        let imm = op.imm.offset().unwrap_or_default();
+        let imm = op.imm.raw().unwrap_or_default();
 
         let mut next_pc = self.ctx.next_pc;
         let mut mem = None;

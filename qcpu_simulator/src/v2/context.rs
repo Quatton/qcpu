@@ -81,7 +81,7 @@ impl Simulator {
         for (i, reg) in self.ctx.regs.iter().enumerate() {
             let reg_name = Register::from_usize(i);
             if i < 32 {
-                print!("{:5}: 0x{:08x} ({:10}) ", reg_name, reg, reg);
+                print!("{:5}: 0x{:08x} ({:10}) ", reg_name, reg, *reg as i32);
             } else {
                 print!(
                     "{:5}: 0x{:08x} ({:10}) ",

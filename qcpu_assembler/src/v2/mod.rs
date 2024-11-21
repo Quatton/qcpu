@@ -56,6 +56,7 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
     let mut len = 0;
     let mut ops: Vec<Op> = nodes
         .into_iter()
+        .flatten()
         .filter_map(|node| match node {
             Node::Label(label) => {
                 ctx.label_map.insert(label, len);

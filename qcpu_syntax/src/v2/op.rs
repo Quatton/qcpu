@@ -14,6 +14,7 @@ use strum::VariantArray as _;
 use crate::{identifier, parse_i32, LabelMap, ParsingContext, WithParser as _};
 
 use super::{
+    pseudo::pseudo,
     reg::Register,
     syntax::{OpInfo, OpName, OpType},
 };
@@ -28,7 +29,7 @@ impl Debug for Immediate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.label() {
             Some(label) => write!(f, "{label}"),
-            None => match self.offset() {
+            None => match self.raw() {
                 Some(offset) => write!(f, "{}", offset),
                 None => write!(f, "None"),
             },
@@ -64,11 +65,11 @@ impl Immediate {
     pub fn label(&self) -> Option<&String> {
         self.label.as_ref()
     }
-    pub fn offset(&self) -> Option<i32> {
+    pub fn raw(&self) -> Option<i32> {
         self.raw
     }
     pub fn offset_or_lookup(&self, ctx: &ParsingContext) -> Option<i32> {
-        self.offset().or_else(|| {
+        self.raw().or_else(|| {
             ctx.label_map
                 .get(self.label.as_ref().unwrap())
                 .map(|x| (*x as i32))
@@ -91,16 +92,16 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> IResult<&str, Vec<Self>> {
         let (input, label) = opt(delimited(multispace0, identifier, char(':')))(input)?;
         let (input, _) = opt(multispace0)(input)?;
         if let Some(label) = label {
-            return Ok((input, Node::Label(label.to_string())));
+            return Ok((input, vec![Node::Label(label.to_string())]));
         }
 
         let (input, op) = Op::parse(input)?;
 
-        Ok((input, Node::OpNode(op)))
+        Ok((input, op.into_iter().map(Node::OpNode).collect()))
     }
 }
 
@@ -123,7 +124,7 @@ impl Op {
         vec[19..=24].store(self.rs2 as usize);
         vec[25..=31].store(self.o.funct7.unwrap_or(0) as u32);
 
-        let imm = self.imm.offset().unwrap_or_default();
+        let imm = self.imm.raw().unwrap_or_default();
 
         match self.o.optype {
             OpType::R | OpType::F | OpType::N | OpType::O => {}
@@ -257,26 +258,35 @@ impl Op {
 
     pub fn resolve_label(&mut self, label_map: &LabelMap, idx: usize) -> Result<(), String> {
         let offset = match self.o.optype {
-            OpType::I | OpType::L => 0,
+            OpType::I | OpType::L | OpType::U => 0,
             OpType::B | OpType::S | OpType::J => idx as i32,
             _ => return Ok(()),
         };
 
         let imm = &mut self.imm;
-        if imm.offset().is_some() {
+        if imm.raw().is_some() {
             return Ok(());
         }
 
         if let Some(label) = imm.label() {
             match label_map.get(label) {
-                Some(&target) => {
-                    let target = target as i32;
-                    // println!(
-                    //     "Resolved label {} to {} with offset {}",
-                    //     label, target, offset
-                    // );
-                    imm.raw = Some((target - offset) * 4);
-                }
+                Some(&target) => match self.o.optype {
+                    OpType::U => {
+                        let tgt = target as u32;
+                        let bv = tgt.view_bits::<Lsb0>();
+
+                        imm.raw = Some(
+                            bv[12..=31]
+                                .load::<u32>()
+                                .wrapping_add(bv[11..=11].load::<u32>())
+                                as i32,
+                        );
+                    }
+                    _ => {
+                        let target = target as i32;
+                        imm.raw = Some((target - offset) * 4);
+                    }
+                },
                 None => return Err(format!("Label not set for op {:?} at {}", self, idx)),
             }
         }
@@ -284,8 +294,15 @@ impl Op {
         Ok(())
     }
 
-    pub fn parse(s: &str) -> IResult<&str, Self> {
+    pub fn parse(s: &str) -> IResult<&str, Vec<Self>> {
         let (s, _) = multispace0(s)?;
+
+        let (s, op) = pseudo(s)?;
+
+        if let Some(op) = op {
+            return Ok((s, op));
+        }
+
         let (s, o) = alt((OpName::parse, map(tag(".word"), |_| OpName::RAW)))(s)?;
         let (s, _) = multispace1(s)?;
 
@@ -484,7 +501,7 @@ impl Op {
             }
         };
 
-        Ok((s, o))
+        Ok((s, vec![o]))
     }
 }
 
