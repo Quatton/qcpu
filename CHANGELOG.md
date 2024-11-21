@@ -1,4 +1,9 @@
-## [2.1.0] - 2024-11-20
+## [2.2.0] - 2024-11-21
+- li bug fix (why did i use auipc)
+- li with floats
+- TUI with breakpoint
+
+## [2.1.0] - 2024-11-21
 - li with better lui behavior
 
 ## [2.0.0] - 2024-11-20
