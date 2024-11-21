@@ -6,6 +6,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{char, multispace0, multispace1},
     combinator::{map, opt},
+    number::complete::float,
     sequence::delimited,
     IResult,
 };
@@ -77,10 +78,16 @@ impl Immediate {
     }
 
     pub fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, f32) = opt(float)(input)?;
         let (input, offset) = opt(parse_i32)(input)?;
         if let Some(offset) = offset {
             return Ok((input, Self::from_offset(offset)));
         }
+
+        if let Some(f32) = f32 {
+            return Ok((input, Self::from_offset(f32.to_bits() as i32)));
+        }
+
         identifier(input).map(|(input, label)| (input, Self::from_label(label.to_string())))
     }
 }
@@ -488,13 +495,20 @@ impl Op {
 
             OpType::Raw => {
                 // .word imm
-                let (s, thing) = parse_i32(s)?;
+                let (s, imm) = Immediate::parse(s)?;
+
+                if imm.label().is_some() {
+                    return Err(nom::Err::Failure(nom::error::Error::new(
+                        s,
+                        nom::error::ErrorKind::Fail,
+                    )));
+                }
 
                 (
                     s,
                     Self {
                         o,
-                        imm: Immediate::from_offset(thing),
+                        imm,
                         ..Default::default()
                     },
                 )

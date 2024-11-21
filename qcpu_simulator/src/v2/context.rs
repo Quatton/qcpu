@@ -81,10 +81,10 @@ impl Simulator {
         for (i, reg) in self.ctx.regs.iter().enumerate() {
             let reg_name = Register::from_usize(i);
             if i < 32 {
-                print!("{:5}: 0x{:08x} ({:10}) ", reg_name, reg, *reg as i32);
+                print!("{:5}: 0x{:08x} ({:12}) ", reg_name, reg, *reg as i32);
             } else {
                 print!(
-                    "{:5}: 0x{:08x} ({:10}) ",
+                    "{:5}: 0x{:08x} ({:12.6e}) ",
                     reg_name,
                     reg,
                     f32::from_bits(*reg)
