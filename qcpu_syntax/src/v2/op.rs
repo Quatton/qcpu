@@ -134,7 +134,7 @@ impl Op {
         let imm = self.imm.raw().unwrap_or_default();
 
         match self.o.optype {
-            OpType::R | OpType::F | OpType::N | OpType::O => {}
+            OpType::R | OpType::F | OpType::N | OpType::O | OpType::E => {}
             OpType::I | OpType::L => {
                 vec[19..=30].store(imm);
             }
@@ -220,21 +220,22 @@ impl Op {
             | OpType::L => {
                 op.rd = Register::from_usize(rd);
             }
-            OpType::B | OpType::Raw | OpType::O => {}
+            OpType::B | OpType::Raw | OpType::O | OpType::E => {}
         };
 
         match opname.optype {
             OpType::R | OpType::F | OpType::U | OpType::S | OpType::I | OpType::B | OpType::L => {
                 op.rs1 = Register::from_usize(rs1);
             }
-            OpType::Raw | OpType::J | OpType::N | OpType::O => {}
+            OpType::Raw | OpType::J | OpType::N | OpType::O | OpType::E => {}
         };
 
         match opname.optype {
             OpType::R | OpType::F | OpType::S | OpType::B | OpType::O => {
                 op.rs2 = Register::from_usize(rs2);
             }
-            OpType::I | OpType::U | OpType::J | OpType::Raw | OpType::N | OpType::L => {}
+            OpType::I | OpType::U | OpType::J | OpType::Raw | OpType::N | OpType::L | OpType::E => {
+            }
         };
 
         match opname.optype {
@@ -257,7 +258,7 @@ impl Op {
             OpType::J => {
                 op.imm = Immediate::from_offset(bv[11..=30].load::<i32>() << 1);
             }
-            OpType::F | OpType::R | OpType::N | OpType::Raw | OpType::O => {}
+            OpType::F | OpType::R | OpType::N | OpType::Raw | OpType::O | OpType::E => {}
         };
 
         op
@@ -314,6 +315,16 @@ impl Op {
         let (s, _) = multispace1(s)?;
 
         let (s, o) = match o.optype {
+            OpType::E => {
+                // ebreak
+                (
+                    s,
+                    Self {
+                        o,
+                        ..Default::default()
+                    },
+                )
+            }
             OpType::L => {
                 // lw a0 imm(a1)
                 let (s, rd) = Register::parse(s)?;

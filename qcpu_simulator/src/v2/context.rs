@@ -3,27 +3,42 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
 };
 
-use qcpu_syntax::v2::reg::Register;
+use qcpu_syntax::v2::{op::Op, reg::Registers};
+
+pub struct Snapshot {
+    pub pc: usize,
+    pub next_pc: usize,
+    pub op: Op,
+    pub regs: Registers,
+    pub reg_status: [usize; 64],
+}
+
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            pc: 0,
+            next_pc: 0,
+            op: Op::default(),
+            regs: [0; 64].into(),
+            reg_status: [0; 64],
+        }
+    }
+}
 
 pub struct SimulationContext {
-    pub pc: usize,
+    pub current: Snapshot,
+    pub snapshots: Vec<Snapshot>,
     pub program: Vec<u32>,
-    pub next_pc: usize,
-    pub regs: [u32; 64],
-    pub reg_status: [usize; 64],
-
     pub memory: Vec<u8>,
 }
 
 impl Default for SimulationContext {
     fn default() -> Self {
         Self {
-            pc: 0,
-            next_pc: 0,
-            regs: [0; 64],
-            reg_status: [0; 64],
-            memory: vec![0; 4096],
+            current: Snapshot::default(),
+            snapshots: Vec::new(),
             program: Vec::new(),
+            memory: vec![0; 4096],
         }
     }
 }
@@ -57,8 +72,9 @@ impl Simulator {
     }
 
     pub fn init(&mut self) {
-        self.ctx.regs[2] = (self.config.memory_size >> 1).try_into().unwrap();
-        self.ctx.regs[3] = ((self.config.memory_size >> 1) + (self.config.memory_size >> 2))
+        self.ctx.current.regs[2] = (self.config.memory_size >> 1).try_into().unwrap();
+        self.ctx.current.regs[3] = ((self.config.memory_size >> 1)
+            + (self.config.memory_size >> 2))
             .try_into()
             .unwrap();
     }
@@ -78,27 +94,13 @@ impl Simulator {
     }
 
     pub fn log_registers(&self) {
-        for (i, reg) in self.ctx.regs.iter().enumerate() {
-            let reg_name = Register::from_usize(i);
-            if i < 32 {
-                print!("{:5}: 0x{:08x} ({:12}) ", reg_name, reg, *reg as i32);
-            } else {
-                print!(
-                    "{:5}: 0x{:08x} ({:12.6e}) ",
-                    reg_name,
-                    reg,
-                    f32::from_bits(*reg)
-                );
-            }
-            if i % 4 == 3 {
-                println!();
-            }
-        }
+        println!("{:?}", self.ctx.current.regs);
     }
 }
 
 pub struct SimulationConfig {
     pub verbose: bool,
+    pub interactive: bool,
     pub memory_size: usize,
     pub in_buffer: BufReader<Box<dyn Read>>,
     pub out_buffer: BufWriter<Box<dyn Write>>,
@@ -108,6 +110,7 @@ impl Default for SimulationConfig {
     fn default() -> Self {
         Self {
             verbose: false,
+            interactive: false,
             memory_size: 4096,
             in_buffer: BufReader::new(Box::new(std::io::stdin().lock())),
             out_buffer: BufWriter::new(Box::new(std::io::stdout().lock())),
@@ -118,6 +121,12 @@ impl Default for SimulationConfig {
 impl SimulationConfig {
     pub fn verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn interactive(mut self, interactive: bool) -> Self {
+        self.interactive = interactive;
+        self.verbose = !interactive || self.verbose;
         self
     }
 

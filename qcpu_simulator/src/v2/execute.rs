@@ -7,12 +7,12 @@ use qcpu_syntax::v2::{op::Op, syntax::OpName};
 
 use super::context::Simulator;
 
-pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>);
+pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>, bool);
 
 impl Simulator {
     pub fn execute(&mut self, op: &Op) -> ExecuteResult {
-        let rs1u = self.ctx.regs[op.rs1 as usize];
-        let rs2u = self.ctx.regs[op.rs2 as usize];
+        let rs1u = self.ctx.current.regs[op.rs1 as usize];
+        let rs2u = self.ctx.current.regs[op.rs2 as usize];
 
         let rs1i = rs1u as i32;
         let rs2i = rs2u as i32;
@@ -22,8 +22,10 @@ impl Simulator {
 
         let imm = op.imm.raw().unwrap_or_default();
 
-        let mut next_pc = self.ctx.next_pc;
+        let mut next_pc = self.ctx.current.next_pc;
         let mut mem = None;
+
+        let pc = self.ctx.current.pc;
 
         let rd_res = match op.o {
             OpName::RAW => None,
@@ -51,50 +53,50 @@ impl Simulator {
 
             OpName::BEQ => {
                 if rs1u == rs2u {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BGE => {
                 if (rs1i) >= (rs2i) {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BLT => {
                 if (rs1i) < (rs2i) {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BNE => {
                 if rs1u != rs2u {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BGEU => {
                 if rs1u >= rs2u {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BLTU => {
                 if rs1u < rs2u {
-                    next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
+                    next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::JAL => {
-                next_pc = self.ctx.pc.wrapping_add_signed(imm as isize);
-                Some((self.ctx.pc + 4) as u32)
+                next_pc = pc.wrapping_add_signed(imm as isize);
+                Some((pc + 4) as u32)
             }
             OpName::JALR => {
                 next_pc = (rs1u.wrapping_add_signed(imm)) as usize;
-                Some((self.ctx.pc + 4) as u32)
+                Some((pc + 4) as u32)
             }
             OpName::LUI => Some((imm as u32) << 12),
-            OpName::AUIPC => Some((self.ctx.pc as u32).wrapping_add(imm as u32)),
+            OpName::AUIPC => Some((pc as u32).wrapping_add(imm as u32)),
             OpName::FADD => Some(f32::to_bits(rs1f + rs2f)),
             OpName::FSUB => Some(f32::to_bits(rs1f - rs2f)),
             OpName::FMUL => Some(f32::to_bits(rs1f * rs2f)),
@@ -165,8 +167,11 @@ impl Simulator {
                 self.config.out_buffer.write_all(&[rs2u as u8]).unwrap();
                 None
             }
+            OpName::EBREAK => {
+                return (None, next_pc, mem, true);
+            }
         };
 
-        (rd_res, next_pc, mem)
+        (rd_res, next_pc, mem, false)
     }
 }

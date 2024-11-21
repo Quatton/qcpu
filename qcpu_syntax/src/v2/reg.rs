@@ -1,8 +1,65 @@
 use nom::{character::complete::alphanumeric1, combinator::map_res, IResult};
-use std::str::FromStr as _;
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    str::FromStr as _,
+};
 use strum_macros::{Display, EnumIter, EnumString, FromRepr, VariantArray};
 
 use crate::error::ParseError;
+
+#[derive(Clone, Copy)]
+pub struct Registers([u32; 64]);
+
+impl From<[u32; 64]> for Registers {
+    fn from(regs: [u32; 64]) -> Self {
+        Self(regs)
+    }
+}
+
+impl Deref for Registers {
+    type Target = [u32; 64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Registers {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Default for Registers {
+    fn default() -> Self {
+        Self([0; 64])
+    }
+}
+
+impl Debug for Registers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, reg) in self.iter().enumerate() {
+            let reg_name = Register::from_usize(i);
+            if i < 32 {
+                write!(f, "{:5}: 0x{:08x} ({:12}) ", reg_name, reg, *reg as i32)?;
+            } else {
+                write!(
+                    f,
+                    "{:5}: 0x{:08x} ({:12.6e}) ",
+                    reg_name,
+                    reg,
+                    f32::from_bits(*reg)
+                )?;
+            }
+            if i % 4 == 3 {
+                writeln!(f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(
     Default, Display, PartialEq, Clone, Copy, Debug, EnumString, EnumIter, VariantArray, FromRepr,

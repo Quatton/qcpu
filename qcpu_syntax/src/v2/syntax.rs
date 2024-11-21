@@ -14,6 +14,13 @@ enum_properties! {
   #[derive(Debug, Clone, PartialEq, Copy, EnumString, VariantArray)]
   #[strum(serialize_all = "lowercase")]
   pub enum OpName: OpInfo {
+    EBREAK {
+      optype: OpType::E,
+      opcode: 0b1111,
+      funct3: Some(0b000),
+      funct7: Some(0b0000000),
+    },
+
     ADD {
       optype: OpType::R,
       opcode: 0b0000,
@@ -417,6 +424,7 @@ pub enum OpType {
     N,
     O,
     L,
+    E,
     Raw,
 }
 

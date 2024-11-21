@@ -8,7 +8,7 @@ pub mod execute;
 
 impl Simulator {
     fn fetch(&self) -> (u32, usize) {
-        let mut pc = self.ctx.pc;
+        let mut pc = self.ctx.current.pc;
         let mut instr = 0u32;
         for i in 0..4 {
             instr |= (self.ctx.memory[pc] as u32) << (i * 8); // little fucking endian
@@ -36,28 +36,30 @@ impl Simulator {
                 return;
             }
 
-            self.ctx.regs[rd] = data;
+            self.ctx.current.regs[rd] = data;
         }
     }
 
-    pub fn run_once(&mut self) {
+    pub fn run_once(&mut self) -> bool {
         let (instr, next_pc) = self.fetch();
-        self.ctx.next_pc = next_pc;
+        self.ctx.current.next_pc = next_pc;
 
         let op = self.decode(instr);
-        let (rd_res, next_pc_true, wm) = self.execute(&op);
+        let (rd_res, next_pc_true, wm, ebreak) = self.execute(&op);
 
         self.memory_access(wm);
         self.write_back(rd_res.map(|data| (op.rd as usize, data)));
 
-        self.ctx.next_pc = next_pc_true;
+        self.ctx.current.next_pc = next_pc_true;
+
+        ebreak
     }
 
     pub fn run(&mut self) -> Result<(), String> {
         loop {
             self.run_once();
-            self.ctx.pc = self.ctx.next_pc;
-            if self.ctx.pc >= self.ctx.memory.len().min(self.ctx.program.len() * 4) {
+            self.ctx.current.pc = self.ctx.current.next_pc;
+            if self.ctx.current.pc >= self.ctx.memory.len().min(self.ctx.program.len() * 4) {
                 println!("Program finished");
                 break;
             }
