@@ -128,17 +128,14 @@ impl App {
     }
 
     fn calc(&mut self) {
-        let ctx = &mut self.simulator.ctx;
-        if ctx.current.pc >= ctx.memory.len().min(ctx.program.len() * 4) {
+        if self.done {
             return;
         }
-        let _ = ctx;
         self.simulator.run_once();
         let ctx = &mut self.simulator.ctx;
         ctx.current.pc = ctx.current.next_pc;
         if ctx.current.pc >= ctx.memory.len().min(ctx.program.len() * 4) {
-            self.show_dialog = true;
-            self.dialog_message = "Program has finished execution (Press 'e' to hide)".to_string();
+            self.done = true;
         }
     }
 

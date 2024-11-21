@@ -1,6 +1,7 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
+    text::Line,
     widgets::{Block, Paragraph},
     Frame,
 };
@@ -36,26 +37,33 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .constraints([Constraint::Length(1), Constraint::Min(1)])
         .split(frame.area());
 
-    let op = Paragraph::new(format!(
-        "{:?}",
-        app.simulator
-            .ctx
-            .snapshots
-            .get(app.snapshot_idx)
-            .unwrap_or(&app.simulator.ctx.current)
-            .op
-    ));
+    let cur = app
+        .simulator
+        .ctx
+        .snapshots
+        .get(app.snapshot_idx)
+        .unwrap_or(&app.simulator.ctx.current);
 
-    let reg_table = Paragraph::new(format!(
-        "{:?}",
-        app.simulator
-            .ctx
-            .snapshots
-            .get(app.snapshot_idx)
-            .unwrap_or(&app.simulator.ctx.current)
-            .regs
-    ))
-    .block(Block::bordered().title("Registers"));
+    let op = Paragraph::new(format!("{:?}", cur.op));
+
+    let reg_table = Paragraph::new(format!("{:?}", cur.regs)).block(
+        Block::bordered()
+            .title("Registers")
+            .title_bottom(
+                Line::from(format!(
+                    " ← Breakpoint ({}/{}) → ",
+                    if app.snapshot_idx >= app.simulator.ctx.snapshots.len() {
+                        "Current".to_string()
+                    } else {
+                        (app.snapshot_idx + 1).to_string()
+                    },
+                    app.simulator.ctx.snapshots.len()
+                ))
+                .left_aligned(),
+            )
+            .title_bottom(Line::from(format!(" PC: {} ", cur.pc)).left_aligned())
+            .title_bottom(Line::from(format!(" Is done: {} ", app.done)).left_aligned()),
+    );
 
     frame.render_widget(op, vertical_split[0]);
     frame.render_widget(reg_table, vertical_split[1]);
