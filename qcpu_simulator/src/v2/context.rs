@@ -5,6 +5,7 @@ use std::{
 
 use qcpu_syntax::v2::{op::Op, reg::Registers};
 
+#[derive(Clone)]
 pub struct Snapshot {
     pub pc: usize,
     pub next_pc: usize,
@@ -30,6 +31,7 @@ pub struct SimulationContext {
     pub snapshots: Vec<Snapshot>,
     pub program: Vec<u32>,
     pub memory: Vec<u8>,
+    pub flash: usize,
 }
 
 impl Default for SimulationContext {
@@ -39,6 +41,7 @@ impl Default for SimulationContext {
             snapshots: Vec::new(),
             program: Vec::new(),
             memory: vec![0; 4096],
+            flash: 0,
         }
     }
 }
@@ -127,6 +130,7 @@ impl SimulationConfig {
     pub fn interactive(mut self, interactive: bool) -> Self {
         self.interactive = interactive;
         self.verbose = !interactive || self.verbose;
+        self.in_buffer = BufReader::new(Box::new(std::fs::File::open("/dev/null").unwrap()));
         self
     }
 
@@ -135,25 +139,29 @@ impl SimulationConfig {
         self
     }
 
-    pub fn file_in(mut self, file_path: &str) -> Self {
-        let file = OpenOptions::new()
-            .read(true)
-            .open(file_path)
-            .expect("Failed to open file");
+    pub fn file_in(mut self, file_path: Option<String>) -> Self {
+        if let Some(file_path) = file_path {
+            let file = OpenOptions::new()
+                .read(true)
+                .open(file_path)
+                .expect("Failed to open file");
 
-        self.in_buffer = BufReader::new(Box::new(file));
+            self.in_buffer = BufReader::new(Box::new(file));
+        }
         self
     }
 
-    pub fn file_out(mut self, file_path: &str) -> Self {
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(file_path)
-            .expect("Failed to open file");
+    pub fn file_out(mut self, file_path: Option<String>) -> Self {
+        if let Some(file_path) = file_path {
+            let file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(file_path)
+                .expect("Failed to open file");
 
-        self.out_buffer = BufWriter::new(Box::new(file));
+            self.out_buffer = BufWriter::new(Box::new(file));
+        }
         self
     }
 }

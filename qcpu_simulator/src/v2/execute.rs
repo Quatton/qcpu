@@ -3,14 +3,15 @@ use std::{
     ops::Range,
 };
 
-use qcpu_syntax::v2::{op::Op, syntax::OpName};
+use qcpu_syntax::v2::syntax::OpName;
 
 use super::context::Simulator;
 
-pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>, bool);
+pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>);
 
 impl Simulator {
-    pub fn execute(&mut self, op: &Op) -> ExecuteResult {
+    pub fn execute(&mut self) -> ExecuteResult {
+        let op = &self.ctx.current.op;
         let rs1u = self.ctx.current.regs[op.rs1 as usize];
         let rs2u = self.ctx.current.regs[op.rs2 as usize];
 
@@ -167,11 +168,9 @@ impl Simulator {
                 self.config.out_buffer.write_all(&[rs2u as u8]).unwrap();
                 None
             }
-            OpName::EBREAK => {
-                return (None, next_pc, mem, true);
-            }
+            _ => unimplemented!(),
         };
 
-        (rd_res, next_pc, mem, false)
+        (rd_res, next_pc, mem)
     }
 }

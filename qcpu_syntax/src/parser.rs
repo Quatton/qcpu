@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 
 use nom::bytes::complete::tag;
 use nom::character::complete::{char, hex_digit1, one_of};
-use nom::combinator::{opt, recognize, verify};
+use nom::combinator::{not, opt, recognize, verify};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
 use nom::{
@@ -23,15 +23,18 @@ use crate::{
 };
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
-    alt((
-        map(preceded(tag("0x"), hex_digit1), |s: &str| {
-            u32::from_str_radix(s, 16).unwrap() as i32
-        }),
-        map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
-            // println!("{:?} {:?}", s, d);
-            s.parse::<i32>()
-        }),
-    ))(input)
+    terminated(
+        alt((
+            map(preceded(tag("0x"), hex_digit1), |s: &str| {
+                u32::from_str_radix(s, 16).unwrap() as i32
+            }),
+            map_res(recognize(pair(opt(char('-')), digit1)), |s: &str| {
+                // println!("{:?} {:?}", s, d);
+                s.parse::<i32>()
+            }),
+        )),
+        not(char('.')),
+    )(input)
 }
 
 pub fn parse_both(input: &str) -> IResult<&str, usize> {
@@ -169,6 +172,7 @@ impl std::fmt::Display for JumpTarget {
 pub struct ParsingContext {
     pub label_map: LabelMap,
     pub main_label: String,
+    pub debug: bool,
 }
 
 impl Default for ParsingContext {
@@ -176,6 +180,7 @@ impl Default for ParsingContext {
         Self {
             label_map: LabelMap::new(),
             main_label: "_min_caml_start".to_owned(),
+            debug: false,
         }
     }
 }

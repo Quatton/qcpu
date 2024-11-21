@@ -78,8 +78,8 @@ impl Immediate {
     }
 
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, f32) = opt(float)(input)?;
         let (input, offset) = opt(parse_i32)(input)?;
+        let (input, f32) = opt(float)(input)?;
         if let Some(offset) = offset {
             return Ok((input, Self::from_offset(offset)));
         }

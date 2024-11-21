@@ -5,7 +5,10 @@ use nom::{
 };
 use qcpu_syntax::{
     error::ParseError,
-    v2::op::{Node, Op},
+    v2::{
+        op::{Node, Op},
+        syntax::OpType,
+    },
     ParsingContext,
 };
 
@@ -14,11 +17,19 @@ pub fn normalize(input: &str) -> String {
     format!("{}\n", input.trim().replace(",", " ").to_ascii_lowercase())
 }
 
-pub fn assemble(input: &str) -> Result<(Vec<u32>, ParsingContext), ParseError> {
+pub fn assemble(input: &str, debug: bool) -> Result<(Vec<u32>, ParsingContext), ParseError> {
     let mut ctx = ParsingContext::new();
+    ctx.debug = debug;
+
     let input = normalize(input);
 
     let ops = parse_tree(input.as_str(), &mut ctx)?;
+
+    if debug {
+        for (i, op) in ops.iter().enumerate() {
+            println!("{:03}: {:?}", i, op);
+        }
+    }
 
     let mc = to_machine_code(&ops);
 
@@ -63,6 +74,9 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
                 None
             }
             Node::OpNode(op) => {
+                if !ctx.debug && op.o.optype == OpType::E {
+                    return None;
+                }
                 len += 1;
                 Some(op)
             }
@@ -118,7 +132,7 @@ bge_else.24: !2
 min_caml_print_int:
         "#;
 
-        let (mc, _ctx) = assemble(code).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         let ops = disassemble(&mc);
 
@@ -190,7 +204,7 @@ _min_caml_start:
         _min_caml_finish:
         "#;
 
-        let (mc, _ctx) = assemble(code).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         let ops = disassemble(&mc);
 
@@ -525,7 +539,7 @@ AT13:
 _min_caml_finish:
         "#;
 
-        let (mc, _ctx) = assemble(code).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         println!("{:032b}", mc[226]);
 

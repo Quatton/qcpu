@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use context::Simulator;
-use qcpu_syntax::v2::op::Op;
+use qcpu_syntax::v2::{op::Op, syntax::OpName};
 
 pub mod context;
 pub mod execute;
@@ -40,31 +40,35 @@ impl Simulator {
         }
     }
 
-    pub fn run_once(&mut self) -> bool {
+    pub fn run_once(&mut self) {
         let (instr, next_pc) = self.fetch();
-        self.ctx.current.next_pc = next_pc;
 
         let op = self.decode(instr);
-        let (rd_res, next_pc_true, wm, ebreak) = self.execute(&op);
+
+        self.ctx.current.next_pc = next_pc;
+
+        if op.o == OpName::EBREAK {
+            self.ctx.snapshots.push(self.ctx.current.clone());
+            return;
+        }
+
+        self.ctx.current.op = op.clone();
+
+        let (rd_res, next_pc_true, wm) = self.execute();
 
         self.memory_access(wm);
         self.write_back(rd_res.map(|data| (op.rd as usize, data)));
 
         self.ctx.current.next_pc = next_pc_true;
-
-        ebreak
     }
 
-    pub fn run(&mut self) -> Result<(), String> {
+    pub fn run(&mut self) {
         loop {
-            self.run_once();
             self.ctx.current.pc = self.ctx.current.next_pc;
             if self.ctx.current.pc >= self.ctx.memory.len().min(self.ctx.program.len() * 4) {
                 println!("Program finished");
                 break;
             }
         }
-
-        Ok(())
     }
 }

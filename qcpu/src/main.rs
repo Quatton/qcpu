@@ -111,8 +111,8 @@ enum Commands {
         verbose: bool,
 
         /// Interactive mode (overrides verbose mode)
-        // #[arg(long, default_value = "false")]
-        // it: bool,
+        #[arg(long, default_value = "false")]
+        it: bool,
 
         /// Low-memory mode. You can't go back too far in the program.
         // #[arg(short, long, default_value = "32")]
@@ -405,7 +405,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
 
-            let code = match qcpu_assembler::v2::assemble(&input) {
+            let code = match qcpu_assembler::v2::assemble(&input, verbose) {
                 Ok((code, _)) => code,
                 Err(e) => {
                     eprintln!("Error parsing assembly code: {:?}", e);
@@ -455,11 +455,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             memory_size,
             output,
             input,
+            it,
         } => {
             let (code, _ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
 
-                match qcpu_assembler::v2::assemble(&asm) {
+                match qcpu_assembler::v2::assemble(&asm, it) {
                     Ok((code, ctx)) => (code, ctx),
                     Err(e) => {
                         eprintln!("Error parsing assembly code: {:?}", e);
@@ -483,30 +484,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::fs::File::create(file).unwrap();
             };
 
-            let mut cfg = qcpu_simulator::v2::context::SimulationConfig {
-                verbose,
-                memory_size,
-                ..Default::default()
-            };
-
-            if let Some(input) = input {
-                cfg = cfg.file_in(&input);
-            }
-
-            if let Some(output) = output {
-                cfg = cfg.file_out(&output);
-            }
+            let cfg = qcpu_simulator::v2::context::SimulationConfig::default()
+                .memory_size(memory_size)
+                .verbose(verbose)
+                .interactive(it)
+                .file_in(input)
+                .file_out(output);
 
             let mut sim =
                 qcpu_simulator::v2::context::Simulator::with_config(cfg).load_program(code);
 
             sim.init();
 
-            if let Err(e) = sim.run() {
-                eprintln!("Error running simulation: {}", e);
-            };
+            if it {
+                let mut app = qcpu_tui::v2::app::App::new().load_simulator(sim);
+                let tui = qcpu_tui::Tui::new()?.tick_rate(1000000.0).frame_rate(30.0);
 
-            sim.log_registers();
+                if let Err(e) = app.run(tui).await {
+                    eprintln!("Error running TUI: {}", e);
+                }
+            } else {
+                sim.run();
+                sim.log_registers();
+            }
 
             println!("========================================");
             println!("stdout: ");

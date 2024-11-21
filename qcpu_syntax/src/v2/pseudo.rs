@@ -33,7 +33,7 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
                 },
                 Op {
                     imm,
-                    o: OpName::AUIPC,
+                    o: OpName::ADDI,
                     rd: reg,
                     rs1: Register::Zero,
                     ..Default::default()
