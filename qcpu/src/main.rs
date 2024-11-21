@@ -506,6 +506,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 sim.run();
                 sim.log_registers();
+                sim.log_statistics();
             }
 
             println!("========================================");

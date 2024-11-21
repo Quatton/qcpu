@@ -1,9 +1,11 @@
 use std::{
+    collections::HashMap,
+    fmt::Display,
     fs::OpenOptions,
     io::{BufReader, BufWriter, Read, Write},
 };
 
-use qcpu_syntax::v2::{op::Op, reg::Registers};
+use qcpu_syntax::v2::{op::Op, reg::Registers, syntax::OpType};
 
 #[derive(Clone)]
 pub struct Snapshot {
@@ -31,7 +33,42 @@ pub struct SimulationContext {
     pub snapshots: Vec<Snapshot>,
     pub program: Vec<u32>,
     pub memory: Vec<u8>,
-    pub flash: usize,
+    pub stat: Stat,
+}
+
+#[derive(Default)]
+pub struct Stat {
+    pub instr_count: HashMap<OpType, usize>,
+    pub cycle_count: usize,
+    pub flash_count: usize,
+    pub hazard_stall_count: usize,
+}
+
+impl Display for Stat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let b_count = self.instr_count.get(&OpType::B).unwrap_or(&0);
+        writeln!(f, "Statistics:")?;
+        writeln!(
+            f,
+            "Instruction count (in cycles, might be different from actual count):"
+        )?;
+        for (op, count) in self.instr_count.iter() {
+            writeln!(f, "  {}: {}", op, count)?;
+        }
+        writeln!(f, "Cycle count: {}", self.cycle_count)?;
+        writeln!(
+            f,
+            "Flash count: {} out of {} B instructions ({}%)",
+            self.flash_count,
+            b_count,
+            if b_count == &0 {
+                0
+            } else {
+                self.flash_count * 100 / b_count
+            }
+        )?;
+        write!(f, "Hazard stall count: {}", self.hazard_stall_count)
+    }
 }
 
 impl Default for SimulationContext {
@@ -41,7 +78,7 @@ impl Default for SimulationContext {
             snapshots: Vec::new(),
             program: Vec::new(),
             memory: vec![0; 4096],
-            flash: 0,
+            stat: Stat::default(),
         }
     }
 }
@@ -98,6 +135,10 @@ impl Simulator {
 
     pub fn log_registers(&self) {
         println!("{:?}", self.ctx.current.regs);
+    }
+
+    pub fn log_statistics(&self) {
+        println!("{}", self.ctx.stat);
     }
 }
 

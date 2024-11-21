@@ -1,6 +1,6 @@
 use crate::enum_properties;
 use crate::WithParser;
-use strum_macros::{EnumString, VariantArray};
+use strum_macros::{Display, EnumString, VariantArray};
 
 impl OpInfo {
     pub fn match_code(first: &Self, other: &Self) -> bool {
@@ -412,7 +412,8 @@ impl Default for OpName {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Display, Debug, Eq, std::hash::Hash, PartialEq, Clone, Copy, EnumString)]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum OpType {
     R,
     I,
