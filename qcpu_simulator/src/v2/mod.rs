@@ -101,7 +101,8 @@ impl Simulator {
             return;
         }
 
-        let (rd_res, next_pc_true, wm) = self.execute();
+        self.ctx.current.op = op.clone();
+        let (rd_res, next_pc_true, wm) = self.execute(&op);
 
         // verbose stuff here
 
@@ -130,8 +131,6 @@ impl Simulator {
                 .max(self.ctx.current.reg_status[op.rs2 as usize]);
             self.ctx.stat.hazard_stall_count += stall;
             self.ctx.stat.cycle_count += stall;
-
-            self.ctx.current.op = op.clone();
 
             self.ctx
                 .stat
