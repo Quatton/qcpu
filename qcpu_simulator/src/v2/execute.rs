@@ -31,9 +31,9 @@ impl Simulator {
             OpName::RAW => None,
             OpName::ADD => Some(rs1i.wrapping_add(rs2i) as u32),
             OpName::SUB => Some(rs1i.wrapping_sub(rs2i) as u32),
-            OpName::SLL => Some(rs1i.wrapping_shl(rs2u) as u32),
-            OpName::SRL => Some(rs1i.wrapping_shr(rs2u) as u32),
-            OpName::SRA => Some((rs1i).wrapping_shr(rs2u) as u32),
+            OpName::SLL => Some(rs1u.wrapping_shl(rs2u)),
+            OpName::SRL => Some(rs1u.wrapping_shr(rs2u)),
+            OpName::SRA => Some((rs1i.wrapping_shr(rs2u)) as u32),
             OpName::SLT => Some(if rs1i < rs2i { 1 } else { 0 }),
             OpName::SLTU => Some(if rs1u < rs2u { 1 } else { 0 }),
             OpName::XOR => Some(rs1u ^ rs2u),
@@ -92,7 +92,7 @@ impl Simulator {
                 Some((pc + 4) as u32)
             }
             OpName::JALR => {
-                next_pc = (rs1u.wrapping_add_signed(imm)) as usize;
+                next_pc = (rs1u.wrapping_add_signed(imm) & !1) as usize;
                 Some((pc + 4) as u32)
             }
             OpName::LUI => Some((imm as u32) << 12),
@@ -104,11 +104,34 @@ impl Simulator {
             OpName::FSGNJ => Some(rs1u & !(1 << 31) | (rs2u & (1 << 31))),
             OpName::FSGNJN => Some(rs1u & !(1 << 31) | (!rs2u & (1 << 31))),
             OpName::FSGNJX => Some(rs1u ^ (rs2u & (1 << 31))),
-            OpName::FCVTWS => Some(rs1f.round_ties_even() as i32 as u32),
+            OpName::FCVTWS => {
+                let value = if rs1f.is_nan() {
+                    0
+                } else if rs1f >= i32::MAX as f32 {
+                    i32::MAX
+                } else if rs1f < i32::MIN as f32 {
+                    i32::MIN
+                } else {
+                    rs1f.round_ties_even() as i32
+                };
+                Some(value as u32)
+            }
             OpName::FCVTSW => Some((rs1i as f32).to_bits()),
-            OpName::FEQ => Some(if rs1f == rs2f { 1 } else { 0 }),
-            OpName::FLT => Some(if rs1f < rs2f { 1 } else { 0 }),
-            OpName::FLE => Some(if rs1f <= rs2f { 1 } else { 0 }),
+            OpName::FEQ => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f == rs2f {
+                1
+            } else {
+                0
+            }),
+            OpName::FLT => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f < rs2f {
+                1
+            } else {
+                0
+            }),
+            OpName::FLE => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f <= rs2f {
+                1
+            } else {
+                0
+            }),
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
@@ -140,17 +163,23 @@ impl Simulator {
             }
             OpName::SB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 1, rs2u));
+                if addr < self.ctx.memory.len() {
+                    mem = Some((addr..addr + 1, rs2u & 0xff));
+                }
                 None
             }
             OpName::SH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 2, rs2u));
+                if addr + 1 < self.ctx.memory.len() {
+                    mem = Some((addr..addr + 2, rs2u & 0xffff));
+                }
                 None
             }
             OpName::SW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 4, rs2u));
+                if addr + 3 < self.ctx.memory.len() {
+                    mem = Some((addr..addr + 4, rs2u));
+                }
                 None
             }
             OpName::INB => {
