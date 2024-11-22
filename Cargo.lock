@@ -631,7 +631,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "clap",
  "crossterm",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_assembler"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "nom",
  "qcpu_syntax",
@@ -659,7 +659,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_simulator"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "bitvec",
  "qcpu_assembler",
@@ -670,7 +670,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_syntax"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "bitvec",
  "enum_properties",
@@ -681,7 +681,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_tui"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "color-eyre",
  "crossterm",

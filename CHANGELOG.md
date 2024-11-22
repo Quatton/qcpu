@@ -1,3 +1,6 @@
+## [2.4.1] - 2024-11-22
+- Fixed ftoi ignoring branch predictor
+
 ## [2.4.0] - 2024-11-22
 - Branch predictor
 - Removed statistics calculation if --verbose is not set (faster?)
