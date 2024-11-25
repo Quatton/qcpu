@@ -1248,15 +1248,15 @@ sgn.2406:
 	flt 	a0, zero, fa0
 	addi	t0, zero, 0 !141
 	bne 	a0, t0, beq_else.9507 !141
-	li  	a0, -1.000000 !142
+	li  	fa0, -1.000000 !142
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 beq_else.9507: !141
-	li  	a0, 1.000000 !141
+	li  	fa0, 1.000000 !141
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 beq_else.9506: !140
-	li  	a0, 0.000000 !140
+	li  	fa0, 0.000000 !140
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 vecset.2414:

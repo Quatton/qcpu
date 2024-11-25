@@ -91,9 +91,13 @@ impl Simulator {
     }
 
     pub fn run_once(&mut self) {
-        let instr = self.fetch();
-
-        let op = self.decode(instr);
+        let op = match self.ctx.decoded {
+            Some(ref p) => p.get(self.ctx.current.pc / 4).unwrap().clone(),
+            None => {
+                let instr = self.fetch();
+                self.decode(instr)
+            }
+        };
 
         if op.o == OpName::EBREAK {
             self.ctx.snapshots.push(self.ctx.current.clone());

@@ -32,6 +32,7 @@ impl Default for Snapshot {
 pub struct SimulationContext {
     pub current: Snapshot,
     pub snapshots: Vec<Snapshot>,
+    pub decoded: Option<Vec<Op>>,
     pub program: Vec<u32>,
     pub memory: Vec<u8>,
 
@@ -115,6 +116,7 @@ impl Default for SimulationContext {
             current: Snapshot::default(),
             snapshots: Vec::new(),
             program: Vec::new(),
+            decoded: None,
             sc: HashMap::new(),
             memory: vec![0; 4096],
             stat: Stat::default(),
@@ -123,7 +125,8 @@ impl Default for SimulationContext {
 }
 
 impl SimulationContext {
-    pub fn load_program(mut self, program: Vec<u32>) -> Self {
+    pub fn load_program(mut self, program: Vec<u32>, decoded: Option<Vec<Op>>) -> Self {
+        self.decoded = decoded;
         self.program = program;
         let mut pc = 0;
         for line in self.program.iter() {
@@ -167,8 +170,8 @@ impl Simulator {
         Self { ctx, config }
     }
 
-    pub fn load_program(mut self, program: Vec<u32>) -> Self {
-        self.ctx = self.ctx.load_program(program);
+    pub fn load_program(mut self, program: Vec<u32>, decoded: Option<Vec<Op>>) -> Self {
+        self.ctx = self.ctx.load_program(program, decoded);
         self
     }
 

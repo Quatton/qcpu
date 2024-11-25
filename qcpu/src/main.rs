@@ -414,7 +414,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let code = match qcpu_assembler::v2::assemble(&input, verbose) {
-                Ok((code, _)) => code,
+                Ok((code, _, _)) => code,
                 Err(e) => {
                     eprintln!("Error parsing assembly code: {:?}", e);
                     std::process::exit(1);
@@ -466,11 +466,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             it,
             bp,
         } => {
+            let mut ops = None;
             let (code, _ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
 
                 match qcpu_assembler::v2::assemble(&asm, it) {
-                    Ok((code, ctx)) => (code, ctx),
+                    Ok((code, ctx, o)) => {
+                        ops = Some(o);
+                        (code, ctx)
+                    }
                     Err(e) => {
                         eprintln!("Error parsing assembly code: {:?}", e);
                         std::process::exit(1);
@@ -502,7 +506,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .file_out(output);
 
             let mut sim =
-                qcpu_simulator::v2::context::Simulator::with_config(cfg).load_program(code);
+                qcpu_simulator::v2::context::Simulator::with_config(cfg).load_program(code, ops);
 
             sim.init();
 
