@@ -106,21 +106,9 @@ impl Simulator {
             OpName::FSGNJX => Some(rs1u ^ (rs2u & (1 << 31))),
             OpName::FCVTWS => Some(rs1f.round_ties_even() as i32 as u32),
             OpName::FCVTSW => Some((rs1i as f32).to_bits()),
-            OpName::FEQ => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f == rs2f {
-                1
-            } else {
-                0
-            }),
-            OpName::FLT => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f < rs2f {
-                1
-            } else {
-                0
-            }),
-            OpName::FLE => Some(if !rs1f.is_nan() && !rs2f.is_nan() && rs1f <= rs2f {
-                1
-            } else {
-                0
-            }),
+            OpName::FEQ => Some(if rs1f == rs2f { 1 } else { 0 }),
+            OpName::FLT => Some(if rs1f < rs2f { 1 } else { 0 }),
+            OpName::FLE => Some(if rs1f <= rs2f { 1 } else { 0 }),
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
@@ -163,23 +151,17 @@ impl Simulator {
             }
             OpName::SB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr < self.ctx.memory.size {
-                    mem = Some((addr..addr + 1, rs2u & 0xff));
-                }
+                mem = Some((addr..addr + 1, rs2u));
                 None
             }
             OpName::SH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr + 1 < self.ctx.memory.size {
-                    mem = Some((addr..addr + 2, rs2u & 0xffff));
-                }
+                mem = Some((addr..addr + 2, rs2u));
                 None
             }
             OpName::SW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr + 3 < self.ctx.memory.size {
-                    mem = Some((addr..addr + 4, rs2u));
-                }
+                mem = Some((addr..addr + 4, rs2u));
                 None
             }
             OpName::INB => {
