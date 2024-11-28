@@ -154,7 +154,7 @@ enum_properties! {
       funct7: Some(0b0100000),
     },
 
-    #[strum(serialize = "flw", serialize = "lw")]
+    #[strum(serialize = "lw", serialize = "flw")]
     LW {
       optype: OpType::L,
       opcode: 0b0010,

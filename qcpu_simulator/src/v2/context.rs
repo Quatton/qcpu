@@ -101,8 +101,11 @@ impl Display for Stat {
                 }
                 cur = Some(op.optype);
             }
-            writeln!(f, "       {}: {}", op, count)?;
+            writeln!(f, "       {:?}: {}", op, count)?;
             csum += count;
+        }
+        if cur.is_some() {
+            writeln!(f, "   {}: {}", cur.unwrap(), csum)?;
         }
         writeln!(f, "Cycle count: {}", self.cycle_count)?;
         writeln!(
