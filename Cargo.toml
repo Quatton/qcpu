@@ -5,7 +5,7 @@ default-members = ["qcpu"]
 
 
 [workspace.package]
-version = "2.4.3"
+version = "2.5.0"
 edition = "2021"
 
 [workspace.dependencies]

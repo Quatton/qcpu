@@ -1,3 +1,7 @@
+## [2.5.0] - 2024-11-28
+- Direct mapped cache
+- Revert changes because it doesn't matter
+
 ## [2.4.3] - 2024-11-28
 - OpName based statistics instead of just OpType
 
