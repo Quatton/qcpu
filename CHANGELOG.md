@@ -1,3 +1,6 @@
+## [2.5.1] - 2024-11-28
+- Error log
+
 ## [2.5.0] - 2024-11-28
 - Direct mapped cache
 - Revert changes because it doesn't matter
