@@ -1,17 +1,27 @@
 use std::ops::Range;
 
 use context::{BranchPredictionStrategy, Simulator};
+use error::{SimulationError, SimulationErrorKind};
 use qcpu_syntax::v2::{
     op::Op,
     syntax::{OpName, OpType},
 };
 
 pub mod context;
+pub mod error;
 pub mod execute;
 pub mod memory;
 
 impl Simulator {
-    fn fetch(&mut self) -> u32 {
+    fn error_map(&self, kind: SimulationErrorKind) -> SimulationError {
+        SimulationError {
+            line: self.ctx.current.pc / 4,
+            op: self.ctx.current.op.clone(),
+            kind,
+        }
+    }
+
+    fn fetch(&mut self) -> Result<u32, SimulationErrorKind> {
         let mut pc = self.ctx.current.pc;
 
         // if let Some(instr) = self.config.fetch_cache.get(&pc) {
@@ -22,13 +32,14 @@ impl Simulator {
 
         self.ctx.memory.update_cache(pc);
         for i in 0..4 {
-            instr |= (self.ctx.memory.geti(pc) as u32) << (i * 8); // little fucking endian
+            let p = *self.ctx.memory.geti(pc)? as u32;
+            instr |= p << (i * 8); // little fucking endian
             pc += 1;
         }
 
         // self.config.fetch_cache.insert(pc, instr);
 
-        instr
+        Ok(instr)
     }
 
     fn decode(&mut self, mc: u32) -> Op {
@@ -43,13 +54,18 @@ impl Simulator {
         op
     }
 
-    fn memory_access(&mut self, req: Option<(Range<usize>, u32)>) {
+    fn memory_access(
+        &mut self,
+        req: Option<(Range<usize>, u32)>,
+    ) -> Result<(), SimulationErrorKind> {
         if let Some((range, data)) = req {
             self.ctx.memory.update_cache(range.start);
             for (i, byte) in data.to_le_bytes().iter().enumerate() {
-                *self.ctx.memory.geti_mut(range.start + i) = *byte;
+                *self.ctx.memory.geti_mut(range.start + i)? = *byte;
             }
         }
+
+        Ok(())
     }
 
     fn write_back(&mut self, result: Option<(usize, u32)>) {
@@ -94,19 +110,19 @@ impl Simulator {
         }
     }
 
-    pub fn run_once(&mut self) {
-        let instr = self.fetch();
+    pub fn run_once(&mut self) -> Result<(), SimulationError> {
+        let instr = self.fetch().map_err(|e| self.error_map(e))?;
 
         let op = self.decode(instr);
 
         if op.o == OpName::EBREAK {
             self.ctx.snapshots.push(self.ctx.current.clone());
             self.ctx.current.next_pc = self.ctx.current.pc + 4;
-            return;
+            return Ok(());
         }
 
         self.ctx.current.op = op.clone();
-        let (rd_res, next_pc_true, wm) = self.execute(&op);
+        let (rd_res, next_pc_true, wm) = self.execute(&op).map_err(|e| self.error_map(e))?;
 
         // verbose stuff here
 
@@ -176,22 +192,26 @@ impl Simulator {
             }
         }
 
-        self.memory_access(wm);
+        self.memory_access(wm).map_err(|e| self.error_map(e))?;
         self.write_back(rd_res.map(|data| (op.rd as usize, data)));
 
         self.ctx.current.next_pc = next_pc_true;
+
+        Ok(())
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), SimulationError> {
         println!("Running program");
         loop {
-            self.run_once();
+            self.run_once()?;
             self.ctx.current.pc = self.ctx.current.next_pc;
             if self.ctx.current.pc >= self.ctx.memory.size.min(self.ctx.program.len() * 4) {
                 println!("Program finished");
                 break;
             }
         }
+
+        Ok(())
     }
 
     pub fn get_instruction_delay(&self, op: OpName) -> usize {

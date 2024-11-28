@@ -520,7 +520,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             } else {
                 let t0 = std::time::Instant::now();
-                sim.run();
+                if let Err(e) = sim.run() {
+                    eprintln!("Error running simulation: {:?}", e);
+                }
                 let t1 = std::time::Instant::now();
 
                 println!("Time elapsed: {:?}", t1 - t0);

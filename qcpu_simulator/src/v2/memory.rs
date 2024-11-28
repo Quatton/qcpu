@@ -3,6 +3,8 @@ use std::{
     ops::{Deref, DerefMut, Range},
 };
 
+use super::error::SimulationErrorKind;
+
 pub struct CacheLine {
     pub cache_size: usize,
     pub occupying_tag: Vec<Option<usize>>,
@@ -95,12 +97,28 @@ impl Memory {
         }
     }
 
-    pub fn geti(&mut self, index: usize) -> u8 {
-        self.m[index]
+    pub fn geti(&mut self, index: usize) -> Result<&u8, SimulationErrorKind> {
+        self.m.get(index).map_or_else(
+            || {
+                Err(SimulationErrorKind::MemoryAccess {
+                    size: self.size,
+                    idx: index,
+                })
+            },
+            Ok,
+        )
     }
 
-    pub fn geti_mut(&mut self, index: usize) -> &mut u8 {
-        &mut self.m[index]
+    pub fn geti_mut(&mut self, index: usize) -> Result<&mut u8, SimulationErrorKind> {
+        self.m.get_mut(index).map_or_else(
+            || {
+                Err(SimulationErrorKind::MemoryAccess {
+                    size: self.size,
+                    idx: index,
+                })
+            },
+            Ok,
+        )
     }
 
     pub fn getr(&mut self, index: Range<usize>) -> &[u8] {

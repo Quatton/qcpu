@@ -131,7 +131,7 @@ impl App {
         if self.done {
             return;
         }
-        self.simulator.run_once();
+        self.simulator.run_once().unwrap();
         let ctx = &mut self.simulator.ctx;
         ctx.current.pc = ctx.current.next_pc;
         if ctx.current.pc >= ctx.memory.size.min(ctx.program.len() * 4) {

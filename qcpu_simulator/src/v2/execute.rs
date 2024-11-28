@@ -5,12 +5,12 @@ use std::{
 
 use qcpu_syntax::v2::{op::Op, syntax::OpName};
 
-use super::context::Simulator;
+use super::{context::Simulator, error::SimulationErrorKind};
 
 pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>);
 
 impl Simulator {
-    pub fn execute(&mut self, op: &Op) -> ExecuteResult {
+    pub fn execute(&mut self, op: &Op) -> Result<ExecuteResult, SimulationErrorKind> {
         let rs1u = self.ctx.current.regs[op.rs1 as usize];
         let rs2u = self.ctx.current.regs[op.rs2 as usize];
 
@@ -114,39 +114,39 @@ impl Simulator {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 self.ctx.memory.update_cache(addr);
                 Some(u32::from_le_bytes([
-                    self.ctx.memory.geti(addr),
-                    self.ctx.memory.geti(addr + 1),
-                    self.ctx.memory.geti(addr + 2),
-                    self.ctx.memory.geti(addr + 3),
+                    *self.ctx.memory.geti(addr)?,
+                    *self.ctx.memory.geti(addr + 1)?,
+                    *self.ctx.memory.geti(addr + 2)?,
+                    *self.ctx.memory.geti(addr + 3)?,
                 ]))
             }
             OpName::LB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 self.ctx.memory.update_cache(addr);
 
-                Some(self.ctx.memory.geti(addr) as i8 as i32 as u32)
+                Some(*self.ctx.memory.geti(addr)? as i8 as i32 as u32)
             }
             OpName::LBU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 self.ctx.memory.update_cache(addr);
 
-                Some(self.ctx.memory.geti(addr) as u32)
+                Some(*self.ctx.memory.geti(addr)? as u32)
             }
             OpName::LH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 self.ctx.memory.update_cache(addr);
 
                 Some(u16::from_le_bytes([
-                    self.ctx.memory.geti(addr),
-                    self.ctx.memory.geti(addr + 1),
+                    *self.ctx.memory.geti(addr)?,
+                    *self.ctx.memory.geti(addr + 1)?,
                 ]) as i16 as i32 as u32)
             }
             OpName::LHU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 self.ctx.memory.update_cache(addr);
                 Some(u16::from_le_bytes([
-                    self.ctx.memory.geti(addr),
-                    self.ctx.memory.geti(addr + 1),
+                    *self.ctx.memory.geti(addr)?,
+                    *self.ctx.memory.geti(addr + 1)?,
                 ]) as u32)
             }
             OpName::SB => {
@@ -181,6 +181,6 @@ impl Simulator {
             _ => unimplemented!(),
         };
 
-        (rd_res, next_pc, mem)
+        Ok((rd_res, next_pc, mem))
     }
 }
