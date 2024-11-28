@@ -125,48 +125,51 @@ impl Simulator {
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 Some(u32::from_le_bytes([
-                    self.ctx.memory[addr],
-                    self.ctx.memory[addr + 1],
-                    self.ctx.memory[addr + 2],
-                    self.ctx.memory[addr + 3],
+                    self.ctx.memory.m[addr],
+                    self.ctx.memory.m[addr + 1],
+                    self.ctx.memory.m[addr + 2],
+                    self.ctx.memory.m[addr + 3],
                 ]))
             }
             OpName::LB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(self.ctx.memory[addr] as i8 as i32 as u32)
+                Some(self.ctx.memory.m[addr] as i8 as i32 as u32)
             }
             OpName::LBU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(self.ctx.memory[addr] as u32)
+                Some(self.ctx.memory.m[addr] as u32)
             }
             OpName::LH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
                 Some(
-                    u16::from_le_bytes([self.ctx.memory[addr], self.ctx.memory[addr + 1]]) as i16
-                        as i32 as u32,
+                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
+                        as i16 as i32 as u32,
                 )
             }
             OpName::LHU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(u16::from_le_bytes([self.ctx.memory[addr], self.ctx.memory[addr + 1]]) as u32)
+                Some(
+                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
+                        as u32,
+                )
             }
             OpName::SB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr < self.ctx.memory.len() {
+                if addr < self.ctx.memory.size {
                     mem = Some((addr..addr + 1, rs2u & 0xff));
                 }
                 None
             }
             OpName::SH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr + 1 < self.ctx.memory.len() {
+                if addr + 1 < self.ctx.memory.size {
                     mem = Some((addr..addr + 2, rs2u & 0xffff));
                 }
                 None
             }
             OpName::SW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                if addr + 3 < self.ctx.memory.len() {
+                if addr + 3 < self.ctx.memory.size {
                     mem = Some((addr..addr + 4, rs2u));
                 }
                 None

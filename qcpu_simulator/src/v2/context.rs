@@ -8,6 +8,8 @@ use std::{
 use qcpu_syntax::v2::{op::Op, reg::Registers, syntax::OpType};
 use strum_macros::{EnumString, FromRepr};
 
+use super::memory::Memory;
+
 #[derive(Clone)]
 pub struct Snapshot {
     pub pc: usize,
@@ -29,12 +31,13 @@ impl Default for Snapshot {
     }
 }
 
+#[derive(Default)]
 pub struct SimulationContext {
     pub current: Snapshot,
     pub snapshots: Vec<Snapshot>,
     pub decoded: Option<Vec<Op>>,
     pub program: Vec<u32>,
-    pub memory: Vec<u8>,
+    pub memory: Memory,
 
     pub sc: HashMap<usize, i8>,
     pub stat: Stat,
@@ -110,20 +113,6 @@ impl Display for Stat {
     }
 }
 
-impl Default for SimulationContext {
-    fn default() -> Self {
-        Self {
-            current: Snapshot::default(),
-            snapshots: Vec::new(),
-            program: Vec::new(),
-            decoded: None,
-            sc: HashMap::new(),
-            memory: vec![0; 4096],
-            stat: Stat::default(),
-        }
-    }
-}
-
 impl SimulationContext {
     pub fn load_program(mut self, program: Vec<u32>, decoded: Option<Vec<Op>>) -> Self {
         self.decoded = decoded;
@@ -131,7 +120,7 @@ impl SimulationContext {
         let mut pc = 0;
         for line in self.program.iter() {
             for byte in line.to_le_bytes() {
-                self.memory[pc] = byte;
+                self.memory.m[pc] = byte;
                 pc += 1;
             }
         }
@@ -163,7 +152,7 @@ impl Simulator {
 
     pub fn with_config(config: SimulationConfig) -> Self {
         let ctx = SimulationContext {
-            memory: vec![0; config.memory_size],
+            memory: Memory::new(config.memory_size),
             ..SimulationContext::default()
         };
 

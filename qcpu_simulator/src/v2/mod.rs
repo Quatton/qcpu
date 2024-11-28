@@ -8,6 +8,7 @@ use qcpu_syntax::v2::{
 
 pub mod context;
 pub mod execute;
+pub mod memory;
 
 impl Simulator {
     fn fetch(&mut self) -> u32 {
@@ -19,7 +20,7 @@ impl Simulator {
 
         let mut instr = 0u32;
         for i in 0..4 {
-            instr |= (self.ctx.memory[pc] as u32) << (i * 8); // little fucking endian
+            instr |= (self.ctx.memory.m[pc] as u32) << (i * 8); // little fucking endian
             pc += 1;
         }
 
@@ -43,7 +44,7 @@ impl Simulator {
     fn memory_access(&mut self, req: Option<(Range<usize>, u32)>) {
         if let Some((range, data)) = req {
             for (i, byte) in data.to_le_bytes().iter().enumerate() {
-                self.ctx.memory[range.start + i] = *byte;
+                self.ctx.memory.m[range.start + i] = *byte;
             }
         }
     }
@@ -187,7 +188,7 @@ impl Simulator {
         loop {
             self.run_once();
             self.ctx.current.pc = self.ctx.current.next_pc;
-            if self.ctx.current.pc >= self.ctx.memory.len().min(self.ctx.program.len() * 4) {
+            if self.ctx.current.pc >= self.ctx.memory.size.min(self.ctx.program.len() * 4) {
                 println!("Program finished");
                 break;
             }
