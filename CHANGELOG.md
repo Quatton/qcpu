@@ -1,5 +1,9 @@
+## [2.4.2] - 2024-11-22
+- reverting internal execution changes
+
 ## [2.4.1] - 2024-11-22
 - Fixed ftoi ignoring branch predictor
+  - what does that even mean
 
 ## [2.4.0] - 2024-11-22
 - Branch predictor
