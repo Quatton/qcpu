@@ -100,6 +100,7 @@ impl Display for Stat {
                     writeln!(f, "   {}: {}", cur.unwrap(), csum)?;
                 }
                 cur = Some(op.optype);
+                csum = 0;
             }
             writeln!(f, "       {:?}: {}", op, count)?;
             csum += count;
