@@ -11,7 +11,7 @@ impl OpInfo {
 }
 
 enum_properties! {
-  #[derive(Debug, Clone, PartialEq, Copy, EnumString, VariantArray)]
+  #[derive(Eq, Hash, Display, Debug, Clone, PartialEq, Copy, EnumString, VariantArray)]
   #[strum(serialize_all = "lowercase")]
   pub enum OpName: OpInfo {
     EBREAK {
@@ -412,7 +412,9 @@ impl Default for OpName {
     }
 }
 
-#[derive(Display, Debug, Eq, std::hash::Hash, PartialEq, Clone, Copy, EnumString)]
+#[derive(
+    Display, Debug, Eq, PartialOrd, Ord, std::hash::Hash, PartialEq, Clone, Copy, EnumString,
+)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum OpType {
     R,
@@ -431,7 +433,7 @@ pub enum OpType {
 
 impl WithParser for OpName {}
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, PartialOrd, Ord)]
 pub struct OpInfo {
     pub optype: OpType,
     pub opcode: usize,

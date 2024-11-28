@@ -28,3 +28,6 @@ qcpu_assembler = { path = "./qcpu_assembler" }
 qcpu_syntax = { path = "./qcpu_syntax" }
 qcpu_simulator = { path = "./qcpu_simulator" }
 qcpu_tui = { path = "./qcpu_tui" }
+
+[profile.dev]
+opt-level = 3

@@ -5,7 +5,11 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
 };
 
-use qcpu_syntax::v2::{op::Op, reg::Registers, syntax::OpType};
+use qcpu_syntax::v2::{
+    op::Op,
+    reg::Registers,
+    syntax::{OpName, OpType},
+};
 use strum_macros::{EnumString, FromRepr};
 
 use super::memory::Memory;
@@ -45,7 +49,7 @@ pub struct SimulationContext {
 
 #[derive(Default)]
 pub struct Stat {
-    pub instr_count: HashMap<OpType, usize>,
+    pub instr_count: HashMap<OpName, usize>,
     pub cycle_count: usize,
     pub flash_count: HashMap<OpType, usize>,
     pub hazard_stall_count: usize,
@@ -72,19 +76,33 @@ impl Display for BranchPredictionStrategy {
 
 impl Display for Stat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let b_count = self.instr_count.get(&OpType::B).unwrap_or(&0);
+        let b_count: usize = self
+            .instr_count
+            .iter()
+            .filter_map(|(k, v)| if k.optype == OpType::B { Some(v) } else { None })
+            .sum();
         let flash_b_count = self.flash_count.get(&OpType::B).unwrap_or(&0);
+
         let instr_count = self
             .instr_count
             .iter()
             .fold(0, |acc, (_, count)| acc + count);
+
         writeln!(f, "Statistics:")?;
-        writeln!(
-            f,
-            "Instruction count (in cycles, might be different from actual count):"
-        )?;
-        for (op, count) in self.instr_count.iter() {
-            writeln!(f, "  {}: {}", op, count)?;
+        writeln!(f, "Instruction cycle count:",)?;
+        let mut cur = None;
+        let mut csum = 0;
+        let mut iccp = self.instr_count.iter().collect::<Vec<_>>();
+        iccp.sort_by(|a, b| a.0.optype.cmp(&b.0.optype));
+        for (op, count) in iccp {
+            if Some(op.optype) != cur {
+                if cur.is_some() {
+                    writeln!(f, "   {}: {}", cur.unwrap(), csum)?;
+                }
+                cur = Some(op.optype);
+            }
+            writeln!(f, "       {}: {}", op, count)?;
+            csum += count;
         }
         writeln!(f, "Cycle count: {}", self.cycle_count)?;
         writeln!(
@@ -92,7 +110,7 @@ impl Display for Stat {
             "Branch Prediction Miss: {} out of {} B instructions ({}%)",
             flash_b_count,
             b_count,
-            if b_count == &0 {
+            if b_count == 0 {
                 0
             } else {
                 flash_b_count * 100 / b_count
@@ -103,7 +121,7 @@ impl Display for Stat {
             "Flash count for JALR: {} out of {} instructions ({}%)",
             self.flash_count.get(&OpType::I).unwrap_or(&0),
             instr_count,
-            if self.instr_count.get(&OpType::I).unwrap_or(&0) == &0 {
+            if self.instr_count.get(&OpName::JALR).unwrap_or(&0) == &0 {
                 0
             } else {
                 self.flash_count.get(&OpType::I).unwrap_or(&0) * 100 / instr_count

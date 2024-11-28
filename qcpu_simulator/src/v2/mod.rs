@@ -140,7 +140,7 @@ impl Simulator {
             self.ctx
                 .stat
                 .instr_count
-                .entry(op.o.optype)
+                .entry(op.o)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
 
