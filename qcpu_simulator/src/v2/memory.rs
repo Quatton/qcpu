@@ -61,7 +61,7 @@ impl Display for Cacheception {
             writeln!(f, "size: {}", 1 << cache.cache_size)?;
             writeln!(f, "   access: {}", acount)?;
             writeln!(f, "   hit: {}, ({:.2}%)", hcount, hit_rate)?;
-            writeln!(f, "   miss: {}, ({:.2})", mcount, miss_rate)?;
+            writeln!(f, "   miss: {}, ({:.2}%)", mcount, miss_rate)?;
         }
 
         Ok(())
