@@ -17,10 +17,7 @@ pub fn normalize(input: &str) -> String {
     format!("{}\n", input.trim().replace(",", " ").to_ascii_lowercase())
 }
 
-pub fn assemble(
-    input: &str,
-    debug: bool,
-) -> Result<(Vec<u32>, ParsingContext, Vec<Op>), ParseError> {
+pub fn assemble(input: &str, debug: bool) -> Result<(Vec<u32>, ParsingContext), ParseError> {
     let mut ctx = ParsingContext::new();
     ctx.debug = debug;
 
@@ -36,7 +33,7 @@ pub fn assemble(
 
     let mc = to_machine_code(&ops);
 
-    Ok((mc, ctx, ops))
+    Ok((mc, ctx))
 }
 
 pub fn to_machine_code(ops: &[Op]) -> Vec<u32> {
@@ -135,7 +132,7 @@ bge_else.24: !2
 min_caml_print_int:
         "#;
 
-        let (mc, _ctx, _op) = assemble(code, false).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         let ops = disassemble(&mc);
 
@@ -207,7 +204,7 @@ _min_caml_start:
         _min_caml_finish:
         "#;
 
-        let (mc, _ctx, _op) = assemble(code, false).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         let ops = disassemble(&mc);
 
@@ -542,7 +539,7 @@ AT13:
 _min_caml_finish:
         "#;
 
-        let (mc, _ctx, _op) = assemble(code, false).unwrap();
+        let (mc, _ctx) = assemble(code, false).unwrap();
 
         println!("{:032b}", mc[226]);
 
