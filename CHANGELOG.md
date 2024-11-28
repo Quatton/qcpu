@@ -1,4 +1,7 @@
-## [2.4.2] - 2024-11-22
+## [2.4.3] - 2024-11-28
+- OpName based statistics instead of just OpType
+
+## [2.4.2] - 2024-11-28
 - reverting internal execution changes
 
 ## [2.4.1] - 2024-11-22
