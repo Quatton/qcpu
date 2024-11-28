@@ -31,8 +31,8 @@ impl Simulator {
             OpName::RAW => None,
             OpName::ADD => Some(rs1i.wrapping_add(rs2i) as u32),
             OpName::SUB => Some(rs1i.wrapping_sub(rs2i) as u32),
-            OpName::SLL => Some(rs1u.wrapping_shl(rs2u)),
-            OpName::SRL => Some(rs1u.wrapping_shr(rs2u)),
+            OpName::SLL => Some(rs1i.wrapping_shl(rs2u) as u32),
+            OpName::SRL => Some(rs1i.wrapping_shr(rs2u) as u32),
             OpName::SRA => Some((rs1i.wrapping_shr(rs2u)) as u32),
             OpName::SLT => Some(if rs1i < rs2i { 1 } else { 0 }),
             OpName::SLTU => Some(if rs1u < rs2u { 1 } else { 0 }),
@@ -124,34 +124,42 @@ impl Simulator {
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
+                self.ctx.memory.update_cache(addr);
                 Some(u32::from_le_bytes([
-                    self.ctx.memory.m[addr],
-                    self.ctx.memory.m[addr + 1],
-                    self.ctx.memory.m[addr + 2],
-                    self.ctx.memory.m[addr + 3],
+                    self.ctx.memory.geti(addr),
+                    self.ctx.memory.geti(addr + 1),
+                    self.ctx.memory.geti(addr + 2),
+                    self.ctx.memory.geti(addr + 3),
                 ]))
             }
             OpName::LB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(self.ctx.memory.m[addr] as i8 as i32 as u32)
+                self.ctx.memory.update_cache(addr);
+
+                Some(self.ctx.memory.geti(addr) as i8 as i32 as u32)
             }
             OpName::LBU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(self.ctx.memory.m[addr] as u32)
+                self.ctx.memory.update_cache(addr);
+
+                Some(self.ctx.memory.geti(addr) as u32)
             }
             OpName::LH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(
-                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
-                        as i16 as i32 as u32,
-                )
+                self.ctx.memory.update_cache(addr);
+
+                Some(u16::from_le_bytes([
+                    self.ctx.memory.geti(addr),
+                    self.ctx.memory.geti(addr + 1),
+                ]) as i16 as i32 as u32)
             }
             OpName::LHU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                Some(
-                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
-                        as u32,
-                )
+                self.ctx.memory.update_cache(addr);
+                Some(u16::from_le_bytes([
+                    self.ctx.memory.geti(addr),
+                    self.ctx.memory.geti(addr + 1),
+                ]) as u32)
             }
             OpName::SB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;

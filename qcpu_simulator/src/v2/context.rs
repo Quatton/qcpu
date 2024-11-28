@@ -89,7 +89,7 @@ impl Display for Stat {
             .fold(0, |acc, (_, count)| acc + count);
 
         writeln!(f, "Statistics:")?;
-        writeln!(f, "Instruction cycle count:",)?;
+        writeln!(f, "Instruction count (times, not cycle): {}", instr_count)?;
         let mut cur = None;
         let mut csum = 0;
         let mut iccp = self.instr_count.iter().collect::<Vec<_>>();
@@ -131,7 +131,9 @@ impl Display for Stat {
                 self.flash_count.get(&OpType::I).unwrap_or(&0) * 100 / instr_count
             },
         )?;
-        write!(f, "Hazard stall count: {}", self.hazard_stall_count)
+        writeln!(f, "Hazard stall count: {}", self.hazard_stall_count)?;
+
+        Ok(())
     }
 }
 
@@ -174,7 +176,7 @@ impl Simulator {
 
     pub fn with_config(config: SimulationConfig) -> Self {
         let ctx = SimulationContext {
-            memory: Memory::new(config.memory_size),
+            memory: Memory::new(config.memory_size, &config.cache_size),
             ..SimulationContext::default()
         };
 
@@ -196,13 +198,16 @@ impl Simulator {
             self.config.branch_prediction
         );
         println!("{}", self.ctx.stat);
+        println!("{}", self.ctx.memory.cacheception);
     }
 }
 
 pub struct SimulationConfig {
     pub verbose: bool,
     pub interactive: bool,
+
     pub memory_size: usize,
+    pub cache_size: Vec<usize>,
 
     pub branch_prediction: BranchPredictionStrategy,
 
@@ -222,7 +227,8 @@ impl Default for SimulationConfig {
         Self {
             verbose: false,
             interactive: false,
-            memory_size: 4096,
+            memory_size: 1048576,
+            cache_size: vec![256],
             branch_prediction: BranchPredictionStrategy::default(),
             decode_cache: HashMap::new(),
             fetch_cache: HashMap::new(),
@@ -257,6 +263,11 @@ impl SimulationConfig {
 
     pub fn memory_size(mut self, memory_size: usize) -> Self {
         self.memory_size = memory_size;
+        self
+    }
+
+    pub fn cache_size(mut self, cache_size: Vec<usize>) -> Self {
+        self.cache_size = cache_size;
         self
     }
 

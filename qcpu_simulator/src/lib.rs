@@ -65,7 +65,7 @@ impl SimulationConfig {
         Self {
             verbose: false,
             interactive: false,
-            memory_size: 4096,
+            memory_size: 1048576,
             parsing_context: ParsingContext::default(),
             low_memory: 32,
             output: None,

@@ -19,8 +19,10 @@ impl Simulator {
         // }
 
         let mut instr = 0u32;
+
+        self.ctx.memory.update_cache(pc);
         for i in 0..4 {
-            instr |= (self.ctx.memory.m[pc] as u32) << (i * 8); // little fucking endian
+            instr |= (self.ctx.memory.geti(pc) as u32) << (i * 8); // little fucking endian
             pc += 1;
         }
 
@@ -43,8 +45,9 @@ impl Simulator {
 
     fn memory_access(&mut self, req: Option<(Range<usize>, u32)>) {
         if let Some((range, data)) = req {
+            self.ctx.memory.update_cache(range.start);
             for (i, byte) in data.to_le_bytes().iter().enumerate() {
-                self.ctx.memory.m[range.start + i] = *byte;
+                *self.ctx.memory.geti_mut(range.start + i) = *byte;
             }
         }
     }

@@ -13,7 +13,7 @@ use qcpu_tui::app::App;
 /// QCPU Utility
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-struct Args {
+struct Cmd {
     #[command(subcommand)]
     command: Commands,
 }
@@ -100,38 +100,47 @@ enum Commands {
     /// A subcommand for simulating RISC-V machine code (original ISA)
     Simv2 {
         /// The input file in machine code
-        #[arg(short, long)]
+        #[clap(short, long)]
         bin: Option<PathBuf>,
 
         /// The input file in assembly (This will override the bin)
-        #[arg(short, long)]
+        #[clap(short, long)]
         source: Option<PathBuf>,
 
         /// Verbose mode
-        #[arg(short, long, default_value = "false")]
+        #[clap(short, long, default_value = "false")]
         verbose: bool,
 
         /// Interactive mode (overrides verbose mode)
-        #[arg(long, default_value = "false")]
+        #[clap(long, default_value = "false")]
         it: bool,
 
         /// Low-memory mode. You can't go back too far in the program.
         // #[arg(short, long, default_value = "32")]
         // low_memory: usize,
 
-        #[arg(short, long, default_value = "1048576")]
+        #[clap(short, long, default_value = "1048576")]
         memory_size: usize,
 
         // #[arg(short, long, default_value = "_min_caml_start")]
         // entry_point: String,
-        #[arg(short, long)]
+        #[clap(short, long)]
         output: Option<String>,
 
-        #[arg(short, long)]
+        #[clap(short, long)]
         input: Option<String>,
 
-        #[arg(long)]
+        #[clap(long)]
         bp: Option<BranchPredictionStrategy>,
+
+        #[clap(
+            short,
+            long,
+            required = true,
+            value_delimiter = ',',
+            default_value = "256"
+        )]
+        cs: Vec<usize>,
     },
 
     /// Parse input into a convenient binary
@@ -169,7 +178,7 @@ fn create_reader(path: &Option<String>) -> Box<dyn BufRead> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
+    let args = Cmd::parse();
 
     match args.command {
         Commands::Conv { input, output } => {
@@ -465,6 +474,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             input,
             it,
             bp,
+            cs,
         } => {
             let mut ops = None;
             let (code, _ctx) = if let Some(source) = source {
@@ -502,6 +512,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .branch_prediction(bp.unwrap_or_default())
                 .verbose(verbose)
                 .interactive(it)
+                .cache_size(cs)
                 .file_in(input)
                 .file_out(output);
 
