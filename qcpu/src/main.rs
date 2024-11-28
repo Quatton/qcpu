@@ -133,13 +133,7 @@ enum Commands {
         #[clap(long)]
         bp: Option<BranchPredictionStrategy>,
 
-        #[clap(
-            short,
-            long,
-            required = true,
-            value_delimiter = ',',
-            default_value = "256"
-        )]
+        #[clap(short, long, value_delimiter = ',', default_value = "256")]
         cs: Vec<usize>,
     },
 
