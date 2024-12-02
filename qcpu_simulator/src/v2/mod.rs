@@ -31,7 +31,9 @@ impl Simulator {
 
         let mut instr = 0u32;
 
-        self.ctx.memory.update_cache(pc);
+        if !self.config.cache_size.is_empty() {
+            self.ctx.memory.update_cache(pc);
+        }
         for i in 0..4 {
             let p = *self.ctx.memory.geti(pc)? as u32;
             instr |= p << (i * 8); // little fucking endian
@@ -60,7 +62,9 @@ impl Simulator {
         req: Option<(Range<usize>, u32)>,
     ) -> Result<(), SimulationErrorKind> {
         if let Some((range, data)) = req {
-            self.ctx.memory.update_cache(range.start);
+            if !self.config.cache_size.is_empty() {
+                self.ctx.memory.update_cache(range.start);
+            }
             for (i, byte) in data.to_le_bytes().iter().enumerate() {
                 *self.ctx.memory.geti_mut(range.start + i)? = *byte;
             }
@@ -198,10 +202,25 @@ impl Simulator {
         // verbose stuff here
 
         if self.config.verbose {
-            let pc = self.ctx.current.pc;
-            let next_pc_predicted = self.predict_next_pc(&op);
-
+            // basic
             self.ctx.stat.cycle_count += 1;
+            self.ctx
+                .stat
+                .instr_count
+                .entry(op.o)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+
+            // stall
+
+            let stall = self.ctx.current.reg_status[op.rs1 as usize]
+                .max(self.ctx.current.reg_status[op.rs2 as usize]);
+            self.ctx.stat.hazard_stall_count += stall;
+            self.ctx.stat.cycle_count += stall;
+            if rd_res.is_some() {
+                self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
+            }
+
             self.ctx.current.reg_status.iter_mut().for_each(|d| {
                 if d == &0 {
                     *d = 0
@@ -210,57 +229,45 @@ impl Simulator {
                 }
             });
 
-            // might be zero anyway so we don't need to check
-            let stall = self.ctx.current.reg_status[op.rs1 as usize]
-                .max(self.ctx.current.reg_status[op.rs2 as usize]);
-            self.ctx.stat.hazard_stall_count += stall;
-            self.ctx.stat.cycle_count += stall;
+            if !self.config.branch_prediction.is_empty() {
+                let pc = self.ctx.current.pc;
+                let next_pc_predicted = self.predict_next_pc(&op);
 
-            self.ctx
-                .stat
-                .instr_count
-                .entry(op.o)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-
-            if rd_res.is_some() {
-                self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
-            }
-
-            if next_pc_predicted[self.config.branch_prediction as usize] != next_pc_true {
-                self.ctx
-                    .stat
-                    .flash_count
-                    .entry(op.o.optype)
-                    .and_modify(|count| *count += 1)
-                    .or_insert(1);
-                self.ctx.stat.cycle_count += 2;
-            }
-
-            if op.o.optype == OpType::B {
-                for (idx, &pd) in next_pc_predicted.iter().enumerate() {
-                    if pd != next_pc_true {
-                        self.ctx
-                            .stat
-                            .branch_prediction_stats
-                            .entry(idx)
-                            .and_modify(|count| *count += 1)
-                            .or_insert(1);
-                    }
+                if next_pc_predicted.iter().any(|&p| p != next_pc_true) {
+                    self.ctx
+                        .stat
+                        .flash_count
+                        .entry(op.o.optype)
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                    self.ctx.stat.cycle_count += 1;
                 }
 
-                if next_pc_true != pc + 4 {
-                    self.ctx
-                        .sc
-                        .entry(pc)
-                        .and_modify(|e| *e = (*e + 1).min(2))
-                        .or_insert(1);
-                } else {
-                    self.ctx
-                        .sc
-                        .entry(pc)
-                        .and_modify(|e| *e = (*e - 1).max(-1))
-                        .or_insert(0);
+                if op.o.optype == OpType::B {
+                    for (idx, &pd) in next_pc_predicted.iter().enumerate() {
+                        if pd != next_pc_true {
+                            self.ctx
+                                .stat
+                                .branch_prediction_stats
+                                .entry(idx)
+                                .and_modify(|count| *count += 1)
+                                .or_insert(1);
+                        }
+                    }
+
+                    if next_pc_true != pc + 4 {
+                        self.ctx
+                            .sc
+                            .entry(pc)
+                            .and_modify(|e| *e = (*e + 1).min(2))
+                            .or_insert(1);
+                    } else {
+                        self.ctx
+                            .sc
+                            .entry(pc)
+                            .and_modify(|e| *e = (*e - 1).max(-1))
+                            .or_insert(0);
+                    }
                 }
             }
         }

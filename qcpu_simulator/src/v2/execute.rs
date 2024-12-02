@@ -112,7 +112,10 @@ impl Simulator {
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
+
+                if !self.config.cache_size.is_empty() {
+                    self.ctx.memory.update_cache(addr);
+                }
                 Some(u32::from_le_bytes([
                     *self.ctx.memory.geti(addr)?,
                     *self.ctx.memory.geti(addr + 1)?,
@@ -122,19 +125,27 @@ impl Simulator {
             }
             OpName::LB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
+
+                if !self.config.cache_size.is_empty() {
+                    self.ctx.memory.update_cache(addr);
+                }
 
                 Some(*self.ctx.memory.geti(addr)? as i8 as i32 as u32)
             }
             OpName::LBU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
+                if !self.config.cache_size.is_empty() {
+                    self.ctx.memory.update_cache(addr);
+                }
 
                 Some(*self.ctx.memory.geti(addr)? as u32)
             }
             OpName::LH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
+
+                if !self.config.cache_size.is_empty() {
+                    self.ctx.memory.update_cache(addr);
+                }
 
                 Some(u16::from_le_bytes([
                     *self.ctx.memory.geti(addr)?,
@@ -143,7 +154,10 @@ impl Simulator {
             }
             OpName::LHU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
+
+                if !self.config.cache_size.is_empty() {
+                    self.ctx.memory.update_cache(addr);
+                }
                 Some(u16::from_le_bytes([
                     *self.ctx.memory.geti(addr)?,
                     *self.ctx.memory.geti(addr + 1)?,

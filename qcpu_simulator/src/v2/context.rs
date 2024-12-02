@@ -265,10 +265,6 @@ impl Simulator {
     }
 
     pub fn log_statistics(&self) {
-        println!(
-            "Branch prediction strategy: {}",
-            self.config.branch_prediction
-        );
         println!("{}", self.ctx.stat);
         println!("{}", self.ctx.memory.cacheception);
     }
@@ -281,7 +277,7 @@ pub struct SimulationConfig {
     pub memory_size: usize,
     pub cache_size: Vec<usize>,
 
-    pub branch_prediction: BranchPredictionStrategy,
+    pub branch_prediction: Vec<BranchPredictionStrategy>,
 
     pub parsing_ctx: ParsingContext,
 
@@ -301,10 +297,10 @@ impl Default for SimulationConfig {
         Self {
             verbose: false,
             interactive: false,
-            memory_size: 1048576,
-            cache_size: vec![256],
+            memory_size: 65536,
+            cache_size: vec![],
             parsing_ctx: ParsingContext::default(),
-            branch_prediction: BranchPredictionStrategy::default(),
+            branch_prediction: vec![],
             decode_cache: HashMap::new(),
             fetch_cache: HashMap::new(),
             in_buffer: BufReader::new(Box::new(std::io::stdin().lock())),
@@ -314,7 +310,7 @@ impl Default for SimulationConfig {
 }
 
 impl SimulationConfig {
-    pub fn branch_prediction(mut self, strategy: BranchPredictionStrategy) -> Self {
+    pub fn branch_prediction(mut self, strategy: Vec<BranchPredictionStrategy>) -> Self {
         self.branch_prediction = strategy;
         self
     }

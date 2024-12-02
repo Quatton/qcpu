@@ -130,10 +130,10 @@ enum Commands {
         #[clap(short, long)]
         input: Option<String>,
 
-        #[clap(long)]
-        bp: Option<BranchPredictionStrategy>,
+        #[clap(long, value_delimiter = ',')]
+        bp: Vec<BranchPredictionStrategy>,
 
-        #[clap(short, long, value_delimiter = ',', default_value = "256")]
+        #[clap(short, long, value_delimiter = ',')]
         cs: Vec<usize>,
     },
 
@@ -500,7 +500,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let cfg = qcpu_simulator::v2::context::SimulationConfig::default()
                 .parsing_context(ctx)
                 .memory_size(memory_size)
-                .branch_prediction(bp.unwrap_or_default())
+                .branch_prediction(bp)
                 .verbose(verbose)
                 .interactive(it)
                 .cache_size(cs)

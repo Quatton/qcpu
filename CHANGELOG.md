@@ -1,3 +1,8 @@
+## [2.7.0] - 2024-12-02
+- ESTART, ESTOP
+- Removed default cache and branch prediction
+
+
 ## [2.6.0] - 2024-12-02
 - ECOUNT
 
