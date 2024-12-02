@@ -65,9 +65,11 @@ bne_else.143: !27
 	lw  	ra, 0(sp)
 	jal 	zero, print_int !27
 xloop.72:
+    estart xloop
 	sw  	ra, 0(sp)
 	addi	t0, zero, 400 !14
 	blt 	a0, t0, bge_else.144 !14
+    estop xloop
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 bge_else.144: !14
@@ -103,6 +105,7 @@ bge_else.144: !14
 	lw  	a0, 4(sp) !33
 	addi	a0, a0, 1 !33
 	lw  	a1, 8(sp) !33
+    estop xloop
 	lw  	ra, 0(sp)
 	jal 	zero, xloop.72 !33
 yloop.54:
