@@ -470,10 +470,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             bp,
             cs,
         } => {
-            let (code, _ctx) = if let Some(source) = source {
+            let (code, ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
 
-                match qcpu_assembler::v2::assemble(&asm, it) {
+                match qcpu_assembler::v2::assemble(&asm, it || verbose) {
                     Ok((code, ctx)) => (code, ctx),
                     Err(e) => {
                         eprintln!("Error parsing assembly code: {:?}", e);
@@ -498,6 +498,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let cfg = qcpu_simulator::v2::context::SimulationConfig::default()
+                .parsing_context(ctx)
                 .memory_size(memory_size)
                 .branch_prediction(bp.unwrap_or_default())
                 .verbose(verbose)
@@ -529,6 +530,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sim.log_registers();
 
                 if verbose {
+                    sim.log_eutils();
                     sim.log_statistics();
                 }
             }

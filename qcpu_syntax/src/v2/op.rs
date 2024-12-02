@@ -134,8 +134,8 @@ impl Op {
         let imm = self.imm.raw().unwrap_or_default();
 
         match self.o.optype {
-            OpType::R | OpType::F | OpType::N | OpType::O | OpType::E => {}
-            OpType::I | OpType::L => {
+            OpType::R | OpType::F | OpType::N | OpType::O => {}
+            OpType::I | OpType::L | OpType::E => {
                 vec[19..=30].store(imm);
             }
             OpType::S => {
@@ -239,7 +239,7 @@ impl Op {
         };
 
         match opname.optype {
-            OpType::I | OpType::L => {
+            OpType::I | OpType::L | OpType::E => {
                 op.imm = Immediate::from_offset(bv[19..=30].load::<i32>());
             }
             OpType::S => {
@@ -258,17 +258,26 @@ impl Op {
             OpType::J => {
                 op.imm = Immediate::from_offset(bv[11..=30].load::<i32>() << 1);
             }
-            OpType::F | OpType::R | OpType::N | OpType::Raw | OpType::O | OpType::E => {}
+            OpType::F | OpType::R | OpType::N | OpType::Raw | OpType::O => {}
         };
 
         op
     }
 
-    pub fn resolve_label(&mut self, label_map: &LabelMap, idx: usize) -> Result<(), String> {
+    pub fn resolve_label(&mut self, label_map: &mut LabelMap, idx: usize) -> Result<(), String> {
         let offset = match self.o.optype {
             OpType::I | OpType::L | OpType::U => 0,
             OpType::B | OpType::S | OpType::J => idx as i32,
-            _ => return Ok(()),
+            OpType::R | OpType::F | OpType::N | OpType::Raw | OpType::O => return Ok(()),
+            OpType::E => {
+                // special case
+
+                if self.o == OpName::EBREAK || self.imm.raw().is_some() {
+                    return Ok(());
+                }
+
+                0
+            }
         };
 
         let imm = &mut self.imm;
@@ -290,12 +299,26 @@ impl Op {
                                 as i32,
                         );
                     }
+                    OpType::E => {
+                        imm.raw = Some(target as i32);
+                    }
                     _ => {
                         let target = target as i32;
                         imm.raw = Some((target - offset) * 4);
                     }
                 },
-                None => return Err(format!("Label not set for op {:?} at {}", self, idx)),
+                None => {
+                    if self.o.optype == OpType::E {
+                        let next = *label_map.values().max().unwrap();
+
+                        label_map.insert(label.clone(), next + 1);
+
+                        imm.raw = Some((next + 1) as i32);
+                        return Ok(());
+                    }
+
+                    return Err(format!("Label not set for op {:?} at {}", self, idx));
+                }
             }
         }
 
@@ -317,10 +340,19 @@ impl Op {
         let (s, o) = match o.optype {
             OpType::E => {
                 // ebreak
+                let (s, imm) = match o {
+                    OpName::EBREAK => (s, Immediate::default()),
+                    OpName::ESTART => Immediate::parse(s)?,
+                    OpName::ESTOP => Immediate::parse(s)?,
+                    OpName::ECOUNT => Immediate::parse(s)?,
+                    _ => unreachable!(),
+                };
+
                 (
                     s,
                     Self {
                         o,
+                        imm,
                         ..Default::default()
                     },
                 )

@@ -169,6 +169,7 @@ impl std::fmt::Display for JumpTarget {
     }
 }
 
+#[derive(Debug)]
 pub struct ParsingContext {
     pub label_map: LabelMap,
     pub main_label: String,

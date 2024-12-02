@@ -10,4 +10,5 @@ pub struct SimulationError {
 #[derive(Debug)]
 pub enum SimulationErrorKind {
     MemoryAccess { size: usize, idx: usize },
+    ETimeStop { label: String },
 }

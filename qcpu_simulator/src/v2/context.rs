@@ -5,10 +5,13 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
 };
 
-use qcpu_syntax::v2::{
-    op::Op,
-    reg::Registers,
-    syntax::{OpName, OpType},
+use qcpu_syntax::{
+    v2::{
+        op::Op,
+        reg::Registers,
+        syntax::{OpName, OpType},
+    },
+    ParsingContext,
 };
 use strum_macros::{EnumString, FromRepr};
 
@@ -36,6 +39,12 @@ impl Default for Snapshot {
 }
 
 #[derive(Default)]
+pub struct EUtils {
+    pub counter: HashMap<usize, usize>,
+    pub timer: HashMap<usize, (bool, usize)>,
+}
+
+#[derive(Default)]
 pub struct SimulationContext {
     pub current: Snapshot,
     pub snapshots: Vec<Snapshot>,
@@ -44,6 +53,8 @@ pub struct SimulationContext {
 
     pub sc: HashMap<usize, i8>,
     pub stat: Stat,
+
+    pub e: EUtils,
 }
 
 #[derive(Default)]
@@ -186,6 +197,22 @@ impl Simulator {
         self
     }
 
+    pub fn log_eutils(&self) {
+        println!("==== Counter: =====");
+        for (&raw, &count) in self.ctx.e.counter.iter() {
+            let placeholder = raw.to_string();
+            let label = self
+                .config
+                .parsing_ctx
+                .label_map
+                .get_label(raw)
+                .unwrap_or(&placeholder);
+
+            println!("{}: {}", label, count);
+        }
+        println!("=============================");
+    }
+
     pub fn log_registers(&self) {
         println!("{:?}", self.ctx.current.regs);
     }
@@ -209,6 +236,8 @@ pub struct SimulationConfig {
 
     pub branch_prediction: BranchPredictionStrategy,
 
+    pub parsing_ctx: ParsingContext,
+
     pub decode_cache: HashMap<u32, Op>,
     pub fetch_cache: HashMap<usize, u32>,
 
@@ -227,6 +256,7 @@ impl Default for SimulationConfig {
             interactive: false,
             memory_size: 1048576,
             cache_size: vec![256],
+            parsing_ctx: ParsingContext::default(),
             branch_prediction: BranchPredictionStrategy::default(),
             decode_cache: HashMap::new(),
             fetch_cache: HashMap::new(),
@@ -244,6 +274,11 @@ impl SimulationConfig {
 
     pub fn verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
+        self.parsing_ctx = parsing_context;
         self
     }
 

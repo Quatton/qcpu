@@ -115,9 +115,57 @@ impl Simulator {
 
         let op = self.decode(instr);
 
-        if op.o == OpName::EBREAK {
-            self.ctx.snapshots.push(self.ctx.current.clone());
+        if op.o.optype == OpType::E {
+            let raw = op
+                .imm
+                .offset_or_lookup(&self.config.parsing_ctx)
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+            match op.o {
+                OpName::EBREAK => {
+                    self.ctx.snapshots.push(self.ctx.current.clone());
+                }
+                OpName::ECOUNT => {
+                    self.ctx
+                        .e
+                        .counter
+                        .entry(raw)
+                        .and_modify(|counter| *counter += 1)
+                        .or_insert(1);
+                }
+                OpName::ESTART => {
+                    self.ctx
+                        .e
+                        .timer
+                        .entry(raw)
+                        .and_modify(|(started, _)| *started = true)
+                        .or_insert((true, 0));
+                }
+                OpName::ESTOP => {
+                    let (_, count) = self
+                        .ctx
+                        .e
+                        .timer
+                        .entry(raw)
+                        .and_modify(|(started, _)| *started = true)
+                        .or_insert((false, 0));
+
+                    let placeholder = raw.to_string();
+                    let label = self
+                        .config
+                        .parsing_ctx
+                        .label_map
+                        .get_label(raw)
+                        .unwrap_or(&placeholder);
+
+                    println!("[Timer] {}: {} cycles", label, count);
+                }
+                _ => unreachable!(),
+            }
             self.ctx.current.next_pc = self.ctx.current.pc + 4;
+
             return Ok(());
         }
 

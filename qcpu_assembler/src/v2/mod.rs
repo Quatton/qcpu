@@ -84,7 +84,7 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
         .collect();
 
     for (i, op) in ops.iter_mut().enumerate() {
-        op.resolve_label(&ctx.label_map, i)
+        op.resolve_label(&mut ctx.label_map, i)
             .map_err(ParseError::JumpTargetError)?;
     }
 

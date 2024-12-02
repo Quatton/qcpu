@@ -18,7 +18,28 @@ enum_properties! {
       optype: OpType::E,
       opcode: 0b1111,
       funct3: Some(0b000),
-      funct7: Some(0b0000000),
+      funct7: None,
+    },
+
+    ESTART {
+      optype: OpType::E,
+      opcode: 0b1111,
+      funct3: Some(0b001),
+      funct7: None,
+    },
+
+    ESTOP {
+      optype: OpType::E,
+      opcode: 0b1111,
+      funct3: Some(0b010),
+      funct7: None,
+    },
+
+    ECOUNT {
+      optype: OpType::E,
+      opcode: 0b1111,
+      funct3: Some(0b011),
+      funct7: None,
     },
 
     ADD {
