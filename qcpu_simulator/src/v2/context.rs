@@ -13,6 +13,7 @@ use qcpu_syntax::{
     },
     ParsingContext,
 };
+use strum::VariantArray;
 use strum_macros::{EnumString, FromRepr};
 
 use super::memory::Memory;
@@ -72,12 +73,13 @@ pub struct Stat {
     pub instr_count: HashMap<OpName, usize>,
     pub cycle_count: usize,
     pub flash_count: HashMap<OpType, usize>,
+    pub branch_prediction_stats: HashMap<usize, usize>,
     pub hazard_stall_count: usize,
     pub max_sp: usize,
     pub sp_init: usize,
 }
 
-#[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug)]
+#[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug, VariantArray, Copy)]
 #[strum(serialize_all = "lowercase")]
 pub enum BranchPredictionStrategy {
     #[default]
@@ -103,8 +105,6 @@ impl Display for Stat {
             .iter()
             .filter_map(|(k, v)| if k.optype == OpType::B { Some(v) } else { None })
             .sum();
-        let flash_b_count = self.flash_count.get(&OpType::B).unwrap_or(&0);
-
         let instr_count = self
             .instr_count
             .iter()
@@ -134,15 +134,20 @@ impl Display for Stat {
         writeln!(f, "Cycle count: {}", self.cycle_count)?;
         writeln!(
             f,
-            "Branch Prediction Miss: {} out of {} B instructions ({}%)",
-            flash_b_count,
+            "Branch Prediction Miss: out of {} B instructions",
             b_count,
-            if b_count == 0 {
-                0
-            } else {
-                flash_b_count * 100 / b_count
-            },
         )?;
+        for (&bp, &count) in self.branch_prediction_stats.iter() {
+            let bp = BranchPredictionStrategy::from_repr(bp).unwrap();
+
+            writeln!(
+                f,
+                "   {}: {} ({:.2}%)",
+                bp,
+                count,
+                count as f32 / b_count as f32 * 100.0
+            )?;
+        }
         writeln!(
             f,
             "Flash count for JALR: {} out of {} instructions ({}%)",

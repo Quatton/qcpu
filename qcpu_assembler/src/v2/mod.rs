@@ -25,11 +25,11 @@ pub fn assemble(input: &str, debug: bool) -> Result<(Vec<u32>, ParsingContext), 
 
     let ops = parse_tree(input.as_str(), &mut ctx)?;
 
-    if debug {
-        for (i, op) in ops.iter().enumerate() {
-            println!("{:03}: {:?}", i, op);
-        }
-    }
+    // if debug {
+    //     for (i, op) in ops.iter().enumerate() {
+    //         println!("{:03}: {:?}", i, op);
+    //     }
+    // }
 
     let mc = to_machine_code(&ops);
 

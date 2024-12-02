@@ -6,6 +6,7 @@ use qcpu_syntax::v2::{
     op::Op,
     syntax::{OpName, OpType},
 };
+use strum::VariantArray as _;
 
 pub mod context;
 pub mod error;
@@ -82,36 +83,43 @@ impl Simulator {
         }
     }
 
-    pub fn predict_next_pc(&mut self, op: &Op) -> usize {
+    pub fn predict_next_pc(&mut self, op: &Op) -> Vec<usize> {
         let pc = self.ctx.current.pc;
         let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
 
-        match op.o.optype {
-            OpType::R
-            | OpType::U
-            | OpType::L
-            | OpType::E
-            | OpType::F
-            | OpType::N
-            | OpType::O
-            | OpType::S
-            | OpType::I
-            | OpType::Raw => pc + 4,
-            OpType::J => taken,
-            OpType::B => match &self.config.branch_prediction {
-                BranchPredictionStrategy::Ant => pc + 4,
-                BranchPredictionStrategy::At => taken,
-                BranchPredictionStrategy::Bm => {
-                    let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
+        let mut res = vec![];
+        for bp in BranchPredictionStrategy::VARIANTS {
+            let next_pc = match op.o.optype {
+                OpType::R
+                | OpType::U
+                | OpType::L
+                | OpType::E
+                | OpType::F
+                | OpType::N
+                | OpType::O
+                | OpType::S
+                | OpType::I
+                | OpType::Raw => pc + 4,
+                OpType::J => taken,
+                OpType::B => match bp {
+                    BranchPredictionStrategy::Ant => pc + 4,
+                    BranchPredictionStrategy::At => taken,
+                    BranchPredictionStrategy::Bm => {
+                        let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
 
-                    if *pred > 0 {
-                        taken
-                    } else {
-                        pc + 4
+                        if *pred > 0 {
+                            taken
+                        } else {
+                            pc + 4
+                        }
                     }
-                }
-            },
+                },
+            };
+
+            res.push(next_pc);
         }
+
+        res
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulationError> {
@@ -191,14 +199,7 @@ impl Simulator {
 
         if self.config.verbose {
             let pc = self.ctx.current.pc;
-            let next_pc_predicted =
-                if self.config.branch_prediction == BranchPredictionStrategy::Ant {
-                    pc + 4
-                } else {
-                    self.predict_next_pc(&op)
-                };
-
-            self.ctx.current.next_pc = next_pc_predicted;
+            let next_pc_predicted = self.predict_next_pc(&op);
 
             self.ctx.stat.cycle_count += 1;
             self.ctx.current.reg_status.iter_mut().for_each(|d| {
@@ -226,7 +227,7 @@ impl Simulator {
                 self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
             }
 
-            if next_pc_predicted != next_pc_true {
+            if next_pc_predicted[self.config.branch_prediction as usize] != next_pc_true {
                 self.ctx
                     .stat
                     .flash_count
@@ -236,9 +237,18 @@ impl Simulator {
                 self.ctx.stat.cycle_count += 2;
             }
 
-            if op.o.optype == OpType::B
-                && self.config.branch_prediction == BranchPredictionStrategy::Bm
-            {
+            if op.o.optype == OpType::B {
+                for (idx, &pd) in next_pc_predicted.iter().enumerate() {
+                    if pd != next_pc_true {
+                        self.ctx
+                            .stat
+                            .branch_prediction_stats
+                            .entry(idx)
+                            .and_modify(|count| *count += 1)
+                            .or_insert(1);
+                    }
+                }
+
                 if next_pc_true != pc + 4 {
                     self.ctx
                         .sc
