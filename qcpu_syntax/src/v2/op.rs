@@ -135,7 +135,7 @@ impl Op {
 
         match self.o.optype {
             OpType::R | OpType::F | OpType::N | OpType::O => {}
-            OpType::I | OpType::L | OpType::E => {
+            OpType::I | OpType::L => {
                 vec[19..=30].store(imm);
             }
             OpType::S => {
@@ -154,6 +154,9 @@ impl Op {
             }
             OpType::Raw => {
                 vec.store(imm as u32);
+            }
+            OpType::E => {
+                vec[13..=30].store(imm);
             }
         }
 
@@ -239,7 +242,7 @@ impl Op {
         };
 
         match opname.optype {
-            OpType::I | OpType::L | OpType::E => {
+            OpType::I | OpType::L => {
                 op.imm = Immediate::from_offset(bv[19..=30].load::<i32>());
             }
             OpType::S => {
@@ -257,6 +260,9 @@ impl Op {
             }
             OpType::J => {
                 op.imm = Immediate::from_offset(bv[11..=30].load::<i32>() << 1);
+            }
+            OpType::E => {
+                op.imm = Immediate::from_offset(bv[13..=30].load::<i32>());
             }
             OpType::F | OpType::R | OpType::N | OpType::Raw | OpType::O => {}
         };

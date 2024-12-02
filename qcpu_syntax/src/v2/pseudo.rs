@@ -20,7 +20,7 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
 
     // li reg, label
 
-    if imm.label().is_some() {
+    if imm.raw().is_none() {
         return Ok((
             i,
             vec![
