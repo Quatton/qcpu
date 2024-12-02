@@ -445,7 +445,7 @@ min_caml_print_int:
         let mut sim = Simulator::new()
             .config(
                 SimulationConfig::new()
-                    .memory_size(4096)
+                    .memory_size(65536)
                     .verbose(true)
                     .parsing_context(ctx),
             )

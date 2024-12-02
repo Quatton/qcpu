@@ -49,5 +49,5 @@ qcpu sim -s <input_file_in_assembly> # Just-in-time compilation (You get to have
 
 qcpu sim -s <input_file_in_assembly> --it # Interactive mode
 
-qcpu sim -s <input_file_in_assembly> --it -m 4096 # Interactive mode with 4096 bytes of memory
+qcpu sim -s <input_file_in_assembly> --it -m 65536 # Interactive mode with 65536 bytes of memory
 ```

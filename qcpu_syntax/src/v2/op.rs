@@ -59,7 +59,7 @@ impl Immediate {
     }
     pub fn from_offset(offset: i32) -> Self {
         Self {
-            label: None,
+            label: Some(format!("imm_{}", offset)),
             raw: Some(offset),
         }
     }

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     fmt::Display,
     fs::OpenOptions,
     io::{BufReader, BufWriter, Read, Write},
@@ -39,9 +39,19 @@ impl Default for Snapshot {
 }
 
 #[derive(Default)]
+pub struct ETimer {
+    pub start: VecDeque<usize>,
+    pub sum_for_avg: usize,
+    pub real_sum: usize,
+    pub count: usize,
+    pub max: usize,
+    pub min: usize,
+}
+
+#[derive(Default)]
 pub struct EUtils {
     pub counter: HashMap<usize, usize>,
-    pub timer: HashMap<usize, (bool, usize)>,
+    pub timer: HashMap<usize, ETimer>,
 }
 
 #[derive(Default)]
@@ -63,6 +73,8 @@ pub struct Stat {
     pub cycle_count: usize,
     pub flash_count: HashMap<OpType, usize>,
     pub hazard_stall_count: usize,
+    pub max_sp: usize,
+    pub sp_init: usize,
 }
 
 #[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug)]
@@ -99,6 +111,7 @@ impl Display for Stat {
             .fold(0, |acc, (_, count)| acc + count);
 
         writeln!(f, "Statistics:")?;
+        writeln!(f, "Max SP incr: {}", self.max_sp - self.sp_init)?;
         writeln!(f, "Instruction count (times, not cycle): {}", instr_count)?;
         let mut cur = None;
         let mut csum = 0;
@@ -177,6 +190,7 @@ impl Simulator {
 
     pub fn init(&mut self) {
         self.ctx.current.regs[2] = (self.config.memory_size >> 1).try_into().unwrap();
+        self.ctx.stat.sp_init = self.ctx.current.regs[2] as usize;
         self.ctx.current.regs[3] = ((self.config.memory_size >> 1)
             + (self.config.memory_size >> 2))
             .try_into()
@@ -198,7 +212,9 @@ impl Simulator {
     }
 
     pub fn log_eutils(&self) {
-        println!("==== Counter: =====");
+        println!("========= Profiler ===========");
+        println!("==== Counter =====");
+
         for (&raw, &count) in self.ctx.e.counter.iter() {
             let placeholder = raw.to_string();
             let label = self
@@ -209,6 +225,32 @@ impl Simulator {
                 .unwrap_or(&placeholder);
 
             println!("{}: {}", label, count);
+        }
+
+        println!("==== Timer =====");
+        println!(
+            "{0: <12} {1: <12} {2: <12} {3: <12} {4: <12} {5: <12}",
+            "LABEL", "NCALLS", "TOTAL CYCLES", "AVG CYCLES", "MAX CYCLES", "MIN CYCLES"
+        );
+        for (&raw, timer) in self.ctx.e.timer.iter() {
+            let placeholder = raw.to_string();
+            let label = self
+                .config
+                .parsing_ctx
+                .label_map
+                .get_label(raw)
+                .unwrap_or(&placeholder);
+
+            let avg = if timer.count == 0 {
+                0
+            } else {
+                timer.sum_for_avg / timer.count
+            };
+
+            println!(
+                "{:<12} {:<12} {:<12} {:<12} {:<12} {:<12}",
+                label, timer.count, timer.real_sum, avg, timer.max, timer.min
+            );
         }
         println!("=============================");
     }

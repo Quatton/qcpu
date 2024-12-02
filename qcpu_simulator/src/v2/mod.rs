@@ -74,6 +74,10 @@ impl Simulator {
                 return;
             }
 
+            if rd == 2 {
+                self.ctx.stat.max_sp = self.ctx.stat.max_sp.max(data as usize);
+            }
+
             self.ctx.current.regs[rd] = data;
         }
     }
@@ -133,34 +137,45 @@ impl Simulator {
                         .counter
                         .entry(raw)
                         .and_modify(|counter| *counter += 1)
-                        .or_insert(1);
+                        .or_insert(0);
                 }
                 OpName::ESTART => {
                     self.ctx
                         .e
                         .timer
                         .entry(raw)
-                        .and_modify(|(started, _)| *started = true)
-                        .or_insert((true, 0));
+                        .and_modify(|timer| {
+                            timer.start.push_back(self.ctx.stat.cycle_count);
+                        })
+                        .or_default();
                 }
                 OpName::ESTOP => {
-                    let (_, count) = self
-                        .ctx
+                    self.ctx
                         .e
                         .timer
                         .entry(raw)
-                        .and_modify(|(started, _)| *started = true)
-                        .or_insert((false, 0));
+                        .and_modify(|timer| {
+                            let pc = timer.start.pop_back();
+                            // .expect("stopped time without starting");
 
-                    let placeholder = raw.to_string();
-                    let label = self
-                        .config
-                        .parsing_ctx
-                        .label_map
-                        .get_label(raw)
-                        .unwrap_or(&placeholder);
+                            if let Some(pc) = pc {
+                                let this = self.ctx.stat.cycle_count - pc;
+                                timer.sum_for_avg += this;
 
-                    println!("[Timer] {}: {} cycles", label, count);
+                                if timer.start.is_empty() {
+                                    timer.real_sum += this
+                                }
+
+                                timer.count += 1;
+                                timer.max = timer.max.max(this);
+                                timer.min = if timer.min == 0 {
+                                    this
+                                } else {
+                                    timer.min.min(this)
+                                }
+                            }
+                        })
+                        .or_default();
                 }
                 _ => unreachable!(),
             }
