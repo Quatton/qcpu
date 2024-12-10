@@ -31,11 +31,10 @@ impl Simulator {
 
         let mut instr = 0u32;
 
-        if !self.config.cache_size.is_empty() {
-            self.ctx.memory.update_cache(pc);
-        }
+        self.ctx.memory.update_cache(pc);
+
         for i in 0..4 {
-            let p = *self.ctx.memory.geti(pc)? as u32;
+            let p = self.ctx.memory[pc] as u32;
             instr |= p << (i * 8); // little fucking endian
             pc += 1;
         }
@@ -62,11 +61,9 @@ impl Simulator {
         req: Option<(Range<usize>, u32)>,
     ) -> Result<(), SimulationErrorKind> {
         if let Some((range, data)) = req {
-            if !self.config.cache_size.is_empty() {
-                self.ctx.memory.update_cache(range.start);
-            }
+            self.ctx.memory.update_cache(range.start);
             for (i, byte) in data.to_le_bytes().iter().enumerate() {
-                *self.ctx.memory.geti_mut(range.start + i)? = *byte;
+                self.ctx.memory[range.start + i] = *byte;
             }
         }
 

@@ -1,9 +1,7 @@
 use std::{
     fmt::Display,
-    ops::{Deref, DerefMut, Range},
+    ops::{Deref, DerefMut, Index, IndexMut},
 };
-
-use super::error::SimulationErrorKind;
 
 pub struct CacheLine {
     pub cache_size: usize,
@@ -74,6 +72,21 @@ pub struct Memory {
     pub m: Vec<u8>,
     pub size: usize,
     pub cacheception: Cacheception,
+    pub cache_enabled: bool,
+}
+
+impl Index<usize> for Memory {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.m[index]
+    }
+}
+
+impl IndexMut<usize> for Memory {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.m[index]
+    }
 }
 
 impl Memory {
@@ -94,38 +107,15 @@ impl Memory {
                     })
                     .collect::<Vec<_>>(),
             ),
+            cache_enabled: !cache_size.is_empty(),
         }
     }
 
-    pub fn geti(&mut self, index: usize) -> Result<&u8, SimulationErrorKind> {
-        self.m.get(index).map_or_else(
-            || {
-                Err(SimulationErrorKind::MemoryAccess {
-                    size: self.size,
-                    idx: index,
-                })
-            },
-            Ok,
-        )
-    }
-
-    pub fn geti_mut(&mut self, index: usize) -> Result<&mut u8, SimulationErrorKind> {
-        self.m.get_mut(index).map_or_else(
-            || {
-                Err(SimulationErrorKind::MemoryAccess {
-                    size: self.size,
-                    idx: index,
-                })
-            },
-            Ok,
-        )
-    }
-
-    pub fn getr(&mut self, index: Range<usize>) -> &[u8] {
-        &self.m[index]
-    }
-
     pub fn update_cache(&mut self, index: usize) {
+        if !self.cache_enabled {
+            return;
+        }
+
         for cache_type in self.cacheception.iter_mut() {
             let cache_idx = (index >> 2) & ((1 << cache_type.cache_size) - 1);
             let cache_tag = index >> (2 + cache_type.cache_size);
