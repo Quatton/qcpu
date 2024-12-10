@@ -1,6 +1,5 @@
 _min_caml_start:
 	li  	ra, _min_caml_finish
-	li  	sp, 524288
 	sw  	ra, 0(sp)
 	addi	sp, sp, 4
 	addi	a0, zero, 1 !6

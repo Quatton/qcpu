@@ -96,13 +96,18 @@ impl Simulator {
 
     fn write_back(&mut self, result: Option<(usize, u32)>) {
         if let Some((rd, data)) = result {
-            if rd == 0 {
-                return;
-            }
-
-            if rd == 2 {
-                self.ctx.stat.max_sp = self.ctx.stat.max_sp.max(data as usize);
-            }
+            match rd {
+                0 => {
+                    return;
+                }
+                2 => {
+                    self.ctx.stat.max_sp = self.ctx.stat.max_sp.max(data as usize);
+                }
+                3 => {
+                    self.ctx.stat.max_gp = self.ctx.stat.max_gp.max(data as usize);
+                }
+                _ => {}
+            };
 
             self.ctx.current.regs[rd] = data;
         }

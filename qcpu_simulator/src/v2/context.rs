@@ -76,7 +76,9 @@ pub struct Stat {
     pub branch_prediction_stats: HashMap<usize, usize>,
     pub hazard_stall_count: usize,
     pub max_sp: usize,
+    pub max_gp: usize,
     pub sp_init: usize,
+    pub gp_init: usize,
 }
 
 #[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug, VariantArray, Copy)]
@@ -112,6 +114,10 @@ impl Display for Stat {
 
         writeln!(f, "Statistics:")?;
         writeln!(f, "Max SP incr: {}", self.max_sp - self.sp_init)?;
+        if self.max_sp >= self.max_gp {
+            writeln!(f, "Max SP overlapping GP, increase memory")?;
+        }
+        writeln!(f, "Max GP incr: {}", self.max_gp - self.gp_init)?;
         writeln!(f, "Instruction count (times, not cycle): {}", instr_count)?;
         let mut cur = None;
         let mut csum = 0;
@@ -195,11 +201,11 @@ impl Simulator {
     }
 
     pub fn init(&mut self) {
-        self.ctx.stat.sp_init = 0_usize;
         self.ctx.current.regs[3] = ((self.config.memory_size >> 1)
             + (self.config.memory_size >> 2))
             .try_into()
             .unwrap();
+        self.ctx.stat.gp_init = self.ctx.current.regs[3] as usize;
     }
 
     pub fn with_config(config: SimulationConfig) -> Self {

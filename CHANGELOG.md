@@ -1,7 +1,16 @@
+## [3.0.0] - 2024-12-10
+- Still use v2 but so many changes to the core
+- Program is predecoded, and removed from data mememory
+  - Much faster because `op.clone()` is so expensive.
+  - Maybe more difficult to debug in the long run but idc anymore
+- Op is now borrowed from the program
+  - idea: self.run_once(&program)
+- Memory access is much more streamlined, no more "did i update cache yet?"
+- GP, SP increment stat
+
 ## [2.7.0] - 2024-12-02
 - ESTART, ESTOP
 - Removed default cache and branch prediction
-
 
 ## [2.6.0] - 2024-12-02
 - ECOUNT
