@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, VecDeque},
     fmt::Display,
     fs::OpenOptions,
-    io::{BufReader, BufWriter, Read, Write},
+    io::{stdin, stdout, BufReader, BufWriter, Read, Write},
 };
 
 use qcpu_syntax::{
@@ -168,13 +168,14 @@ impl Display for Stat {
 impl SimulationContext {
     pub fn load_program(mut self, program: Vec<u32>) -> Self {
         self.program = program;
-        let mut pc = 0;
-        for line in self.program.iter() {
-            for byte in line.to_le_bytes() {
-                self.memory.m[pc] = byte;
-                pc += 1;
-            }
-        }
+        // appararently we separate memory for program and data??
+        // let mut pc = 0;
+        // for line in self.program.iter() {
+        //     for byte in line.to_le_bytes() {
+        //         self.memory.m[pc] = byte;
+        //         pc += 1;
+        //     }
+        // }
         self
     }
 }
@@ -194,8 +195,7 @@ impl Simulator {
     }
 
     pub fn init(&mut self) {
-        self.ctx.current.regs[2] = (self.config.memory_size >> 1).try_into().unwrap();
-        self.ctx.stat.sp_init = self.ctx.current.regs[2] as usize;
+        self.ctx.stat.sp_init = 0_usize;
         self.ctx.current.regs[3] = ((self.config.memory_size >> 1)
             + (self.config.memory_size >> 2))
             .try_into()
@@ -279,13 +279,13 @@ pub struct SimulationConfig {
 
     pub branch_prediction: Vec<BranchPredictionStrategy>,
 
+    pub program: Vec<Op>,
     pub parsing_ctx: ParsingContext,
 
-    pub decode_cache: HashMap<u32, Op>,
     pub fetch_cache: HashMap<usize, u32>,
 
-    pub in_buffer: BufReader<Box<dyn Read>>,
-    pub out_buffer: BufWriter<Box<dyn Write>>,
+    pub in_reader: BufReader<Box<dyn Read>>,
+    pub out_writer: BufWriter<Box<dyn Write>>,
 }
 
 pub fn make_cache(mcs: Vec<u32>, ops: Vec<Op>) -> HashMap<u32, Op> {
@@ -299,12 +299,12 @@ impl Default for SimulationConfig {
             interactive: false,
             memory_size: 65536,
             cache_size: vec![],
+            program: vec![],
             parsing_ctx: ParsingContext::default(),
             branch_prediction: vec![],
-            decode_cache: HashMap::new(),
             fetch_cache: HashMap::new(),
-            in_buffer: BufReader::new(Box::new(std::io::stdin().lock())),
-            out_buffer: BufWriter::new(Box::new(std::io::stdout().lock())),
+            in_reader: BufReader::new(Box::new(stdin().lock())),
+            out_writer: BufWriter::new(Box::new(stdout().lock())),
         }
     }
 }
@@ -320,20 +320,20 @@ impl SimulationConfig {
         self
     }
 
-    pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
-        self.parsing_ctx = parsing_context;
+    pub fn load_decoded_program(mut self, program: Vec<Op>) -> Self {
+        self.program = program;
         self
     }
 
-    pub fn load_cache(mut self, cache: HashMap<u32, Op>) -> Self {
-        self.decode_cache = cache;
+    pub fn parsing_context(mut self, parsing_context: ParsingContext) -> Self {
+        self.parsing_ctx = parsing_context;
         self
     }
 
     pub fn interactive(mut self, interactive: bool) -> Self {
         self.interactive = interactive;
         self.verbose = !interactive || self.verbose;
-        self.in_buffer = BufReader::new(Box::new(std::fs::File::open("/dev/null").unwrap()));
+        self.in_reader = BufReader::new(Box::new(std::fs::File::open("/dev/null").unwrap()));
         self
     }
 
@@ -354,7 +354,7 @@ impl SimulationConfig {
                 .open(file_path)
                 .expect("Failed to open file");
 
-            self.in_buffer = BufReader::new(Box::new(file));
+            self.in_reader = BufReader::new(Box::new(file));
         }
         self
     }
@@ -368,7 +368,7 @@ impl SimulationConfig {
                 .open(file_path)
                 .expect("Failed to open file");
 
-            self.out_buffer = BufWriter::new(Box::new(file));
+            self.out_writer = BufWriter::new(Box::new(file));
         }
         self
     }

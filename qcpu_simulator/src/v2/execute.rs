@@ -1,16 +1,49 @@
-use std::{
-    io::{Read as _, Write as _},
-    ops::Range,
-};
+use std::ops::Range;
 
 use qcpu_syntax::v2::{op::Op, syntax::OpName};
 
 use super::{context::Simulator, error::SimulationErrorKind};
+#[derive(Default)]
+pub struct MemoryAccess {
+    pub range: Range<usize>,
+    pub write_val: Option<u32>,
+    pub signed: bool,
+}
 
-pub type ExecuteResult = (Option<u32>, usize, Option<(Range<usize>, u32)>);
+impl MemoryAccess {
+    fn signed(mut self) -> Self {
+        self.signed = true;
+        self
+    }
+
+    // fn unsigned(mut self) -> Self {
+    //     self.signed = false;
+    //     self
+    // }
+
+    fn write(mut self, write_val: u32) -> Self {
+        self.write_val = Some(write_val);
+        self
+    }
+
+    fn range(range: Range<usize>) -> Self {
+        Self {
+            range,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ExecuteResult {
+    pub wb: Option<u32>,
+    pub next_pc: usize,
+    pub mem: Option<MemoryAccess>,
+    pub io: Option<(bool, usize)>,
+}
 
 impl Simulator {
-    pub fn execute(&mut self, op: &Op) -> Result<ExecuteResult, SimulationErrorKind> {
+    pub fn execute(&self, op: &Op) -> Result<ExecuteResult, SimulationErrorKind> {
         let rs1u = self.ctx.current.regs[op.rs1 as usize];
         let rs2u = self.ctx.current.regs[op.rs2 as usize];
 
@@ -22,10 +55,12 @@ impl Simulator {
 
         let imm = op.imm.raw().unwrap_or_default();
 
-        let mut next_pc = self.ctx.current.pc + 4;
-        let mut mem = None;
-
         let pc = self.ctx.current.pc;
+
+        let mut exe = ExecuteResult {
+            next_pc: self.ctx.current.pc + 4,
+            ..Default::default()
+        };
 
         let rd_res = match op.o {
             OpName::RAW => None,
@@ -53,46 +88,46 @@ impl Simulator {
 
             OpName::BEQ => {
                 if rs1u == rs2u {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BGE => {
                 if (rs1i) >= (rs2i) {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BLT => {
                 if (rs1i) < (rs2i) {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BNE => {
                 if rs1u != rs2u {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BGEU => {
                 if rs1u >= rs2u {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::BLTU => {
                 if rs1u < rs2u {
-                    next_pc = pc.wrapping_add_signed(imm as isize);
+                    exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 }
                 None
             }
             OpName::JAL => {
-                next_pc = pc.wrapping_add_signed(imm as isize);
+                exe.next_pc = pc.wrapping_add_signed(imm as isize);
                 Some((pc + 4) as u32)
             }
             OpName::JALR => {
-                next_pc = (rs1u.wrapping_add_signed(imm)) as usize;
+                exe.next_pc = (rs1u.wrapping_add_signed(imm)) as usize;
                 Some((pc + 4) as u32)
             }
             OpName::LUI => Some((imm as u32) << 12),
@@ -112,81 +147,62 @@ impl Simulator {
             OpName::FSQRT => Some(f32::to_bits(rs1f.sqrt())),
             OpName::LW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-
-                if !self.ctx.memory.cache_enabled {
-                    self.ctx.memory.update_cache(addr);
-                }
-                Some(u32::from_le_bytes([
-                    self.ctx.memory.m[addr],
-                    self.ctx.memory.m[addr + 1],
-                    self.ctx.memory.m[addr + 2],
-                    self.ctx.memory.m[addr + 3],
-                ]))
+                exe.mem = Some(MemoryAccess::range(addr..addr + 4));
+                None
             }
             OpName::LB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-
-                self.ctx.memory.update_cache(addr);
-
-                Some(self.ctx.memory.m[addr] as i8 as i32 as u32)
+                exe.mem = Some(MemoryAccess::range(addr..addr + 1).signed());
+                None
             }
             OpName::LBU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                self.ctx.memory.update_cache(addr);
-
-                Some(self.ctx.memory.m[addr] as u32)
+                exe.mem = Some(MemoryAccess::range(addr..addr + 1));
+                None
             }
             OpName::LH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-
-                self.ctx.memory.update_cache(addr);
-
-                Some(
-                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
-                        as i16 as i32 as u32,
-                )
+                exe.mem = Some(MemoryAccess::range(addr..addr + 2).signed());
+                None
             }
             OpName::LHU => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-
-                self.ctx.memory.update_cache(addr);
-                Some(
-                    u16::from_le_bytes([self.ctx.memory.m[addr], self.ctx.memory.m[addr + 1]])
-                        as u32,
-                )
+                exe.mem = Some(MemoryAccess::range(addr..addr + 2));
+                None
             }
             OpName::SB => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 1, rs2u));
+                exe.mem = Some(MemoryAccess::range(addr..addr + 2).write(rs2u));
                 None
             }
             OpName::SH => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 2, rs2u));
+                exe.mem = Some(MemoryAccess::range(addr..addr + 1).write(rs2u));
+
                 None
             }
             OpName::SW => {
                 let addr = rs1u.wrapping_add_signed(imm) as usize;
-                mem = Some((addr..addr + 4, rs2u));
+                exe.mem = Some(MemoryAccess::range(addr..addr + 4).write(rs2u));
                 None
             }
             OpName::INB => {
-                let mut buf = [0u8; 1];
-                self.config.in_buffer.read_exact(&mut buf).unwrap();
-                Some(u8::from_le_bytes(buf) as u32)
+                exe.io = Some((false, 1));
+                None
             }
             OpName::INW => {
-                let mut buf = [0u8; 4];
-                self.config.in_buffer.read_exact(&mut buf).unwrap();
-                Some(u32::from_le_bytes(buf))
+                exe.io = Some((false, 4));
+                None
             }
             OpName::OUTB => {
-                self.config.out_buffer.write_all(&[rs2u as u8]).unwrap();
+                exe.io = Some((true, 1));
                 None
             }
             _ => unimplemented!(),
         };
 
-        Ok((rd_res, next_pc, mem))
+        exe.wb = rd_res;
+
+        Ok(exe)
     }
 }

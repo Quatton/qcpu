@@ -493,6 +493,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 panic!("bro come on");
             };
 
+            let program = qcpu_assembler::v2::disassemble(&code);
+
             if let Some(ref file) = output {
                 std::fs::File::create(file).unwrap();
             };
@@ -501,6 +503,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .parsing_context(ctx)
                 .memory_size(memory_size)
                 .branch_prediction(bp)
+                .load_decoded_program(program)
                 .verbose(verbose)
                 .interactive(it)
                 .cache_size(cs)

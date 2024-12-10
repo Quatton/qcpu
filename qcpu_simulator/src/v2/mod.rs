@@ -1,9 +1,11 @@
-use std::ops::Range;
+use std::io::{Read as _, Write as _};
 
 use context::{BranchPredictionStrategy, Simulator};
 use error::{SimulationError, SimulationErrorKind};
+use execute::{ExecuteResult, MemoryAccess};
 use qcpu_syntax::v2::{
     op::Op,
+    reg::Register,
     syntax::{OpName, OpType},
 };
 use strum::VariantArray as _;
@@ -17,57 +19,79 @@ impl Simulator {
     fn error_map(&self, kind: SimulationErrorKind) -> SimulationError {
         SimulationError {
             line: self.ctx.current.pc / 4,
-            op: self.ctx.current.op.clone(),
+            op: self.decode(self.ctx.current.pc).clone(),
             kind,
         }
     }
 
     fn fetch(&mut self) -> Result<u32, SimulationErrorKind> {
-        let mut pc = self.ctx.current.pc;
+        let pc = self.ctx.current.pc;
 
         // if let Some(instr) = self.config.fetch_cache.get(&pc) {
         //     return *instr;
         // }
 
-        let mut instr = 0u32;
+        let instr = 0u32;
 
         self.ctx.memory.update_cache(pc);
 
-        for i in 0..4 {
-            let p = self.ctx.memory[pc] as u32;
-            instr |= p << (i * 8); // little fucking endian
-            pc += 1;
-        }
+        // no real fetch anymore :(
+        // for i in 0..4 {
+        //     let p = self.ctx.memory[pc] as u32;
+        //     instr |= p << (i * 8);
+        //     pc += 1;
+        // }
 
         // self.config.fetch_cache.insert(pc, instr);
 
         Ok(instr)
     }
 
-    fn decode(&mut self, mc: u32) -> Op {
-        if let Some(op) = self.config.decode_cache.get(&mc) {
-            return op.clone();
-        }
-
-        let op = Op::decode(mc);
-
-        self.config.decode_cache.insert(mc, op.clone());
-
-        op
+    fn decode(&self, pc: usize) -> &Op {
+        &self.config.program[pc / 4]
     }
 
     fn memory_access(
         &mut self,
-        req: Option<(Range<usize>, u32)>,
-    ) -> Result<(), SimulationErrorKind> {
-        if let Some((range, data)) = req {
-            self.ctx.memory.update_cache(range.start);
-            for (i, byte) in data.to_le_bytes().iter().enumerate() {
-                self.ctx.memory[range.start + i] = *byte;
+        req: Option<MemoryAccess>,
+    ) -> Result<Option<u32>, SimulationErrorKind> {
+        match req {
+            None => Ok(None),
+            Some(req) => {
+                let range = req.range;
+                self.ctx.memory.update_cache(range.start);
+
+                if let Some(data) = req.write_val {
+                    for (i, byte) in data.to_le_bytes().iter().enumerate() {
+                        self.ctx.memory[range.start + i] = *byte;
+                    }
+
+                    Ok(None)
+                } else {
+                    let signed = req.signed;
+
+                    // read memory based on range and signess (in little endian), return the value
+
+                    let mut data = 0u32;
+
+                    for i in 0..4 {
+                        data |= (self.ctx.memory[range.start + i] as u32) << (i * 8);
+                    }
+
+                    // extend sign if signed
+                    let size = range.len();
+
+                    if signed {
+                        let sign = data & (1 << (size * 8 - 1));
+                        if sign != 0 {
+                            data |= 0xffffffff << (size * 8);
+                        }
+                    }
+
+                    Ok(Some(data))
+                }
             }
         }
-
-        Ok(())
     }
 
     fn write_back(&mut self, result: Option<(usize, u32)>) {
@@ -84,8 +108,9 @@ impl Simulator {
         }
     }
 
-    pub fn predict_next_pc(&mut self, op: &Op) -> Vec<usize> {
+    pub fn predict_next_pc(&mut self) -> Vec<usize> {
         let pc = self.ctx.current.pc;
+        let op = self.decode(pc);
         let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
 
         let mut res = vec![];
@@ -124,9 +149,25 @@ impl Simulator {
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulationError> {
-        let instr = self.fetch().map_err(|e| self.error_map(e))?;
+        let _instr = self.fetch().map_err(|e| self.error_map(e))?;
+        let pc = self.ctx.current.pc;
 
-        let op = self.decode(instr);
+        #[allow(unused_assignments)]
+        let mut exe = ExecuteResult::default();
+        #[allow(unused_assignments)]
+        let mut rd = Register::default();
+        #[allow(unused_assignments)]
+        let mut o = OpName::RAW;
+        #[allow(unused_assignments)]
+        let mut rs1 = Register::default();
+        #[allow(unused_assignments)]
+        let mut rs2 = Register::default();
+
+        let op = self.decode(pc);
+        rd = op.rd;
+        o = op.o;
+        rs1 = op.rs1;
+        rs2 = op.rs2;
 
         if op.o.optype == OpType::E {
             let raw = op
@@ -193,29 +234,35 @@ impl Simulator {
             return Ok(());
         }
 
-        self.ctx.current.op = op.clone();
-        let (rd_res, next_pc_true, wm) = self.execute(&op).map_err(|e| self.error_map(e))?;
+        exe = self.execute(op).map_err(|e| self.error_map(e))?;
 
-        // verbose stuff here
+        let ExecuteResult {
+            mut wb,
+            next_pc,
+            mem,
+            io,
+        } = exe;
 
         if self.config.verbose {
             // basic
             self.ctx.stat.cycle_count += 1;
+
             self.ctx
                 .stat
                 .instr_count
-                .entry(op.o)
+                .entry(o)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
 
             // stall
 
-            let stall = self.ctx.current.reg_status[op.rs1 as usize]
-                .max(self.ctx.current.reg_status[op.rs2 as usize]);
+            let stall = self.ctx.current.reg_status[rs1 as usize]
+                .max(self.ctx.current.reg_status[rs2 as usize]);
             self.ctx.stat.hazard_stall_count += stall;
             self.ctx.stat.cycle_count += stall;
-            if rd_res.is_some() {
-                self.ctx.current.reg_status[op.rd as usize] = self.get_instruction_delay(op.o);
+
+            if wb.is_some() {
+                self.ctx.current.reg_status[rd as usize] = self.get_instruction_delay(o);
             }
 
             self.ctx.current.reg_status.iter_mut().for_each(|d| {
@@ -228,21 +275,21 @@ impl Simulator {
 
             if !self.config.branch_prediction.is_empty() {
                 let pc = self.ctx.current.pc;
-                let next_pc_predicted = self.predict_next_pc(&op);
+                let next_pc_predicted = self.predict_next_pc();
 
-                if next_pc_predicted.iter().any(|&p| p != next_pc_true) {
+                if next_pc_predicted.iter().any(|&p| p != next_pc) {
                     self.ctx
                         .stat
                         .flash_count
-                        .entry(op.o.optype)
+                        .entry(o.optype)
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
                     self.ctx.stat.cycle_count += 1;
                 }
 
-                if op.o.optype == OpType::B {
+                if o.optype == OpType::B {
                     for (idx, &pd) in next_pc_predicted.iter().enumerate() {
-                        if pd != next_pc_true {
+                        if pd != next_pc {
                             self.ctx
                                 .stat
                                 .branch_prediction_stats
@@ -252,7 +299,7 @@ impl Simulator {
                         }
                     }
 
-                    if next_pc_true != pc + 4 {
+                    if next_pc != pc + 4 {
                         self.ctx
                             .sc
                             .entry(pc)
@@ -269,10 +316,34 @@ impl Simulator {
             }
         }
 
-        self.memory_access(wm).map_err(|e| self.error_map(e))?;
-        self.write_back(rd_res.map(|data| (op.rd as usize, data)));
+        if let Some(w) = self.memory_access(mem).map_err(|e| self.error_map(e))? {
+            wb = Some(w)
+        }
 
-        self.ctx.current.next_pc = next_pc_true;
+        if let Some((write, size)) = io {
+            if write {
+                let data = self.ctx.current.regs[rs2 as usize];
+                self.config
+                    .out_writer
+                    .write_all(&data.to_le_bytes()[..size])
+                    .map_err(|_| self.error_map(SimulationErrorKind::IOError))?;
+            } else {
+                let mut buf = vec![0u8; size];
+                self.config
+                    .in_reader
+                    .read_exact(&mut buf)
+                    .map_err(|_| self.error_map(SimulationErrorKind::IOError))?;
+                wb = Some(
+                    buf.iter()
+                        .enumerate()
+                        .fold(0, |acc, (i, &b)| acc | (b as u32) << (i * 8)),
+                );
+            }
+        }
+
+        self.write_back(wb.map(|data| (rd as usize, data)));
+
+        self.ctx.current.next_pc = next_pc;
 
         Ok(())
     }
