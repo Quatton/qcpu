@@ -59,7 +59,7 @@ impl Immediate {
     }
     pub fn from_offset(offset: i32) -> Self {
         Self {
-            label: Some(format!("imm_{}", offset)),
+            label: Some(format!("{}", offset)),
             raw: Some(offset),
         }
     }
@@ -122,6 +122,30 @@ pub struct Op {
 }
 
 impl Op {
+    pub fn to_asm(&self) -> String {
+        match self.o.optype {
+            OpType::R => format!("{:?} {:?}, {:?}, {:?}", self.o, self.rd, self.rs1, self.rs2),
+            OpType::F => format!("{:?} {:?}, {:?}, {:?}", self.o, self.rd, self.rs1, self.rs2),
+            OpType::I => format!("{:?} {:?}, {:?}, {:?}", self.o, self.rd, self.rs1, self.imm),
+            OpType::L => format!("{:?} {:?}, {:?}({:?})", self.o, self.rd, self.imm, self.rs1),
+            OpType::S => format!(
+                "{:?} {:?}, {:?}({:?})",
+                self.o, self.rs2, self.imm, self.rs1
+            ),
+            OpType::U => format!("{:?} {:?}, {:?}", self.o, self.rd, self.imm),
+            OpType::B => format!(
+                "{:?} {:?}, {:?}, {:?}",
+                self.o, self.rs1, self.rs2, self.imm
+            ),
+            OpType::J => format!("{:?} {:?}, {:?}", self.o, self.rd, self.imm),
+            OpType::N => format!("{:?} {:?}", self.o, self.rd),
+            OpType::O => format!("{:?} {:?}", self.o, self.rs2),
+            OpType::Raw => format!(".word {:08x}", self.imm.raw().unwrap()),
+            OpType::E => format!("{:?} {:?}", self.o, self.imm),
+        }
+        .to_ascii_lowercase()
+    }
+
     pub fn raw(&self) -> u32 {
         let mut vec = bitarr![0; 32];
         vec[0..=3].store(self.o.opcode as u32);
