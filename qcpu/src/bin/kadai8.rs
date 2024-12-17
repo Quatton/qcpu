@@ -126,8 +126,6 @@ fn schedule(nodes: &[Node]) -> Vec<Node> {
     let mut scheduled = Vec::new();
     let mut queue = Vec::from_iter(0..nodes.len());
 
-    let i = 0;
-
     let mut busy_alu = VecDeque::new();
     let mut busy_fpu = VecDeque::new();
     let mut busy_mem = VecDeque::new();
@@ -248,7 +246,7 @@ fn main() {
 
     for (i, (node, scheduled)) in nodes.iter().zip(scheduled.iter()).enumerate() {
         println!(
-            "{:02}: {:<20} -> {:<20}",
+            "{:03}: {:<20} -> {:<20}",
             i,
             node.op.to_asm(),
             scheduled.op.to_asm()
