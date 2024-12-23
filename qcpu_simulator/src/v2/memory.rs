@@ -3,10 +3,11 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut},
 };
 
+#[derive(Debug)]
 pub struct CacheLine {
-    pub cache_size: usize,
-    pub way: usize,
-    pub occupying_tag: Vec<Option<usize>>,
+    pub idx_bits: usize,
+    pub way_bits: usize,
+    pub occupying_tag: Vec<Vec<(usize, u32)>>,
     pub stat: CacheStat,
 }
 
@@ -16,6 +17,7 @@ pub struct CacheStat {
     pub hit_count: usize,
 }
 
+#[derive(Debug)]
 pub struct Cacheception(Vec<CacheLine>);
 
 impl Deref for Cacheception {
@@ -41,8 +43,6 @@ impl DerefMut for Cacheception {
 impl Display for Cacheception {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "===== Memory Statistics =====")?;
-        writeln!(f, "Direct Mapped Cache: ")?;
-
         for cache in self.0.iter() {
             let acount = cache.stat.access_count;
             let hcount = cache.stat.hit_count;
@@ -59,7 +59,12 @@ impl Display for Cacheception {
                 0.0
             };
 
-            writeln!(f, "size: {}", 1 << cache.cache_size)?;
+            writeln!(
+                f,
+                "size: {}, way: {}",
+                1 << cache.idx_bits,
+                1 << cache.way_bits
+            )?;
             writeln!(f, "   access: {}", acount)?;
             writeln!(f, "   hit: {}, ({:.2}%)", hcount, hit_rate)?;
             writeln!(f, "   miss: {}, ({:.2}%)", mcount, miss_rate)?;
@@ -69,6 +74,7 @@ impl Display for Cacheception {
     }
 }
 
+#[derive(Debug)]
 pub struct Memory {
     pub m: Vec<u8>,
     pub size: usize,
@@ -100,11 +106,14 @@ impl Memory {
                     .iter()
                     .flat_map(|&cache_size| {
                         let cache_size = (cache_size as f32).log2().ceil() as usize;
-                        ways.iter().map(move |&way| CacheLine {
-                            cache_size,
-                            way,
-                            occupying_tag: vec![None; 1 << cache_size],
-                            stat: CacheStat::default(),
+                        ways.iter().map(move |&way| {
+                            let way = (way as f32).log2().ceil() as usize;
+                            CacheLine {
+                                idx_bits: cache_size,
+                                way_bits: way,
+                                occupying_tag: vec![vec![]; 1 << cache_size],
+                                stat: CacheStat::default(),
+                            }
                         })
                     })
                     .collect::<Vec<_>>(),
@@ -119,15 +128,22 @@ impl Memory {
         }
 
         for cache_type in self.cacheception.iter_mut() {
-            let cache_idx = (index >> 2) & ((1 << cache_type.cache_size) - 1);
-            let cache_tag = index >> (2 + cache_type.cache_size);
+            let cache_idx = (index >> 2) & ((1 << (cache_type.idx_bits - cache_type.way_bits)) - 1);
+            let cache_tag = index >> (2 + cache_type.idx_bits - cache_type.way_bits);
             cache_type.stat.access_count += 1;
-            if let Some(occupied) = cache_type.occupying_tag[cache_idx] {
-                if cache_tag == occupied && read {
+            if let Some((_, _)) = cache_type.occupying_tag[cache_idx]
+                .iter_mut()
+                .find(|&&mut (x, _)| x == cache_tag)
+            {
+                if read {
                     cache_type.stat.hit_count += 1;
                 }
+            } else {
+                if cache_type.occupying_tag[cache_idx].len() >= 1 << cache_type.way_bits {
+                    cache_type.occupying_tag[cache_idx].remove(0);
+                }
+                cache_type.occupying_tag[cache_idx].push((cache_tag, 0))
             }
-            cache_type.occupying_tag[cache_idx] = Some(cache_tag);
         }
     }
 }
