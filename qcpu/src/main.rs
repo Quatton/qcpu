@@ -133,8 +133,13 @@ enum Commands {
         #[clap(long, value_delimiter = ',')]
         bp: Vec<BranchPredictionStrategy>,
 
-        #[clap(short, long, value_delimiter = ',')]
+        /// Cache size, comma-delimited
+        #[clap(long, value_delimiter = ',')]
         cs: Vec<usize>,
+
+        /// Cache way, all combinations with cache size
+        #[clap(long, value_delimiter = ',', default_value = "1")]
+        cw: Vec<usize>,
     },
 
     /// Parse input into a convenient binary
@@ -469,6 +474,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             it,
             bp,
             cs,
+            cw,
         } => {
             let (code, ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
@@ -506,7 +512,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .load_decoded_program(program)
                 .verbose(verbose)
                 .interactive(it)
-                .cache_size(cs)
+                .cache(cs, cw)
                 .file_in(input)
                 .file_out(output);
 

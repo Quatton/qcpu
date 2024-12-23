@@ -5,6 +5,7 @@ use std::{
 
 pub struct CacheLine {
     pub cache_size: usize,
+    pub way: usize,
     pub occupying_tag: Vec<Option<usize>>,
     pub stat: CacheStat,
 }
@@ -90,20 +91,21 @@ impl IndexMut<usize> for Memory {
 }
 
 impl Memory {
-    pub fn new(size: usize, cache_size: &[usize]) -> Self {
+    pub fn new(size: usize, cache_size: &[usize], ways: &[usize]) -> Self {
         Self {
             size,
             m: vec![0; size],
             cacheception: Cacheception::from(
                 cache_size
                     .iter()
-                    .map(|&cache_size| {
+                    .flat_map(|&cache_size| {
                         let cache_size = (cache_size as f32).log2().ceil() as usize;
-                        CacheLine {
+                        ways.iter().map(move |&way| CacheLine {
                             cache_size,
+                            way,
                             occupying_tag: vec![None; 1 << cache_size],
                             stat: CacheStat::default(),
-                        }
+                        })
                     })
                     .collect::<Vec<_>>(),
             ),
@@ -132,6 +134,6 @@ impl Memory {
 
 impl Default for Memory {
     fn default() -> Self {
-        Self::new(1048576, &[256])
+        Self::new(1048576, &[256], &[1])
     }
 }

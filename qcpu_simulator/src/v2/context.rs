@@ -208,7 +208,7 @@ impl Simulator {
 
     pub fn with_config(config: SimulationConfig) -> Self {
         let ctx = SimulationContext {
-            memory: Memory::new(config.memory_size, &config.cache_size),
+            memory: Memory::new(config.memory_size, &config.cache_size, &config.cache_ways),
             ..SimulationContext::default()
         };
 
@@ -280,6 +280,7 @@ pub struct SimulationConfig {
 
     pub memory_size: usize,
     pub cache_size: Vec<usize>,
+    pub cache_ways: Vec<usize>,
 
     pub branch_prediction: Vec<BranchPredictionStrategy>,
 
@@ -303,6 +304,7 @@ impl Default for SimulationConfig {
             interactive: false,
             memory_size: 65536,
             cache_size: vec![],
+            cache_ways: vec![],
             program: vec![],
             parsing_ctx: ParsingContext::default(),
             branch_prediction: vec![],
@@ -346,8 +348,9 @@ impl SimulationConfig {
         self
     }
 
-    pub fn cache_size(mut self, cache_size: Vec<usize>) -> Self {
+    pub fn cache(mut self, cache_size: Vec<usize>, cache_ways: Vec<usize>) -> Self {
         self.cache_size = cache_size;
+        self.cache_ways = cache_ways;
         self
     }
 
