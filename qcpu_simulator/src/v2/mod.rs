@@ -25,7 +25,7 @@ impl Simulator {
     }
 
     fn fetch(&mut self) -> Result<u32, SimulationErrorKind> {
-        let pc = self.ctx.current.pc;
+        // let pc = self.ctx.current.pc;
 
         // if let Some(instr) = self.config.fetch_cache.get(&pc) {
         //     return *instr;
@@ -33,7 +33,7 @@ impl Simulator {
 
         let instr = 0u32;
 
-        self.ctx.memory.update_cache(pc);
+        // self.ctx.memory.update_cache(pc, );
 
         // no real fetch anymore :(
         // for i in 0..4 {
@@ -59,7 +59,9 @@ impl Simulator {
             None => Ok(None),
             Some(req) => {
                 let range = req.range;
-                self.ctx.memory.update_cache(range.start);
+                self.ctx
+                    .memory
+                    .update_cache(range.start, req.write_val.is_none());
 
                 if let Some(data) = req.write_val {
                     for (i, byte) in data.to_le_bytes().iter().enumerate() {

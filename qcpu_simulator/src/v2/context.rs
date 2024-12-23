@@ -114,7 +114,7 @@ impl Display for Stat {
 
         writeln!(f, "Statistics:")?;
         writeln!(f, "Max SP incr: {}", self.max_sp - self.sp_init)?;
-        if self.max_sp >= self.max_gp {
+        if self.max_sp >= self.gp_init {
             writeln!(f, "Max SP overlapping GP, increase memory")?;
         }
         writeln!(f, "Max GP incr: {}", self.max_gp - self.gp_init)?;
@@ -201,11 +201,9 @@ impl Simulator {
     }
 
     pub fn init(&mut self) {
-        self.ctx.current.regs[3] = ((self.config.memory_size >> 1)
-            + (self.config.memory_size >> 2))
-            .try_into()
-            .unwrap();
+        self.ctx.current.regs[3] = (self.config.memory_size >> 2).try_into().unwrap();
         self.ctx.stat.gp_init = self.ctx.current.regs[3] as usize;
+        self.ctx.stat.max_gp = self.ctx.stat.gp_init;
     }
 
     pub fn with_config(config: SimulationConfig) -> Self {

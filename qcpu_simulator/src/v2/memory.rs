@@ -111,7 +111,7 @@ impl Memory {
         }
     }
 
-    pub fn update_cache(&mut self, index: usize) {
+    pub fn update_cache(&mut self, index: usize, read: bool) {
         if !self.cache_enabled {
             return;
         }
@@ -121,7 +121,7 @@ impl Memory {
             let cache_tag = index >> (2 + cache_type.cache_size);
             cache_type.stat.access_count += 1;
             if let Some(occupied) = cache_type.occupying_tag[cache_idx] {
-                if cache_tag == occupied {
+                if cache_tag == occupied && read {
                     cache_type.stat.hit_count += 1;
                 }
             }
