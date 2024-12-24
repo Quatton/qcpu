@@ -13,8 +13,7 @@ use qcpu_syntax::{
     },
     ParsingContext,
 };
-use strum::VariantArray;
-use strum_macros::{EnumString, FromRepr};
+use strum_macros::{EnumString, FromRepr, VariantArray};
 
 use super::memory::Memory;
 

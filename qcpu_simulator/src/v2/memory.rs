@@ -73,7 +73,6 @@ impl Display for Cacheception {
         Ok(())
     }
 }
-
 #[derive(Debug)]
 pub struct Memory {
     pub m: Vec<u8>,
@@ -128,19 +127,23 @@ impl Memory {
         }
 
         for cache_type in self.cacheception.iter_mut() {
-            let cache_idx = (index >> 2) & ((1 << (cache_type.idx_bits - cache_type.way_bits)) - 1);
-            let cache_tag = index >> (2 + cache_type.idx_bits - cache_type.way_bits);
+            let cache_idx = (index >> 2) & ((1 << (cache_type.idx_bits)) - 1);
+            let cache_tag = index >> (2 + cache_type.idx_bits);
             cache_type.stat.access_count += 1;
-            if let Some((_, _)) = cache_type.occupying_tag[cache_idx]
+            if let Some((_, data)) = cache_type.occupying_tag[cache_idx]
                 .iter_mut()
                 .find(|&&mut (x, _)| x == cache_tag)
             {
                 if read {
                     cache_type.stat.hit_count += 1;
+                    *data = 1;
                 }
             } else {
                 if cache_type.occupying_tag[cache_idx].len() >= 1 << cache_type.way_bits {
-                    cache_type.occupying_tag[cache_idx].remove(0);
+                    let i = cache_type.occupying_tag[cache_idx]
+                        .iter()
+                        .position(|o| o.1 == 0);
+                    cache_type.occupying_tag[cache_idx].remove(i.unwrap_or(0));
                 }
                 cache_type.occupying_tag[cache_idx].push((cache_tag, 0))
             }
