@@ -133,7 +133,7 @@ impl Simulator {
             | OpType::Raw => pc + 4,
             OpType::J => taken,
             OpType::B => {
-                let pred = self.ctx.sc[(pc >> 2) & 2047];
+                let pred = self.ctx.sc[(pc >> 2) & 1023];
 
                 if pred > 0 {
                     taken
@@ -256,7 +256,7 @@ impl Simulator {
             self.ctx.stat.hazard_stall_count += stall;
             self.ctx.stat.cycle_count += stall;
 
-            if wb.is_some() {
+            if wb.is_some() && rd != Register::Zero {
                 self.ctx.current.reg_status[rd as usize] = self.get_instruction_delay(o);
             }
 
@@ -279,7 +279,7 @@ impl Simulator {
                     self.ctx.stat.branch_prediction_miss += 1;
                 }
 
-                let pc10 = (pc >> 2) & 2047;
+                let pc10 = (pc >> 2) & 1023;
                 let e = &mut self.ctx.sc[pc10];
 
                 if next_pc != pc + 4 {
