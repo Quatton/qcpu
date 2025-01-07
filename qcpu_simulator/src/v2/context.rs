@@ -15,7 +15,7 @@ use qcpu_syntax::{
 };
 use strum::VariantArray;
 
-use super::memory::Memory;
+use super::memory::{Memory, RP};
 
 #[derive(Clone)]
 pub struct Snapshot {
@@ -225,7 +225,12 @@ impl Simulator {
 
     pub fn with_config(config: SimulationConfig) -> Self {
         let ctx = SimulationContext {
-            memory: Memory::new(config.memory_size, &config.cache_size, &config.cache_ways),
+            memory: Memory::new(
+                config.memory_size,
+                &config.cache_size,
+                &config.cache_ways,
+                &config.cache_rp,
+            ),
             ..SimulationContext::default()
         };
 
@@ -298,6 +303,7 @@ pub struct SimulationConfig {
     pub memory_size: usize,
     pub cache_size: Vec<usize>,
     pub cache_ways: Vec<usize>,
+    pub cache_rp: Vec<RP>,
 
     pub bp_enabled: bool,
 
@@ -316,6 +322,7 @@ impl Default for SimulationConfig {
             memory_size: 65536,
             cache_size: vec![],
             cache_ways: vec![],
+            cache_rp: vec![],
             program: vec![],
             parsing_ctx: ParsingContext::default(),
             bp_enabled: false,
@@ -358,9 +365,15 @@ impl SimulationConfig {
         self
     }
 
-    pub fn cache(mut self, cache_size: Vec<usize>, cache_ways: Vec<usize>) -> Self {
+    pub fn cache(
+        mut self,
+        cache_size: Vec<usize>,
+        cache_ways: Vec<usize>,
+        cache_rp: Vec<RP>,
+    ) -> Self {
         self.cache_size = cache_size;
         self.cache_ways = cache_ways;
+        self.cache_rp = cache_rp;
         self
     }
 

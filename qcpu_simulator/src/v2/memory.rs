@@ -3,12 +3,22 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut},
 };
 
+use strum_macros::{Display, EnumString};
+
+#[derive(Debug, Clone, Copy, EnumString, Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum RP {
+    LRU,
+    SC,
+}
+
 #[derive(Debug)]
 pub struct CacheLine {
     pub idx_bits: usize,
     pub way_bits: usize,
     pub occupying_tag: Vec<Vec<(usize, u32)>>,
     pub stat: CacheStat,
+    pub strat: RP,
 }
 
 #[derive(Debug, Default)]
@@ -46,28 +56,29 @@ impl Display for Cacheception {
         for cache in self.0.iter() {
             let acount = cache.stat.access_count;
             let hcount = cache.stat.hit_count;
-            let mcount = cache.stat.access_count - cache.stat.hit_count;
+            // let mcount = cache.stat.access_count - cache.stat.hit_count;
             let hit_rate = if acount > 0 {
                 (hcount as f32) / (acount as f32) * 100.0
             } else {
                 0.0
             };
 
-            let miss_rate = if acount > 0 {
-                (mcount as f32) / (acount as f32) * 100.0
-            } else {
-                0.0
-            };
+            // let miss_rate = if acount > 0 {
+            //     (mcount as f32) / (acount as f32) * 100.0
+            // } else {
+            //     0.0
+            // };
 
             writeln!(
                 f,
-                "size: {}, way: {}",
+                "size: {}, way: {}, strat: {}",
                 1 << cache.idx_bits,
-                1 << cache.way_bits
+                1 << cache.way_bits,
+                cache.strat
             )?;
             writeln!(f, "   access: {}", acount)?;
             writeln!(f, "   hit: {}, ({:.2}%)", hcount, hit_rate)?;
-            writeln!(f, "   miss: {}, ({:.2}%)", mcount, miss_rate)?;
+            // writeln!(f, "   miss: {}, ({:.2}%)", mcount, miss_rate)?;
         }
 
         Ok(())
@@ -96,7 +107,7 @@ impl IndexMut<usize> for Memory {
 }
 
 impl Memory {
-    pub fn new(size: usize, cache_size: &[usize], ways: &[usize]) -> Self {
+    pub fn new(size: usize, cache_size: &[usize], ways: &[usize], strats: &[RP]) -> Self {
         Self {
             size,
             m: vec![0; size],
@@ -105,14 +116,15 @@ impl Memory {
                     .iter()
                     .flat_map(|&cache_size| {
                         let cache_size = (cache_size as f32).log2().ceil() as usize;
-                        ways.iter().map(move |&way| {
+                        ways.iter().flat_map(move |&way| {
                             let way = (way as f32).log2().ceil() as usize;
-                            CacheLine {
+                            strats.iter().map(move |&rp| CacheLine {
                                 idx_bits: cache_size,
                                 way_bits: way,
                                 occupying_tag: vec![vec![]; 1 << cache_size],
                                 stat: CacheStat::default(),
-                            }
+                                strat: rp,
+                            })
                         })
                     })
                     .collect::<Vec<_>>(),
@@ -132,20 +144,37 @@ impl Memory {
             if read {
                 cache_type.stat.access_count += 1;
             }
-            if let Some((_, data)) = cache_type.occupying_tag[cache_idx]
+
+            if let Some((idx, (_, data))) = cache_type.occupying_tag[cache_idx]
                 .iter_mut()
-                .find(|&&mut (x, _)| x == cache_tag)
+                .enumerate()
+                .find(|(_, (x, _))| *x == cache_tag)
             {
                 if read {
                     cache_type.stat.hit_count += 1;
-                    *data = 1;
+                    match cache_type.strat {
+                        RP::SC => {
+                            *data = 1;
+                        }
+                        RP::LRU => {
+                            cache_type.occupying_tag[cache_idx].remove(idx);
+                            cache_type.occupying_tag[cache_idx].push((cache_tag, 0));
+                        }
+                    }
                 }
             } else {
                 if cache_type.occupying_tag[cache_idx].len() >= 1 << cache_type.way_bits {
-                    let i = cache_type.occupying_tag[cache_idx]
-                        .iter()
-                        .position(|o| o.1 == 0);
-                    cache_type.occupying_tag[cache_idx].remove(i.unwrap_or(0));
+                    match cache_type.strat {
+                        RP::SC => {
+                            let i = cache_type.occupying_tag[cache_idx]
+                                .iter()
+                                .position(|o| o.1 == 0);
+                            cache_type.occupying_tag[cache_idx].remove(i.unwrap_or(0));
+                        }
+                        RP::LRU => {
+                            cache_type.occupying_tag[cache_idx].remove(0);
+                        }
+                    }
                 }
                 cache_type.occupying_tag[cache_idx].push((cache_tag, 0))
             }
@@ -155,6 +184,6 @@ impl Memory {
 
 impl Default for Memory {
     fn default() -> Self {
-        Self::new(1048576, &[256], &[1])
+        Self::new(1048576, &[256], &[1], &[RP::SC])
     }
 }

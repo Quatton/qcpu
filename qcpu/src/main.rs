@@ -6,6 +6,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, parse_tree, to_assembly};
+use qcpu_simulator::v2::memory::RP;
 use qcpu_syntax::parser::{Op, ParsingContext};
 use qcpu_tui::app::App;
 
@@ -132,6 +133,10 @@ enum Commands {
         // Enable branch prediction
         #[clap(long, default_value = "false")]
         bp: bool,
+
+        /// Cache strat, TrueLRU, SC
+        #[clap(long, value_delimiter = ',', default_value = "sc")]
+        rp: Vec<RP>,
 
         /// Cache size, comma-delimited
         #[clap(long, value_delimiter = ',')]
@@ -475,6 +480,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             bp,
             cs,
             cw,
+            rp,
         } => {
             let (code, ctx) = if let Some(source) = source {
                 let asm = std::fs::read_to_string(source).unwrap();
@@ -512,7 +518,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .load_decoded_program(program)
                 .verbose(verbose)
                 .interactive(it)
-                .cache(cs, cw)
+                .cache(cs, cw, rp)
                 .file_in(input)
                 .file_out(output);
 
