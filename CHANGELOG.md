@@ -1,3 +1,8 @@
+## [3.1.0] - 2024-01-06
+- Removed multiple branch predictors
+- Cache calculation was not accurate due to miss counting write as access count too
+- Should be faster because now you can run 12 cache simulations of 5 min in one sitting each avg 1 min (time dilation)
+
 ## [3.0.0] - 2024-12-10
 - Still use v2 but so many changes to the core
 - Program is predecoded, and removed from data mememory
