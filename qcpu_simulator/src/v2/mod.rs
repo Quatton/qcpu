@@ -120,7 +120,7 @@ impl Simulator {
         let op = self.decode(pc);
         let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
 
-        let next_pc = match op.o.optype {
+        match op.o.optype {
             OpType::R
             | OpType::U
             | OpType::L
@@ -133,17 +133,15 @@ impl Simulator {
             | OpType::Raw => pc + 4,
             OpType::J => taken,
             OpType::B => {
-                let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
+                let pred = self.ctx.sc[(pc >> 2) & 2047];
 
-                if *pred > 0 {
+                if pred > 0 {
                     taken
                 } else {
                     pc + 4
                 }
             }
-        };
-
-        next_pc
+        }
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulationError> {
@@ -245,12 +243,11 @@ impl Simulator {
             // basic
             self.ctx.stat.cycle_count += 1;
 
-            self.ctx
-                .stat
-                .instr_count
-                .entry(o)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
+            // 命令メモリが BRAM で構成されているので必ず２クロックかかる。つまり、毎回 1 回ストールする。
+            self.ctx.stat.cycle_count += 1;
+            self.ctx.stat.hazard_stall_count += 1;
+
+            self.ctx.stat.instr_count[o as usize] += 1;
 
             // stall
 
@@ -273,12 +270,7 @@ impl Simulator {
             let next_pc_predicted = self.predict_next_pc();
 
             if next_pc_predicted != next_pc {
-                self.ctx
-                    .stat
-                    .flash_count
-                    .entry(o.optype)
-                    .and_modify(|count| *count += 1)
-                    .or_insert(1);
+                self.ctx.stat.flash_count[o.optype as usize] += 1;
                 self.ctx.stat.cycle_count += 1;
             }
 
@@ -287,18 +279,13 @@ impl Simulator {
                     self.ctx.stat.branch_prediction_miss += 1;
                 }
 
+                let pc10 = (pc >> 2) & 2047;
+                let e = &mut self.ctx.sc[pc10];
+
                 if next_pc != pc + 4 {
-                    self.ctx
-                        .sc
-                        .entry(pc)
-                        .and_modify(|e| *e = (*e + 1).min(2))
-                        .or_insert(1);
+                    *e = (*e + 1).min(2);
                 } else {
-                    self.ctx
-                        .sc
-                        .entry(pc)
-                        .and_modify(|e| *e = (*e - 1).max(-1))
-                        .or_insert(0);
+                    *e = (*e - 1).max(-1);
                 }
             }
         }

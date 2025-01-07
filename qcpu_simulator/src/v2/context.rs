@@ -13,6 +13,7 @@ use qcpu_syntax::{
     },
     ParsingContext,
 };
+use strum::VariantArray;
 
 use super::memory::Memory;
 
@@ -53,24 +54,36 @@ pub struct EUtils {
     pub timer: HashMap<usize, ETimer>,
 }
 
-#[derive(Default)]
 pub struct SimulationContext {
     pub current: Snapshot,
     pub snapshots: Vec<Snapshot>,
     pub program: Vec<u32>,
     pub memory: Memory,
 
-    pub sc: HashMap<usize, i8>,
+    pub sc: Vec<i8>,
     pub stat: Stat,
 
     pub e: EUtils,
 }
 
-#[derive(Default)]
+impl Default for SimulationContext {
+    fn default() -> Self {
+        Self {
+            current: Default::default(),
+            snapshots: Default::default(),
+            program: Default::default(),
+            memory: Default::default(),
+            sc: vec![0; 1024],
+            stat: Default::default(),
+            e: Default::default(),
+        }
+    }
+}
+
 pub struct Stat {
-    pub instr_count: HashMap<OpName, usize>,
+    pub instr_count: Vec<usize>,
     pub cycle_count: usize,
-    pub flash_count: HashMap<OpType, usize>,
+    pub flash_count: Vec<usize>,
     pub branch_prediction_miss: usize,
     pub hazard_stall_count: usize,
     pub max_sp: usize,
@@ -79,17 +92,37 @@ pub struct Stat {
     pub gp_init: usize,
 }
 
+impl Default for Stat {
+    fn default() -> Self {
+        Self {
+            instr_count: vec![0; OpName::VARIANTS.len()],
+            cycle_count: Default::default(),
+            flash_count: vec![0; OpType::VARIANTS.len()],
+            branch_prediction_miss: Default::default(),
+            hazard_stall_count: Default::default(),
+            max_sp: Default::default(),
+            max_gp: Default::default(),
+            sp_init: Default::default(),
+            gp_init: Default::default(),
+        }
+    }
+}
+
 impl Display for Stat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let b_count: usize = self
             .instr_count
             .iter()
-            .filter_map(|(k, v)| if k.optype == OpType::B { Some(v) } else { None })
+            .enumerate()
+            .filter_map(|(k, v)| {
+                if OpName::from_repr(k).unwrap().optype == OpType::B {
+                    Some(v)
+                } else {
+                    None
+                }
+            })
             .sum();
-        let instr_count = self
-            .instr_count
-            .iter()
-            .fold(0, |acc, (_, count)| acc + count);
+        let instr_count = self.instr_count.iter().sum::<usize>();
 
         writeln!(f, "Statistics:")?;
         writeln!(f, "Max SP incr: {}", self.max_sp - self.sp_init)?;
@@ -100,7 +133,13 @@ impl Display for Stat {
         writeln!(f, "Instruction count (times, not cycle): {}", instr_count)?;
         let mut cur = None;
         let mut csum = 0;
-        let mut iccp = self.instr_count.iter().collect::<Vec<_>>();
+        let mut iccp = self
+            .instr_count
+            .iter()
+            .enumerate()
+            .map(|(k, v)| (OpName::from_repr(k).unwrap(), v))
+            .collect::<Vec<_>>();
+
         iccp.sort_by(|a, b| a.0.optype.cmp(&b.0.optype));
         for (op, count) in iccp {
             if Some(op.optype) != cur {
@@ -119,25 +158,20 @@ impl Display for Stat {
         writeln!(f, "Cycle count: {}", self.cycle_count)?;
         writeln!(
             f,
-            "Branch Prediction Miss: out of {} B instructions",
-            b_count,
-        )?;
-
-        writeln!(
-            f,
-            "Branch prediction miss: {} ({:.2}%)",
+            "Branch Prediction Miss: {} out of {} B instructions ({:.2}%)",
             self.branch_prediction_miss,
+            b_count,
             self.branch_prediction_miss as f32 / b_count as f32 * 100.0
         )?;
         writeln!(
             f,
             "Flash count for JALR: {} out of {} instructions ({}%)",
-            self.flash_count.get(&OpType::I).unwrap_or(&0),
+            self.flash_count[OpType::I as usize],
             instr_count,
-            if self.instr_count.get(&OpName::JALR).unwrap_or(&0) == &0 {
+            if self.instr_count[OpName::JALR as usize] == 0 {
                 0
             } else {
-                self.flash_count.get(&OpType::I).unwrap_or(&0) * 100 / instr_count
+                self.flash_count[OpType::I as usize] * 100 / instr_count
             },
         )?;
         writeln!(f, "Hazard stall count: {}", self.hazard_stall_count)?;
