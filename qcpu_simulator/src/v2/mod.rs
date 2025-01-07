@@ -129,13 +129,20 @@ impl Simulator {
             | OpType::N
             | OpType::O
             | OpType::S
-            | OpType::I
             | OpType::Raw => pc + 4,
+            OpType::I => {
+                if op.o == OpName::JALR && self.ctx.jalr_addr[(pc >> 2) & 1023] > 0 {
+                    self.ctx.jalr_addr[(pc >> 2) & 1023]
+                } else {
+                    pc + 4
+                }
+            }
             OpType::J => taken,
             OpType::B => {
-                let pred = self.ctx.sc[(pc >> 2) & 1023];
-
-                if pred > 0 {
+                let idx = self.ctx.gh ^ (pc >> 2) & 1023;
+                if [self.ctx.untaken_pht[idx] >= 2, self.ctx.taken_pht[idx] >= 2]
+                    [(self.ctx.selector_pht[(pc >> 2) & 255] >= 2) as usize]
+                {
                     taken
                 } else {
                     pc + 4
@@ -274,18 +281,26 @@ impl Simulator {
                 self.ctx.stat.cycle_count += 1;
             }
 
+            if o == OpName::JALR {
+                self.ctx.jalr_addr[(pc >> 2) & 1023] = next_pc
+            }
+
             if o.optype == OpType::B {
-                if next_pc_predicted != next_pc {
-                    self.ctx.stat.branch_prediction_miss += 1;
-                }
+                self.ctx.gh = ((self.ctx.gh << 1) | (next_pc != pc + 4) as usize) & 1023;
 
                 let pc10 = (pc >> 2) & 1023;
-                let e = &mut self.ctx.sc[pc10];
+                let e1 = &mut self.ctx.taken_pht[pc10];
+                let e2 = &mut self.ctx.untaken_pht[pc10];
+                let e3 = &mut self.ctx.selector_pht[pc10 & 255];
 
                 if next_pc != pc + 4 {
-                    *e = (*e + 1).min(2);
+                    *e1 = (*e1 + 1).min(3);
+                    *e2 = (*e2 + 1).min(3);
+                    *e3 = (*e3 + 1).min(3);
                 } else {
-                    *e = (*e - 1).max(-1);
+                    *e1 = (*e1 - 1).max(0);
+                    *e2 = (*e2 - 1).max(0);
+                    *e3 = (*e3 - 1).max(0);
                 }
             }
         }
@@ -341,7 +356,16 @@ impl Simulator {
             OpType::R | OpType::I | OpType::U | OpType::J => 1,
             OpType::L => 2,
             OpType::N => 1,
-            OpType::F => 1,
+            OpType::F => match op {
+                OpName::FADD => 3,
+                OpName::FSUB => 3,
+                OpName::FMUL => 3,
+                OpName::FDIV => 9,
+                OpName::FSQRT => 6,
+                OpName::FCVTWS => 3,
+                OpName::FCVTSW => 3,
+                _ => 1,
+            },
             OpType::Raw | OpType::S | OpType::O | OpType::B | OpType::E => 0,
         }
     }

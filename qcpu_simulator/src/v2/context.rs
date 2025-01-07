@@ -60,7 +60,12 @@ pub struct SimulationContext {
     pub program: Vec<u32>,
     pub memory: Memory,
 
-    pub sc: Vec<i8>,
+    pub taken_pht: Vec<i8>,
+    pub untaken_pht: Vec<i8>,
+    pub selector_pht: Vec<i8>,
+    pub jalr_addr: Vec<usize>,
+    pub gh: usize,
+
     pub stat: Stat,
 
     pub e: EUtils,
@@ -73,7 +78,11 @@ impl Default for SimulationContext {
             snapshots: Default::default(),
             program: Default::default(),
             memory: Default::default(),
-            sc: vec![0; 1024],
+            taken_pht: vec![2; 1024],
+            untaken_pht: vec![1; 1024],
+            selector_pht: vec![2; 256],
+            jalr_addr: vec![0; 1024],
+            gh: 0,
             stat: Default::default(),
             e: Default::default(),
         }
@@ -84,7 +93,6 @@ pub struct Stat {
     pub instr_count: Vec<usize>,
     pub cycle_count: usize,
     pub flash_count: Vec<usize>,
-    pub branch_prediction_miss: usize,
     pub hazard_stall_count: usize,
     pub max_sp: usize,
     pub max_gp: usize,
@@ -98,7 +106,6 @@ impl Default for Stat {
             instr_count: vec![0; OpName::VARIANTS.len()],
             cycle_count: Default::default(),
             flash_count: vec![0; OpType::VARIANTS.len()],
-            branch_prediction_miss: Default::default(),
             hazard_stall_count: Default::default(),
             max_sp: Default::default(),
             max_gp: Default::default(),
@@ -159,19 +166,20 @@ impl Display for Stat {
         writeln!(
             f,
             "Branch Prediction Miss: {} out of {} B instructions ({:.2}%)",
-            self.branch_prediction_miss,
+            self.flash_count[OpType::B as usize],
             b_count,
-            self.branch_prediction_miss as f32 / b_count as f32 * 100.0
+            self.flash_count[OpType::B as usize] as f32 / b_count as f32 * 100.0
         )?;
         writeln!(
             f,
-            "Flash count for JALR: {} out of {} instructions ({}%)",
+            "Flash count for JALR: {} out of {} instructions ({:.2}%)",
             self.flash_count[OpType::I as usize],
-            instr_count,
+            self.instr_count[OpName::JALR as usize],
             if self.instr_count[OpName::JALR as usize] == 0 {
-                0
+                0.0
             } else {
-                self.flash_count[OpType::I as usize] * 100 / instr_count
+                self.flash_count[OpType::I as usize] as f32 * 100.0
+                    / self.instr_count[OpName::JALR as usize] as f32
             },
         )?;
         writeln!(f, "Hazard stall count: {}", self.hazard_stall_count)?;

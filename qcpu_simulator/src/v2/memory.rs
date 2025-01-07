@@ -129,7 +129,9 @@ impl Memory {
         for cache_type in self.cacheception.iter_mut() {
             let cache_idx = (index >> 2) & ((1 << (cache_type.idx_bits)) - 1);
             let cache_tag = index >> (2 + cache_type.idx_bits);
-            cache_type.stat.access_count += 1;
+            if read {
+                cache_type.stat.access_count += 1;
+            }
             if let Some((_, data)) = cache_type.occupying_tag[cache_idx]
                 .iter_mut()
                 .find(|&&mut (x, _)| x == cache_tag)
