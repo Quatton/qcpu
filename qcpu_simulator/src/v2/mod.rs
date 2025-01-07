@@ -58,6 +58,7 @@ impl Simulator {
             None => Ok(None),
             Some(req) => {
                 let range = req.range;
+
                 self.ctx
                     .memory
                     .update_cache(range.start, req.write_val.is_none());
@@ -262,13 +263,11 @@ impl Simulator {
                 self.ctx.current.reg_status[rd as usize] = self.get_instruction_delay(o);
             }
 
-            self.ctx.current.reg_status.iter_mut().for_each(|d| {
-                if d == &0 {
-                    *d = 0
-                } else {
-                    *d = d.saturating_sub(1)
-                }
-            });
+            self.ctx
+                .current
+                .reg_status
+                .iter_mut()
+                .for_each(|d| *d = d.saturating_sub(1));
 
             let pc = self.ctx.current.pc;
             let next_pc_predicted = self.predict_next_pc();

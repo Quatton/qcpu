@@ -2,3 +2,4 @@
 /test_data/*.bin
 /test_data/*.txt
 .DS_Store
+profile.json
