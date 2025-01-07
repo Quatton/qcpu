@@ -296,14 +296,8 @@ pub struct SimulationConfig {
     pub program: Vec<Op>,
     pub parsing_ctx: ParsingContext,
 
-    pub fetch_cache: HashMap<usize, u32>,
-
     pub in_reader: BufReader<Box<dyn Read>>,
     pub out_writer: BufWriter<Box<dyn Write>>,
-}
-
-pub fn make_cache(mcs: Vec<u32>, ops: Vec<Op>) -> HashMap<u32, Op> {
-    mcs.into_iter().zip(ops).collect()
 }
 
 impl Default for SimulationConfig {
@@ -317,7 +311,6 @@ impl Default for SimulationConfig {
             program: vec![],
             parsing_ctx: ParsingContext::default(),
             bp_enabled: false,
-            fetch_cache: HashMap::new(),
             in_reader: BufReader::new(Box::new(stdin().lock())),
             out_writer: BufWriter::new(Box::new(stdout().lock())),
         }
