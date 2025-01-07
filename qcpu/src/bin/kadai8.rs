@@ -29,6 +29,7 @@ impl Node {
     }
 }
 
+#[allow(unused)]
 fn calc_critical_path(nodes: &[Node], until_idx: usize) -> u32 {
     let mut max_latency = 0;
 
@@ -101,7 +102,7 @@ fn dry_execute(nodes: &[Node]) -> u32 {
                 busy_fpu.push_front(i);
             }
             _ => {
-                if busy_alu.len() >= 1 {
+                if !busy_alu.is_empty() {
                     continue;
                 }
                 busy_alu.push_front(i);
