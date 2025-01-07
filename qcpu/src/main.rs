@@ -6,7 +6,6 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, parse_tree, to_assembly};
-use qcpu_simulator::v2::context::BranchPredictionStrategy;
 use qcpu_syntax::parser::{Op, ParsingContext};
 use qcpu_tui::app::App;
 
@@ -130,8 +129,9 @@ enum Commands {
         #[clap(short, long)]
         input: Option<String>,
 
-        #[clap(long, value_delimiter = ',')]
-        bp: Vec<BranchPredictionStrategy>,
+        // Enable branch prediction
+        #[clap(long, default_value = "false")]
+        bp: bool,
 
         /// Cache size, comma-delimited
         #[clap(long, value_delimiter = ',')]

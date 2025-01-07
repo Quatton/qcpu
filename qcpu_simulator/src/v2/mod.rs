@@ -1,6 +1,6 @@
 use std::io::{Read as _, Write as _};
 
-use context::{BranchPredictionStrategy, Simulator};
+use context::Simulator;
 use error::{SimulationError, SimulationErrorKind};
 use execute::{ExecuteResult, MemoryAccess};
 use qcpu_syntax::v2::{
@@ -8,7 +8,6 @@ use qcpu_syntax::v2::{
     reg::Register,
     syntax::{OpName, OpType},
 };
-use strum::VariantArray as _;
 
 pub mod context;
 pub mod error;
@@ -115,44 +114,35 @@ impl Simulator {
         }
     }
 
-    pub fn predict_next_pc(&mut self) -> Vec<usize> {
+    pub fn predict_next_pc(&mut self) -> usize {
         let pc = self.ctx.current.pc;
         let op = self.decode(pc);
         let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
 
-        let mut res = vec![];
-        for bp in BranchPredictionStrategy::VARIANTS {
-            let next_pc = match op.o.optype {
-                OpType::R
-                | OpType::U
-                | OpType::L
-                | OpType::E
-                | OpType::F
-                | OpType::N
-                | OpType::O
-                | OpType::S
-                | OpType::I
-                | OpType::Raw => pc + 4,
-                OpType::J => taken,
-                OpType::B => match bp {
-                    BranchPredictionStrategy::Ant => pc + 4,
-                    BranchPredictionStrategy::At => taken,
-                    BranchPredictionStrategy::Bm => {
-                        let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
+        let next_pc = match op.o.optype {
+            OpType::R
+            | OpType::U
+            | OpType::L
+            | OpType::E
+            | OpType::F
+            | OpType::N
+            | OpType::O
+            | OpType::S
+            | OpType::I
+            | OpType::Raw => pc + 4,
+            OpType::J => taken,
+            OpType::B => {
+                let pred = self.ctx.sc.get(&pc).unwrap_or(&0);
 
-                        if *pred > 0 {
-                            taken
-                        } else {
-                            pc + 4
-                        }
-                    }
-                },
-            };
+                if *pred > 0 {
+                    taken
+                } else {
+                    pc + 4
+                }
+            }
+        };
 
-            res.push(next_pc);
-        }
-
-        res
+        next_pc
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulationError> {
@@ -280,45 +270,36 @@ impl Simulator {
                 }
             });
 
-            if !self.config.branch_prediction.is_empty() {
-                let pc = self.ctx.current.pc;
-                let next_pc_predicted = self.predict_next_pc();
+            let pc = self.ctx.current.pc;
+            let next_pc_predicted = self.predict_next_pc();
 
-                if next_pc_predicted.iter().any(|&p| p != next_pc) {
-                    self.ctx
-                        .stat
-                        .flash_count
-                        .entry(o.optype)
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
-                    self.ctx.stat.cycle_count += 1;
+            if next_pc_predicted != next_pc {
+                self.ctx
+                    .stat
+                    .flash_count
+                    .entry(o.optype)
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                self.ctx.stat.cycle_count += 1;
+            }
+
+            if o.optype == OpType::B {
+                if next_pc_predicted != next_pc {
+                    self.ctx.stat.branch_prediction_miss += 1;
                 }
 
-                if o.optype == OpType::B {
-                    for (idx, &pd) in next_pc_predicted.iter().enumerate() {
-                        if pd != next_pc {
-                            self.ctx
-                                .stat
-                                .branch_prediction_stats
-                                .entry(idx)
-                                .and_modify(|count| *count += 1)
-                                .or_insert(1);
-                        }
-                    }
-
-                    if next_pc != pc + 4 {
-                        self.ctx
-                            .sc
-                            .entry(pc)
-                            .and_modify(|e| *e = (*e + 1).min(2))
-                            .or_insert(1);
-                    } else {
-                        self.ctx
-                            .sc
-                            .entry(pc)
-                            .and_modify(|e| *e = (*e - 1).max(-1))
-                            .or_insert(0);
-                    }
+                if next_pc != pc + 4 {
+                    self.ctx
+                        .sc
+                        .entry(pc)
+                        .and_modify(|e| *e = (*e + 1).min(2))
+                        .or_insert(1);
+                } else {
+                    self.ctx
+                        .sc
+                        .entry(pc)
+                        .and_modify(|e| *e = (*e - 1).max(-1))
+                        .or_insert(0);
                 }
             }
         }

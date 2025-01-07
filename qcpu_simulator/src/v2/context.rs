@@ -13,7 +13,6 @@ use qcpu_syntax::{
     },
     ParsingContext,
 };
-use strum_macros::{EnumString, FromRepr, VariantArray};
 
 use super::memory::Memory;
 
@@ -72,31 +71,12 @@ pub struct Stat {
     pub instr_count: HashMap<OpName, usize>,
     pub cycle_count: usize,
     pub flash_count: HashMap<OpType, usize>,
-    pub branch_prediction_stats: HashMap<usize, usize>,
+    pub branch_prediction_miss: usize,
     pub hazard_stall_count: usize,
     pub max_sp: usize,
     pub max_gp: usize,
     pub sp_init: usize,
     pub gp_init: usize,
-}
-
-#[derive(Default, FromRepr, EnumString, Clone, PartialEq, Eq, Debug, VariantArray, Copy)]
-#[strum(serialize_all = "lowercase")]
-pub enum BranchPredictionStrategy {
-    #[default]
-    Ant,
-    At,
-    Bm,
-}
-
-impl Display for BranchPredictionStrategy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BranchPredictionStrategy::Ant => write!(f, "Always not taken"),
-            BranchPredictionStrategy::At => write!(f, "Always taken"),
-            BranchPredictionStrategy::Bm => write!(f, "Bimodal"),
-        }
-    }
 }
 
 impl Display for Stat {
@@ -142,17 +122,13 @@ impl Display for Stat {
             "Branch Prediction Miss: out of {} B instructions",
             b_count,
         )?;
-        for (&bp, &count) in self.branch_prediction_stats.iter() {
-            let bp = BranchPredictionStrategy::from_repr(bp).unwrap();
 
-            writeln!(
-                f,
-                "   {}: {} ({:.2}%)",
-                bp,
-                count,
-                count as f32 / b_count as f32 * 100.0
-            )?;
-        }
+        writeln!(
+            f,
+            "Branch prediction miss: {} ({:.2}%)",
+            self.branch_prediction_miss,
+            self.branch_prediction_miss as f32 / b_count as f32 * 100.0
+        )?;
         writeln!(
             f,
             "Flash count for JALR: {} out of {} instructions ({}%)",
@@ -281,7 +257,7 @@ pub struct SimulationConfig {
     pub cache_size: Vec<usize>,
     pub cache_ways: Vec<usize>,
 
-    pub branch_prediction: Vec<BranchPredictionStrategy>,
+    pub bp_enabled: bool,
 
     pub program: Vec<Op>,
     pub parsing_ctx: ParsingContext,
@@ -306,7 +282,7 @@ impl Default for SimulationConfig {
             cache_ways: vec![],
             program: vec![],
             parsing_ctx: ParsingContext::default(),
-            branch_prediction: vec![],
+            bp_enabled: false,
             fetch_cache: HashMap::new(),
             in_reader: BufReader::new(Box::new(stdin().lock())),
             out_writer: BufWriter::new(Box::new(stdout().lock())),
@@ -315,8 +291,8 @@ impl Default for SimulationConfig {
 }
 
 impl SimulationConfig {
-    pub fn branch_prediction(mut self, strategy: Vec<BranchPredictionStrategy>) -> Self {
-        self.branch_prediction = strategy;
+    pub fn branch_prediction(mut self, bp_enabled: bool) -> Self {
+        self.bp_enabled = bp_enabled;
         self
     }
 
