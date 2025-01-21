@@ -74,6 +74,13 @@ impl Simulator {
                     self.ctx.stat.cycle_count += 2;
                 }
 
+                if range.start + 3 >= self.ctx.memory.size {
+                    return Err(SimulationErrorKind::MemoryAccess {
+                        size: self.ctx.memory.size,
+                        idx: range.start,
+                    });
+                }
+
                 if let Some(data) = req.write_val {
                     for (i, byte) in data.to_le_bytes().iter().enumerate() {
                         self.ctx.memory[range.start + i] = *byte;

@@ -17,7 +17,7 @@ use strum::VariantArray;
 
 use super::memory::{Memory, RP};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Snapshot {
     pub pc: usize,
     pub next_pc: usize,

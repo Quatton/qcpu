@@ -1,3 +1,7 @@
+## [3.2.0] - 2024-01-21
+- Check for memory access and bubble the errors
+- Time prediction
+
 ## [3.1.0] - 2024-01-06
 - Removed multiple branch predictors
 - Cache calculation was not accurate due to miss counting write as access count too
