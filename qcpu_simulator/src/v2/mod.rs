@@ -3,6 +3,7 @@ use std::io::{Read as _, Write as _};
 use context::Simulator;
 use error::{SimulationError, SimulationErrorKind};
 use execute::{ExecuteResult, MemoryAccess};
+use memory::CacheResult;
 use qcpu_syntax::v2::{
     op::Op,
     reg::Register,
@@ -53,15 +54,25 @@ impl Simulator {
     fn memory_access(
         &mut self,
         req: Option<MemoryAccess>,
+        rd: Register,
     ) -> Result<Option<u32>, SimulationErrorKind> {
         match req {
             None => Ok(None),
             Some(req) => {
                 let range = req.range;
 
-                self.ctx
+                let res = self
+                    .ctx
                     .memory
                     .update_cache(range.start, req.write_val.is_none());
+
+                if let CacheResult::ReadStall = res {
+                    // self.ctx.current.busy[rd as usize] += 60;
+                    self.ctx.stat.cycle_count += 80;
+                } else {
+                    // self.ctx.current.busy[rd as usize] += 2;
+                    self.ctx.stat.cycle_count += 2;
+                }
 
                 if let Some(data) = req.write_val {
                     for (i, byte) in data.to_le_bytes().iter().enumerate() {
@@ -248,30 +259,29 @@ impl Simulator {
 
         if self.config.verbose {
             // basic
-            self.ctx.stat.cycle_count += 1;
 
             // 命令メモリが BRAM で構成されているので必ず２クロックかかる。つまり、毎回 1 回ストールする。
-            self.ctx.stat.cycle_count += 1;
-            self.ctx.stat.hazard_stall_count += 1;
 
             self.ctx.stat.instr_count[o as usize] += 1;
 
             // stall
 
-            let stall = self.ctx.current.reg_status[rs1 as usize]
-                .max(self.ctx.current.reg_status[rs2 as usize]);
-            self.ctx.stat.hazard_stall_count += stall;
-            self.ctx.stat.cycle_count += stall;
+            // let stall =
+            //     self.ctx.current.busy[rs1 as usize].max(self.ctx.current.busy[rs2 as usize]);
+            // self.ctx.stat.hazard_stall_count += stall;
+            // self.ctx.stat.cycle_count += stall;
 
-            if wb.is_some() && rd != Register::Zero {
-                self.ctx.current.reg_status[rd as usize] = self.get_instruction_delay(o);
+            let busy = self.get_instruction_delay(o);
+            if rd != Register::Zero {
+                self.ctx.current.busy[rd as usize] = busy;
             }
+            self.ctx.stat.cycle_count += busy;
 
-            self.ctx
-                .current
-                .reg_status
-                .iter_mut()
-                .for_each(|d| *d = d.saturating_sub(1));
+            // self.ctx
+            //     .current
+            //     .busy
+            //     .iter_mut()
+            //     .for_each(|d| *d = d.saturating_sub(1));
 
             let pc = self.ctx.current.pc;
             let next_pc_predicted = self.predict_next_pc();
@@ -305,7 +315,7 @@ impl Simulator {
             }
         }
 
-        if let Some(w) = self.memory_access(mem).map_err(|e| self.error_map(e))? {
+        if let Some(w) = self.memory_access(mem, rd).map_err(|e| self.error_map(e))? {
             wb = Some(w)
         }
 
@@ -354,7 +364,6 @@ impl Simulator {
     pub fn get_instruction_delay(&self, op: OpName) -> usize {
         match op.optype {
             OpType::R | OpType::I | OpType::U | OpType::J => 1,
-            OpType::L => 2,
             OpType::N => 1,
             OpType::F => match op {
                 OpName::FADD => 3,
@@ -366,7 +375,7 @@ impl Simulator {
                 OpName::FCVTSW => 3,
                 _ => 1,
             },
-            OpType::Raw | OpType::S | OpType::O | OpType::B | OpType::E => 0,
+            OpType::Raw | OpType::O | OpType::S | OpType::B | OpType::E | OpType::L => 0,
         }
     }
 }

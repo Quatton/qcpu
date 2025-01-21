@@ -10,6 +10,7 @@ use strum_macros::{Display, EnumString};
 pub enum RP {
     LRU,
     SC,
+    FIFO,
 }
 
 #[derive(Debug)]
@@ -106,6 +107,12 @@ impl IndexMut<usize> for Memory {
     }
 }
 
+pub enum CacheResult {
+    NoStall,
+    ReadStall,
+    WriteStall,
+}
+
 impl Memory {
     pub fn new(size: usize, cache_size: &[usize], ways: &[usize], strats: &[RP]) -> Self {
         Self {
@@ -133,9 +140,11 @@ impl Memory {
         }
     }
 
-    pub fn update_cache(&mut self, index: usize, read: bool) {
+    pub fn update_cache(&mut self, index: usize, read: bool) -> CacheResult {
+        let mut res = CacheResult::NoStall;
+
         if !self.cache_enabled {
-            return;
+            return res;
         }
 
         for cache_type in self.cacheception.iter_mut() {
@@ -160,6 +169,7 @@ impl Memory {
                             cache_type.occupying_tag[cache_idx].remove(idx);
                             cache_type.occupying_tag[cache_idx].push((cache_tag, 0));
                         }
+                        RP::FIFO => {}
                     }
                 }
             } else {
@@ -174,11 +184,20 @@ impl Memory {
                         RP::LRU => {
                             cache_type.occupying_tag[cache_idx].remove(0);
                         }
+                        RP::FIFO => {
+                            cache_type.occupying_tag[cache_idx].remove(0);
+                        }
                     }
                 }
-                cache_type.occupying_tag[cache_idx].push((cache_tag, 0))
+                cache_type.occupying_tag[cache_idx].push((cache_tag, 0));
+
+                if read {
+                    res = CacheResult::ReadStall;
+                }
             }
         }
+
+        res
     }
 }
 

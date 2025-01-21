@@ -23,7 +23,7 @@ pub struct Snapshot {
     pub next_pc: usize,
     pub op: Op,
     pub regs: Registers,
-    pub reg_status: [usize; 64],
+    pub busy: [usize; 64],
 }
 
 impl Default for Snapshot {
@@ -33,7 +33,7 @@ impl Default for Snapshot {
             next_pc: 0,
             op: Op::default(),
             regs: [0; 64].into(),
-            reg_status: [0; 64],
+            busy: [0; 64],
         }
     }
 }
@@ -91,6 +91,7 @@ impl Default for SimulationContext {
 
 pub struct Stat {
     pub instr_count: Vec<usize>,
+    pub cache_miss_stall: usize,
     pub cycle_count: usize,
     pub flash_count: Vec<usize>,
     pub hazard_stall_count: usize,
@@ -105,6 +106,7 @@ impl Default for Stat {
         Self {
             instr_count: vec![0; OpName::VARIANTS.len()],
             cycle_count: Default::default(),
+            cache_miss_stall: Default::default(),
             flash_count: vec![0; OpType::VARIANTS.len()],
             hazard_stall_count: Default::default(),
             max_sp: Default::default(),
@@ -183,6 +185,11 @@ impl Display for Stat {
             },
         )?;
         writeln!(f, "Hazard stall count: {}", self.hazard_stall_count)?;
+        writeln!(
+            f,
+            "Should complete for 50MHz clock in: {} s",
+            self.cycle_count as f32 / 50_000_000.0
+        )?;
 
         Ok(())
     }
