@@ -54,7 +54,7 @@ impl Simulator {
     fn memory_access(
         &mut self,
         req: Option<MemoryAccess>,
-        rd: Register,
+        _rd: Register,
     ) -> Result<Option<u32>, SimulationErrorKind> {
         match req {
             None => Ok(None),
