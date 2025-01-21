@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     io::{self, stdout},
     panic::{set_hook, take_hook},
 };
@@ -8,7 +9,11 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use qcpu_simulator::v2::context::{SimulationConfig, Simulator};
+use qcpu_simulator::v2::{
+    context::{SimulationConfig, Simulator, Snapshot},
+    error::SimulationError,
+};
+use qcpu_syntax::v2::syntax::{OpName, OpType};
 use ratatui::{
     prelude::{Backend, CrosstermBackend},
     widgets::TableState,
@@ -45,9 +50,12 @@ pub enum PlayMode {
     BackwardUntilBreakpoint,
 }
 
+const MAX_WINDOW_SIZE: usize = 32;
+
 #[derive(Default)]
 pub struct App {
     pub simulator: Simulator,
+    pub error: Option<SimulationError>,
     pub snapshot_idx: usize,
     pub current_screen: CurrentScreen,
     pub done: bool,
@@ -57,12 +65,15 @@ pub struct App {
     pub playmode: PlayMode,
     pub should_quit: bool,
     pub program_table_state: TableState,
+    pub window: Vec<Snapshot>,
+    pub current_window: VecDeque<Snapshot>,
 }
 
 impl App {
     pub fn new() -> App {
         App {
             done: false,
+            error: None,
             simulator: Simulator::with_config(SimulationConfig::default().interactive(true)),
             program_table_state: Default::default(),
             snapshot_idx: 0,
@@ -72,6 +83,8 @@ impl App {
             input_mode: InputMode::Normal,
             playmode: PlayMode::Manual,
             should_quit: false,
+            window: Vec::new(),
+            current_window: VecDeque::new(),
         }
     }
 
@@ -131,11 +144,35 @@ impl App {
         if self.done {
             return;
         }
-        self.simulator.run_once().unwrap();
+        match self.simulator.run_once() {
+            Ok(_) => {}
+            Err(e) => {
+                self.dialog_message = format!("{:?} (Press E to dismiss)", e);
+                self.done = true;
+                self.error = Some(e);
+                self.show_dialog = true;
+            }
+        };
         let ctx = &mut self.simulator.ctx;
-        ctx.current.pc = ctx.current.next_pc;
-        if ctx.current.pc >= ctx.memory.size.min(ctx.program.len() * 4) {
-            self.done = true;
+        if self.current_window.len() >= MAX_WINDOW_SIZE {
+            self.current_window.pop_front();
+        }
+
+        if ctx.current.op.o.optype != OpType::E {
+            self.current_window.push_back(ctx.current.clone());
+        }
+
+        if ctx.current.op.o == OpName::EBREAK || self.done {
+            self.window
+                .extend_from_slice(self.current_window.make_contiguous());
+            self.snapshot_idx = self.window.len() - 1;
+            self.current_window.clear();
+        }
+        if !self.done {
+            ctx.current.pc = ctx.current.next_pc;
+            if ctx.current.pc >= ctx.memory.size.min(ctx.program.len() * 4) {
+                self.done = true;
+            }
         }
     }
 
@@ -168,8 +205,7 @@ impl App {
                 }
                 KeyCode::Right => {
                     if self.input_mode == InputMode::Normal {
-                        self.snapshot_idx =
-                            (self.snapshot_idx + 1).min(self.simulator.ctx.snapshots.len());
+                        self.snapshot_idx = (self.snapshot_idx + 1).min(self.window.len())
                     }
                     Action::Noop
                 }

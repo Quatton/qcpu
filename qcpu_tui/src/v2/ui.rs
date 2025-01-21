@@ -38,9 +38,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .split(frame.area());
 
     let cur = app
-        .simulator
-        .ctx
-        .snapshots
+        .window
         .get(app.snapshot_idx)
         .unwrap_or(&app.simulator.ctx.current);
 
@@ -51,13 +49,13 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
             .title("Registers")
             .title_bottom(
                 Line::from(format!(
-                    " ← Breakpoint ({}/{}) → ",
-                    if app.snapshot_idx >= app.simulator.ctx.snapshots.len() {
+                    " ← Captured Snapshot ({}/{}) → ",
+                    if app.snapshot_idx >= app.window.len() {
                         "Current".to_string()
                     } else {
                         (app.snapshot_idx + 1).to_string()
                     },
-                    app.simulator.ctx.snapshots.len()
+                    app.window.len()
                 ))
                 .left_aligned(),
             )
