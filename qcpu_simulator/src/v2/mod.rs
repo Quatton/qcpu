@@ -182,7 +182,7 @@ impl Simulator {
         #[allow(unused_assignments)]
         let mut rs2 = Register::default();
 
-        let op = self.decode(pc).clone();
+        let op = self.decode(pc);
 
         rd = op.rd;
         o = op.o;
@@ -254,8 +254,11 @@ impl Simulator {
             return Ok(());
         }
 
-        let exe = self.execute(&op).map_err(|e| self.error_map(e))?;
-        self.ctx.current.op = op;
+        let exe = self.execute(op).map_err(|e| self.error_map(e))?;
+
+        if self.config.interactive {
+            self.ctx.current.op = op.clone();
+        }
 
         let ExecuteResult {
             mut wb,
