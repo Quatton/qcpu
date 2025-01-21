@@ -174,8 +174,6 @@ impl Simulator {
         let pc = self.ctx.current.pc;
 
         #[allow(unused_assignments)]
-        let mut exe = ExecuteResult::default();
-        #[allow(unused_assignments)]
         let mut rd = Register::default();
         #[allow(unused_assignments)]
         let mut o = OpName::RAW;
