@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     fmt::Display,
     ops::{Deref, DerefMut, Index, IndexMut},
 };
@@ -17,7 +18,7 @@ pub enum RP {
 pub struct CacheLine {
     pub idx_bits: usize,
     pub way_bits: usize,
-    pub occupying_tag: Vec<Vec<(usize, u32)>>,
+    pub occupying_tag: Vec<VecDeque<(usize, u32)>>,
     pub stat: CacheStat,
     pub strat: RP,
 }
@@ -128,7 +129,7 @@ impl Memory {
                             strats.iter().map(move |&rp| CacheLine {
                                 idx_bits: cache_size,
                                 way_bits: way,
-                                occupying_tag: vec![vec![]; 1 << cache_size],
+                                occupying_tag: vec![Default::default(); 1 << cache_size],
                                 stat: CacheStat::default(),
                                 strat: rp,
                             })
@@ -167,7 +168,7 @@ impl Memory {
                         }
                         RP::LRU => {
                             cache_type.occupying_tag[cache_idx].remove(idx);
-                            cache_type.occupying_tag[cache_idx].push((cache_tag, 0));
+                            cache_type.occupying_tag[cache_idx].push_back((cache_tag, 0));
                         }
                         RP::FIFO => {}
                     }
@@ -182,14 +183,14 @@ impl Memory {
                             cache_type.occupying_tag[cache_idx].remove(i.unwrap_or(0));
                         }
                         RP::LRU => {
-                            cache_type.occupying_tag[cache_idx].remove(0);
+                            cache_type.occupying_tag[cache_idx].pop_front();
                         }
                         RP::FIFO => {
-                            cache_type.occupying_tag[cache_idx].remove(0);
+                            cache_type.occupying_tag[cache_idx].pop_front();
                         }
                     }
                 }
-                cache_type.occupying_tag[cache_idx].push((cache_tag, 0));
+                cache_type.occupying_tag[cache_idx].push_back((cache_tag, 0));
 
                 if read {
                     res = CacheResult::ReadStall;
