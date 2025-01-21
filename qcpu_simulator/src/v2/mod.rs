@@ -173,21 +173,9 @@ impl Simulator {
         let _instr = self.fetch().map_err(|e| self.error_map(e))?;
         let pc = self.ctx.current.pc;
 
-        #[allow(unused_assignments)]
-        let mut rd = Register::default();
-        #[allow(unused_assignments)]
-        let mut o = OpName::RAW;
-        #[allow(unused_assignments)]
-        let mut rs1 = Register::default();
-        #[allow(unused_assignments)]
-        let mut rs2 = Register::default();
-
         let op = self.decode(pc);
 
-        rd = op.rd;
-        o = op.o;
-        rs1 = op.rs1;
-        rs2 = op.rs2;
+        let Op { o, rd, rs2, .. } = *op;
 
         if op.o.optype == OpType::E {
             let raw = op
