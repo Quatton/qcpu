@@ -3,6 +3,7 @@ pub mod reg;
 mod result;
 pub mod snapshot;
 pub mod v2;
+pub mod v4;
 
 use std::{collections::VecDeque, io::Read as _};
 

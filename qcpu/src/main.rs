@@ -6,7 +6,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_assembler::{from_machine_code, parse_tree, to_assembly};
-use qcpu_simulator::v2::memory::RP;
+use qcpu_simulator::{v2::memory::RP, v4::SimulatorV4Builder};
 use qcpu_syntax::parser::{Op, ParsingContext};
 use qcpu_tui::app::App;
 
@@ -154,6 +154,18 @@ enum Commands {
 
         #[arg(short, long)]
         output: Option<String>,
+    },
+
+    Simv4 {
+        /// The input file in machine code
+        #[clap(short, long)]
+        bin: String,
+
+        #[clap(short, long)]
+        output: String,
+
+        #[clap(short, long)]
+        input: String,
     },
 }
 
@@ -552,6 +564,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             println!("========================================");
             println!("stdout: ");
+        }
+        Commands::Simv4 { bin, input, output } => {
+            let s = std::time::Instant::now();
+            let sim = (SimulatorV4Builder { bin, input, output }).build();
+            let e = s.elapsed();
+            sim.run();
+            println!("Loaded in: {:?}", e);
         }
     }
     Ok(())
