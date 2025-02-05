@@ -17,3 +17,4 @@ tokio-util.workspace = true
 futures.workspace = true
 crossterm.workspace = true
 signal-hook.workspace = true
+tracing.workspace = true

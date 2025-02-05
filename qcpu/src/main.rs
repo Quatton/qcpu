@@ -166,6 +166,14 @@ enum Commands {
 
         #[clap(short, long)]
         input: String,
+
+        /// Byte addressing
+        #[clap(long, default_value = "false")]
+        legacy_addressing: bool,
+
+        /// Verbose mode
+        #[clap(short, long, default_value = "false")]
+        verbose: bool,
     },
 }
 
@@ -565,12 +573,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("========================================");
             println!("stdout: ");
         }
-        Commands::Simv4 { bin, input, output } => {
+        Commands::Simv4 {
+            bin,
+            input,
+            output,
+            legacy_addressing,
+            verbose,
+        } => {
             let s = std::time::Instant::now();
-            let sim = (SimulatorV4Builder { bin, input, output }).build();
+            let mut sim = (SimulatorV4Builder {
+                bin,
+                input,
+                output,
+                legacy_addressing,
+                verbose,
+            })
+            .build();
             let e = s.elapsed();
-            sim.run();
             println!("Loaded in: {:?}", e);
+
+            if let Err(e) = sim.run() {
+                eprintln!("Simulation Result: {:?}", e);
+            }
+
+            sim.log_registers();
         }
     }
     Ok(())
