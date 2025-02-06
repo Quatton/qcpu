@@ -174,6 +174,10 @@ enum Commands {
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
         verbose: bool,
+
+        /// Clock (MHz)
+        #[clap(long, default_value = "50")]
+        clock: f64,
     },
 }
 
@@ -579,6 +583,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             output,
             legacy_addressing,
             verbose,
+            clock,
         } => {
             let s = std::time::Instant::now();
             let mut sim = (SimulatorV4Builder {
@@ -603,6 +608,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if verbose {
                 sim.log_stat();
+
+                println!(
+                    "Should complete in: {:.2} s",
+                    sim.stat.cycle_count as f64 / clock / 1_000_000.0
+                );
             }
         }
     }

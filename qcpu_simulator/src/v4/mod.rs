@@ -1,6 +1,7 @@
 mod decode;
 pub mod execute;
 pub mod memory;
+pub mod stat;
 mod syntax;
 
 use std::{
@@ -11,7 +12,8 @@ use std::{
 use decode::decode;
 use execute::{execute, ExecuteResult};
 use memory::MemoryV4;
-use syntax::{get_reg_name, OpCode, OpV4};
+use stat::Statistics;
+use syntax::{get_reg_name, OpCode, OpName, OpV4};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
@@ -66,7 +68,9 @@ impl SimulatorV4Builder {
                     busy: [false; 64],
                 },
                 memory: MemoryV4::new(),
+                cache_hit: false,
             },
+            stat: Statistics::default(),
         }
     }
 }
@@ -92,6 +96,7 @@ pub struct SimulatorV4Context {
     pub current: Snapshot,
     pub prev: Snapshot,
     pub memory: MemoryV4,
+    pub cache_hit: bool,
 }
 
 pub struct SimulatorV4 {
@@ -102,6 +107,7 @@ pub struct SimulatorV4 {
     pub ctx: SimulatorV4Context,
     pub legacy_addressing: bool,
     pub verbose: bool,
+    pub stat: Statistics,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -117,8 +123,23 @@ pub enum SimulatorV4HaltKind {
     Complete,
 }
 
+fn get_delay(op: &OpV4) -> u64 {
+    match op.opcode {
+        OpCode::F => match op.opname {
+            OpName::Fadd | OpName::Fsub | OpName::Fmul | OpName::Ftoi | OpName::Fitof => 3,
+            OpName::Fdiv => 9,
+            _ => 1,
+        },
+        _ => 1,
+    }
+}
+
+const CACHE_MISS_PENALTY: u64 = 100;
+const CACHE_HIT_PENALTY: u64 = 2;
+
 impl SimulatorV4 {
     pub fn log_stat(&self) {
+        println!("{}", self.stat);
         println!("{}", self.ctx.memory.stat);
     }
 
@@ -158,6 +179,24 @@ impl SimulatorV4 {
             }
         };
 
+        if self.verbose {
+            self.stat.cycle_count += if self.ctx.current.busy[op.rs1 as usize]
+                || self.ctx.current.busy[op.rs2 as usize]
+            {
+                get_delay(op)
+                    + if self.ctx.cache_hit {
+                        CACHE_HIT_PENALTY
+                    } else {
+                        CACHE_MISS_PENALTY
+                    }
+            } else if self.ctx.cache_hit {
+                get_delay(op).max(CACHE_HIT_PENALTY)
+            } else {
+                CACHE_MISS_PENALTY
+            };
+            self.stat.instr_count += 1;
+        }
+
         // println!("{:?}", op);
 
         let next_pc_predicted = self.ctx.current.pc + 4;
@@ -173,7 +212,7 @@ impl SimulatorV4 {
                 }
 
                 if self.verbose {
-                    self.ctx.memory.update_cache(addr, true);
+                    self.ctx.cache_hit = self.ctx.memory.update_cache(addr, true);
                 }
 
                 if op.rd != 0 {
@@ -186,6 +225,8 @@ impl SimulatorV4 {
                                 line: pc >> 2,
                                 kind: e,
                             })?;
+
+                    self.ctx.current.busy[op.rd as usize] = true;
                 }
             }
             OpCode::S => {
@@ -208,11 +249,15 @@ impl SimulatorV4 {
                         line: pc >> 2,
                         kind: e,
                     })?;
+                self.ctx.current.busy = [false; 64];
+                self.ctx.cache_hit = true;
             }
             OpCode::O => {
                 self.output
                     .write_all(&[(self.ctx.current.reg[op.rs2 as usize] & 0xff) as u8])
                     .unwrap();
+                self.ctx.current.busy = [false; 64];
+                self.ctx.cache_hit = true;
             }
             OpCode::N => {
                 if op.rd != 0 {
@@ -220,6 +265,8 @@ impl SimulatorV4 {
                     self.input.read_exact(&mut buf).unwrap();
                     self.ctx.current.reg[op.rd as usize] = u32::from_le_bytes(buf);
                 }
+                self.ctx.current.busy = [false; 64];
+                self.ctx.cache_hit = true;
             }
             _ => {
                 let ExecuteResult { next_pc, wb } = execute(&self.ctx.current, op);
@@ -229,6 +276,8 @@ impl SimulatorV4 {
                         self.ctx.current.reg[op.rd as usize] = wb
                     }
                 }
+                self.ctx.current.busy = [false; 64];
+                self.ctx.cache_hit = true;
             }
         };
 
