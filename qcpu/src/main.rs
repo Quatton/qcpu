@@ -600,6 +600,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Ran in: {:?}", e);
 
             sim.log_registers();
+
+            if verbose {
+                sim.log_stat();
+            }
         }
     }
     Ok(())

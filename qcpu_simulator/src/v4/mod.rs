@@ -53,6 +53,7 @@ impl SimulatorV4Builder {
             output,
             decoded,
             legacy_addressing: self.legacy_addressing,
+            verbose: self.verbose,
             ctx: SimulatorV4Context {
                 current: Snapshot {
                     reg: [0; 64],
@@ -100,6 +101,7 @@ pub struct SimulatorV4 {
     pub output: BufWriter<File>,
     pub ctx: SimulatorV4Context,
     pub legacy_addressing: bool,
+    pub verbose: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -116,6 +118,10 @@ pub enum SimulatorV4HaltKind {
 }
 
 impl SimulatorV4 {
+    pub fn log_stat(&self) {
+        println!("{}", self.ctx.memory.stat);
+    }
+
     pub fn log_registers(&self) {
         for (i, reg) in self.ctx.current.reg.iter().enumerate() {
             let reg_name = get_reg_name(i as u8);
@@ -160,35 +166,43 @@ impl SimulatorV4 {
         match op.opcode {
             OpCode::L => {
                 let mut addr =
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as u32;
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize;
 
                 if self.legacy_addressing {
                     addr >>= 2;
                 }
 
+                if self.verbose {
+                    self.ctx.memory.update_cache(addr, true);
+                }
+
                 if op.rd != 0 {
-                    self.ctx.current.reg[op.rd as usize] = self
-                        .ctx
-                        .memory
-                        .read(addr as usize)
-                        .map_err(|e| SimulatorV4HaltDetail {
-                            op: *op,
-                            line: pc >> 2,
-                            kind: e,
-                        })?;
+                    self.ctx.current.reg[op.rd as usize] =
+                        self.ctx
+                            .memory
+                            .read(addr)
+                            .map_err(|e| SimulatorV4HaltDetail {
+                                op: *op,
+                                line: pc >> 2,
+                                kind: e,
+                            })?;
                 }
             }
             OpCode::S => {
                 let mut addr =
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as u32;
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize;
 
                 if self.legacy_addressing {
                     addr >>= 2;
                 }
 
+                if self.verbose {
+                    self.ctx.memory.update_cache(addr, false);
+                }
+
                 self.ctx
                     .memory
-                    .write(addr as usize, self.ctx.current.reg[op.rs2 as usize])
+                    .write(addr, self.ctx.current.reg[op.rs2 as usize])
                     .map_err(|e| SimulatorV4HaltDetail {
                         op: *op,
                         line: pc >> 2,
