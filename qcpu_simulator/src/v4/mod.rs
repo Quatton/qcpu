@@ -130,11 +130,15 @@ fn get_delay(op: &OpV4) -> u64 {
             OpName::Fdiv => 9,
             _ => 1,
         },
+        OpCode::O | OpCode::N => 1,
         _ => 1,
     }
 }
 
-const CACHE_MISS_PENALTY: u64 = 100;
+const CACHE_MISS_PENALTY_LOW: u64 = 20;
+const CACHE_MISS_PENALTY_HIGH: u64 = 100;
+const WARMED_UP_CYCLE: u64 = 10_000_000_000;
+
 const CACHE_HIT_PENALTY: u64 = 2;
 
 impl SimulatorV4 {
@@ -186,13 +190,17 @@ impl SimulatorV4 {
                 get_delay(op)
                     + if self.ctx.cache_hit {
                         CACHE_HIT_PENALTY
+                    } else if self.stat.cycle_count > WARMED_UP_CYCLE {
+                        CACHE_MISS_PENALTY_LOW
                     } else {
-                        CACHE_MISS_PENALTY
+                        CACHE_MISS_PENALTY_HIGH
                     }
             } else if self.ctx.cache_hit {
                 get_delay(op).max(CACHE_HIT_PENALTY)
+            } else if self.stat.cycle_count > WARMED_UP_CYCLE {
+                CACHE_MISS_PENALTY_LOW
             } else {
-                CACHE_MISS_PENALTY
+                CACHE_MISS_PENALTY_HIGH
             };
             self.stat.instr_count += 1;
         }
