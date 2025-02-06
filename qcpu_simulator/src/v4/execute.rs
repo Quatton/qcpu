@@ -3,7 +3,7 @@ use super::{
     Snapshot,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct ExecuteResult {
     pub next_pc: usize,
     pub wb: Option<u32>,

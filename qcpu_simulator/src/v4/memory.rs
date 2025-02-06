@@ -1,5 +1,6 @@
 use super::SimulatorV4HaltKind;
 
+#[derive(Debug, Clone)]
 pub struct MemoryV4 {
     pub m: Vec<u32>,
 }
@@ -14,26 +15,24 @@ impl MemoryV4 {
     }
 
     pub fn read(&self, addr: usize) -> Result<u32, SimulatorV4HaltKind> {
-        match self.m.get(addr) {
-            Some(cell) => Ok(*cell),
-            None => Err(SimulatorV4HaltKind::MemoryAccess {
-                bound: MEMORY_SIZE as u32,
-                index: addr as u32,
-            }),
-        }
+        self.m
+            .get(addr)
+            .copied()
+            .ok_or(SimulatorV4HaltKind::MemoryAccess {
+                bound: MEMORY_SIZE,
+                index: addr,
+            })
     }
 
     pub fn write(&mut self, addr: usize, val: u32) -> Result<(), SimulatorV4HaltKind> {
-        match self.m.get_mut(addr) {
-            Some(cell) => {
-                *cell = val;
-                Ok(())
-            }
-            None => Err(SimulatorV4HaltKind::MemoryAccess {
-                bound: MEMORY_SIZE as u32,
-                index: addr as u32,
-            }),
+        if addr >= MEMORY_SIZE {
+            return Err(SimulatorV4HaltKind::MemoryAccess {
+                bound: MEMORY_SIZE,
+                index: addr,
+            });
         }
+        self.m[addr] = val;
+        Ok(())
     }
 }
 

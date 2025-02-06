@@ -592,9 +592,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let e = s.elapsed();
             println!("Loaded in: {:?}", e);
 
+            let s = std::time::Instant::now();
             if let Err(e) = sim.run() {
                 eprintln!("Simulation Result: {:?}", e);
             }
+            let e = s.elapsed();
+            println!("Ran in: {:?}", e);
 
             sim.log_registers();
         }

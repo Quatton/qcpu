@@ -19,42 +19,40 @@ pub fn decode(mc: u32) -> OpV4 {
         opcode => unimplemented!("Not supported for {opcode:04b}"),
     };
 
-    let mut rd: Reg = 0;
-    let mut rs1: Reg = 0;
-    let mut rs2: Reg = 0;
     let mut imm: u32 = 0;
 
-    let cap = bits[4..10].load::<u32>();
-    match opcode {
+    let rd = match opcode {
         OpCode::R
         | OpCode::F
-        | OpCode::A
+        | OpCode::J
         | OpCode::U
+        | OpCode::S
         | OpCode::I
-        | OpCode::L
         | OpCode::N
-        | OpCode::J => {
-            rd = cap as Reg;
+        | OpCode::L
+        | OpCode::A => bits[4..10].load::<Reg>(),
+        OpCode::B | OpCode::O => 0,
+    };
+    let rs1 = match opcode {
+        OpCode::R
+        | OpCode::F
+        | OpCode::U
+        | OpCode::S
+        | OpCode::I
+        | OpCode::B
+        | OpCode::L
+        | OpCode::A => bits[13..19].load::<Reg>(),
+        OpCode::J | OpCode::N | OpCode::O => 0,
+    };
+
+    let rs2 = match opcode {
+        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O | OpCode::A => {
+            bits[19..25].load::<Reg>()
         }
-        _ => {}
+        OpCode::I | OpCode::U | OpCode::J | OpCode::N | OpCode::L => 0,
     };
 
     let funct3 = bits[10..13].load::<u32>();
-    let cap = bits[13..19].load::<u32>();
-    match opcode {
-        OpCode::R | OpCode::I | OpCode::A | OpCode::L | OpCode::F | OpCode::S | OpCode::B => {
-            rs1 = cap as Reg;
-        }
-        _ => {}
-    };
-
-    let cap = bits[19..25].load::<u32>();
-    match opcode {
-        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O => {
-            rs2 = cap as Reg;
-        }
-        _ => {}
-    };
 
     let opname = match opcode {
         OpCode::I => match funct3 {
@@ -65,10 +63,10 @@ pub fn decode(mc: u32) -> OpV4 {
         },
         OpCode::R => match funct3 {
             super::syntax::ADDSUB_FUNC3 => {
-                if mc & 0b1000000 == 0 {
-                    OpName::Add
-                } else {
+                if bits[30] {
                     OpName::Sub
+                } else {
+                    OpName::Add
                 }
             }
             super::syntax::SLL_FUNC3 => OpName::Sll,
@@ -100,13 +98,13 @@ pub fn decode(mc: u32) -> OpV4 {
             super::syntax::FSQRT_FUNC7 => OpName::Fsqrt,
             super::syntax::FTOI_FUNC7 => OpName::Ftoi,
             super::syntax::FITOF_FUNC7 => OpName::Fitof,
-            super::syntax::FCOMB_FUNC7 => match funct3 {
+            super::syntax::FSGN_FUNC7 => match funct3 {
                 super::syntax::FSGNJ_FUNC3 => OpName::Fsgnj,
                 super::syntax::FSGNJN_FUNC3 => OpName::Fsgnjn,
                 super::syntax::FSGNJX_FUNC3 => OpName::Fsgnjx,
                 _ => unimplemented!("{funct3} not supported for {opcode:?}"),
             },
-            super::syntax::FSGN_FUNC7 => match funct3 {
+            super::syntax::FCMP_FUNC7 => match funct3 {
                 super::syntax::FEQ_FUNC3 => OpName::Feq,
                 super::syntax::FLT_FUNC3 => OpName::Flt,
                 super::syntax::FLE_FUNC3 => OpName::Fle,
