@@ -13,7 +13,7 @@ use decode::decode;
 use execute::{execute, ExecuteResult};
 use memory::MemoryV4;
 use stat::Statistics;
-use syntax::{get_reg_name, OpCode, OpName, OpV4};
+use syntax::{get_reg_name, OpName, OpV4};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
@@ -123,14 +123,11 @@ pub enum SimulatorV4HaltKind {
     Complete,
 }
 
+#[inline(always)]
 fn get_delay(op: &OpV4) -> u64 {
-    match op.opcode {
-        OpCode::F => match op.opname {
-            OpName::Fadd | OpName::Fsub | OpName::Fmul | OpName::Ftoi | OpName::Fitof => 3,
-            OpName::Fdiv => 9,
-            _ => 1,
-        },
-        OpCode::O | OpCode::N => 1,
+    match op.opname {
+        OpName::Fadd | OpName::Fsub | OpName::Fmul | OpName::Ftoi | OpName::Fitof => 3,
+        OpName::Fdiv => 9,
         _ => 1,
     }
 }
@@ -167,15 +164,18 @@ impl SimulatorV4 {
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
-        let pc = self.ctx.current.pc;
+        let pc = if self.legacy_addressing {
+            self.ctx.current.pc >> 2
+        } else {
+            self.ctx.current.pc
+        };
 
-        let op = match self.decoded.get(pc >> 2) {
+        let op = match self.decoded.get(pc) {
             Some(op) => op,
             _ => {
-                // println!();
                 return Err(SimulatorV4HaltDetail {
-                    op: self.decoded[self.ctx.prev.pc >> 2],
-                    line: self.ctx.prev.pc >> 2,
+                    op: self.decoded[pc - 1],
+                    line: pc - 1,
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
@@ -192,26 +192,29 @@ impl SimulatorV4 {
                         CACHE_MISS_PENALTY_LOW
                     }
             } else if self.ctx.cache_hit {
-                get_delay(op).max(CACHE_HIT_PENALTY)
+                CACHE_HIT_PENALTY
             } else {
-                get_delay(op).max(CACHE_MISS_PENALTY_LOW)
+                CACHE_MISS_PENALTY_LOW
             };
             self.stat.instr_count += 1;
         }
 
         // println!("{:?}", op);
 
-        let next_pc_predicted = self.ctx.current.pc + 4;
+        let next_pc_predicted = if self.legacy_addressing {
+            self.ctx.current.pc + 4
+        } else {
+            self.ctx.current.pc + 1
+        };
         let mut next_pc_true = next_pc_predicted;
 
-        match op.opcode {
-            OpCode::L => {
-                let mut addr =
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize;
-
-                if self.legacy_addressing {
-                    addr >>= 2;
-                }
+        match op.opname {
+            OpName::Lw => {
+                let addr = if self.legacy_addressing {
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                } else {
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize
+                };
 
                 if op.rd != 0 {
                     #[cfg(not(feature = "unsafe"))]
@@ -236,13 +239,12 @@ impl SimulatorV4 {
                     self.ctx.current.busy[op.rd as usize] = true;
                 }
             }
-            OpCode::S => {
-                let mut addr =
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize;
-
-                if self.legacy_addressing {
-                    addr >>= 2;
-                }
+            OpName::Sw => {
+                let addr = if self.legacy_addressing {
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                } else {
+                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize
+                };
 
                 #[cfg(not(feature = "unsafe"))]
                 self.ctx
@@ -265,14 +267,14 @@ impl SimulatorV4 {
                 self.ctx.cache_hit = true;
                 self.stat.cycle_count += CACHE_MISS_PENALTY_LOW;
             }
-            OpCode::O => {
+            OpName::Outb => {
                 self.output
                     .write_all(&[(self.ctx.current.reg[op.rs2 as usize] & 0xff) as u8])
                     .unwrap();
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
             }
-            OpCode::N => {
+            OpName::Inw => {
                 if op.rd != 0 {
                     let mut buf = [0; 4];
                     self.input.read_exact(&mut buf).unwrap();

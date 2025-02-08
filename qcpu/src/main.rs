@@ -168,7 +168,7 @@ enum Commands {
 
         /// Byte addressing
         #[clap(long, default_value = "false")]
-        legacy_addressing: bool,
+        new_addressing: bool,
 
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
@@ -580,7 +580,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             bin,
             input,
             output,
-            legacy_addressing,
+            new_addressing,
             verbose,
             clock,
         } => {
@@ -589,19 +589,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bin,
                 input,
                 output,
-                legacy_addressing,
+                legacy_addressing: !new_addressing,
                 verbose,
             })
             .build();
             let e = s.elapsed();
-            println!("Loaded in: {:?}", e);
 
-            let s = std::time::Instant::now();
             if let Err(e) = sim.run() {
                 eprintln!("Simulation Result: {:?}", e);
             }
-            let e = s.elapsed();
-            println!("Ran in: {:?}", e);
+            let e2 = s.elapsed();
 
             sim.log_registers();
 
@@ -613,6 +610,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     sim.stat.cycle_count as f64 / clock / 1_000_000.0
                 );
             }
+            println!("Loaded in: {:?}", e);
+            println!("Ran in: {:?}", e2);
         }
     }
     Ok(())

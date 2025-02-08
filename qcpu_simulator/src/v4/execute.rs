@@ -9,6 +9,7 @@ pub struct ExecuteResult {
     pub wb: Option<u32>,
 }
 
+#[inline(always)]
 pub fn execute(ctx: &Snapshot, op: &OpV4) -> ExecuteResult {
     let rs1u = ctx.reg[op.rs1 as usize];
     let rs2u = ctx.reg[op.rs2 as usize];

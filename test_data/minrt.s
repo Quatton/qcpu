@@ -497,7 +497,7 @@ _min_caml_start:
 	addi	sp, sp, -84 !2113
 	lw  	a1, 76(sp) !2113
 	lw  	a2, 80(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -737,7 +737,7 @@ bge_cont.26118: !2112
 	addi	sp, sp, -132 !2113
 	lw  	a1, 124(sp) !2113
 	lw  	a2, 128(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -977,7 +977,7 @@ bge_cont.26120: !2112
 	addi	sp, sp, -180 !2113
 	lw  	a1, 172(sp) !2113
 	lw  	a2, 176(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -1184,7 +1184,7 @@ bge_cont.26122: !2112
 	addi	a0, a0, -1 !1142
 	blt 	a0, zero, bge_else.26123 !1125
 	li  	a1, 1048624 !1126
-	slli	t0, a0, 2 !1126
+	
 	add 	t0, t0, a1 !1126
 	lw  	a1, 0(t0) !1126
 	lw  	a2, 4(a1) !260
@@ -1198,7 +1198,7 @@ bge_cont.26122: !2112
 	addi	sp, sp, -224 !1131
 	li  	a1, 1049324 !1131
 	lw  	a2, 220(sp) !1131
-	slli	t0, a2, 2 !1131
+	
 	add 	t0, t0, a1 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.26126 !1130
@@ -1213,7 +1213,7 @@ beq_else.26125: !1130
 	addi	sp, sp, -224 !1133
 	li  	a1, 1049324 !1133
 	lw  	a2, 220(sp) !1133
-	slli	t0, a2, 2 !1133
+	
 	add 	t0, t0, a1 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.26128 !1132
@@ -1226,7 +1226,7 @@ beq_else.26127: !1132
 	addi	sp, sp, -224 !1135
 	li  	a1, 1049324 !1135
 	lw  	a2, 220(sp) !1135
-	slli	t0, a2, 2 !1135
+	
 	add 	t0, t0, a1 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.26128: !1132
@@ -1669,7 +1669,7 @@ beq_cont.26139: !705
 	sw  	a5, 0(a1) !709
 	li  	a5, 1048624 !717
 	lw  	a6, 4(sp) !717
-	slli	t0, a6, 2 !717
+	
 	add 	t0, t0, a5 !717
 	sw  	a1, 0(t0) !717
 	addi	t0, zero, 3 !719
@@ -2150,49 +2150,49 @@ beq_else.26235: !764
 	addi	sp, sp, -68 !766
 	lw  	a1, 60(sp) !767
 	lw  	a2, 64(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26236: !764
 	lw  	a1, 52(sp) !767
 	lw  	a2, 56(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26234: !764
 	lw  	a1, 44(sp) !767
 	lw  	a2, 48(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26232: !764
 	lw  	a1, 36(sp) !767
 	lw  	a2, 40(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26230: !764
 	lw  	a1, 28(sp) !767
 	lw  	a2, 32(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26228: !764
 	lw  	a1, 20(sp) !767
 	lw  	a2, 24(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26226: !764
 	lw  	a1, 12(sp) !767
 	lw  	a2, 16(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 beq_cont.26224: !764
 	lw  	a1, 4(sp) !767
 	lw  	a2, 8(sp) !767
-	slli	t0, a1, 2 !767
+	
 	add 	t0, t0, a0 !767
 	sw  	a2, 0(t0) !767
 	lw  	ra, 0(sp)
@@ -2595,25 +2595,25 @@ beq_else.26286: !772
 	addi	sp, sp, -124 !775
 	lw  	a1, 100(sp) !776
 	lw  	a2, 120(sp) !776
-	slli	t0, a1, 2 !776
+	
 	add 	t0, t0, a0 !776
 	sw  	a2, 0(t0) !776
 beq_cont.26287: !772
 	lw  	a1, 72(sp) !776
 	lw  	a2, 96(sp) !776
-	slli	t0, a1, 2 !776
+	
 	add 	t0, t0, a0 !776
 	sw  	a2, 0(t0) !776
 beq_cont.26277: !772
 	lw  	a1, 40(sp) !776
 	lw  	a2, 68(sp) !776
-	slli	t0, a1, 2 !776
+	
 	add 	t0, t0, a0 !776
 	sw  	a2, 0(t0) !776
 beq_cont.26265: !772
 	lw  	a1, 4(sp) !776
 	lw  	a2, 36(sp) !776
-	slli	t0, a1, 2 !776
+	
 	add 	t0, t0, a0 !776
 	sw  	a2, 0(t0) !776
 	lw  	ra, 0(sp)
@@ -2732,7 +2732,7 @@ beq_cont.26289: !764
 beq_else.26302: !781
 	li  	a1, 1048908 !783
 	lw  	a2, 4(sp) !783
-	slli	t0, a2, 2 !783
+	
 	add 	t0, t0, a1 !783
 	sw  	a0, 0(t0) !783
 	addi	a2, a2, 1 !784
@@ -2834,7 +2834,7 @@ beq_cont.26305: !764
 beq_else.26316: !781
 	li  	a1, 1048908 !783
 	lw  	a2, 36(sp) !783
-	slli	t0, a2, 2 !783
+	
 	add 	t0, t0, a1 !783
 	sw  	a0, 0(t0) !783
 	addi	a2, a2, 1 !784
@@ -2922,7 +2922,7 @@ beq_cont.26319: !764
 beq_else.26328: !781
 	li  	a1, 1048908 !783
 	lw  	a2, 64(sp) !783
-	slli	t0, a2, 2 !783
+	
 	add 	t0, t0, a1 !783
 	sw  	a0, 0(t0) !783
 	addi	a2, a2, 1 !784
@@ -2996,7 +2996,7 @@ beq_cont.26331: !764
 beq_else.26338: !781
 	li  	a1, 1048908 !783
 	lw  	a2, 88(sp) !783
-	slli	t0, a2, 2 !783
+	
 	add 	t0, t0, a1 !783
 	sw  	a0, 0(t0) !783
 	addi	a0, a2, 1 !784
@@ -4143,7 +4143,7 @@ beq_else.26497: !881
 solver.2606:
 	sw  	ra, 0(sp)
 	li  	a3, 1048624 !905
-	slli	t0, a0, 2 !905
+	
 	add 	t0, t0, a3 !905
 	lw  	a0, 0(t0) !905
 	flw  	fa0, 0(a2) !907
@@ -5033,7 +5033,7 @@ beq_else.26641: !966
 solver_fast.2629:
 	sw  	ra, 0(sp)
 	li  	a3, 1048624 !984
-	slli	t0, a0, 2 !984
+	
 	add 	t0, t0, a3 !984
 	lw  	a3, 0(t0) !984
 	flw  	fa0, 0(a2) !985
@@ -5049,7 +5049,7 @@ solver_fast.2629:
 	flw  	fa3, 8(a2) !363
 	fsub	fa2, fa2, fa3 !987
 	lw  	a2, 4(a1) !535
-	slli	t0, a0, 2 !989
+	
 	add 	t0, t0, a2 !989
 	lw  	a2, 0(t0) !989
 	lw  	a0, 4(a3) !260
@@ -5201,7 +5201,7 @@ beq_else.26658: !966
 solver_fast2.2647:
 	sw  	ra, 0(sp)
 	li  	a2, 1048624 !1031
-	slli	t0, a0, 2 !1031
+	
 	add 	t0, t0, a2 !1031
 	lw  	a2, 0(t0) !1031
 	lw  	a3, 40(a2) !449
@@ -5209,7 +5209,7 @@ solver_fast2.2647:
 	flw  	fa1, 4(a3) !1034
 	flw  	fa2, 8(a3) !1035
 	lw  	a4, 4(a1) !535
-	slli	t0, a0, 2 !1037
+	
 	add 	t0, t0, a4 !1037
 	lw  	a0, 0(t0) !1037
 	lw  	a4, 4(a2) !260
@@ -5701,7 +5701,7 @@ iter_setup_dirvec_constants.2659:
 	sw  	ra, 0(sp)
 	blt 	a1, zero, bge_else.26730 !1125
 	li  	a2, 1048624 !1126
-	slli	t0, a1, 2 !1126
+	
 	add 	t0, t0, a2 !1126
 	lw  	a2, 0(t0) !1126
 	lw  	a3, 4(a0) !535
@@ -5719,7 +5719,7 @@ iter_setup_dirvec_constants.2659:
 	addi	sp, sp, -16 !1131
 	lw  	a1, 8(sp) !1131
 	lw  	a2, 12(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.26732 !1130
@@ -5796,7 +5796,7 @@ beq_else.26737: !1082
 beq_cont.26738: !1082
 	lw  	a1, 8(sp) !1133
 	lw  	a2, 12(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.26734 !1132
@@ -5810,7 +5810,7 @@ beq_else.26733: !1132
 	addi	sp, sp, -36 !1135
 	lw  	a1, 8(sp) !1135
 	lw  	a2, 12(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.26734: !1132
@@ -5818,7 +5818,7 @@ beq_cont.26732: !1130
 	addi	a1, a1, -1 !1137
 	blt 	a1, zero, bge_else.26739 !1125
 	li  	a0, 1048624 !1126
-	slli	t0, a1, 2 !1126
+	
 	add 	t0, t0, a0 !1126
 	lw  	a0, 0(t0) !1126
 	lw  	a2, 4(sp) !535
@@ -5836,7 +5836,7 @@ beq_cont.26732: !1130
 	addi	sp, sp, -44 !1131
 	lw  	a1, 36(sp) !1131
 	lw  	a2, 40(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.26741 !1130
@@ -5852,7 +5852,7 @@ beq_else.26740: !1130
 	addi	sp, sp, -44 !1133
 	lw  	a1, 36(sp) !1133
 	lw  	a2, 40(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.26743 !1132
@@ -5866,7 +5866,7 @@ beq_else.26742: !1132
 	addi	sp, sp, -44 !1135
 	lw  	a1, 36(sp) !1135
 	lw  	a2, 40(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.26743: !1132
@@ -5885,7 +5885,7 @@ setup_startp_constants.2664:
 	sw  	ra, 0(sp)
 	blt 	a1, zero, bge_else.26746 !1148
 	li  	a2, 1048624 !1149
-	slli	t0, a1, 2 !1149
+	
 	add 	t0, t0, a2 !1149
 	lw  	a2, 0(t0) !1149
 	lw  	a3, 40(a2) !449
@@ -6166,7 +6166,7 @@ beq_else.26788: !1196
 	jalr	zero, ra, 0
 check_all_inside.2689:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1215
+	
 	add 	t0, t0, a1 !1215
 	lw  	a2, 0(t0) !1215
 	addi	t0, zero, -1 !1216
@@ -6176,7 +6176,7 @@ check_all_inside.2689:
 	jalr	zero, ra, 0
 beq_else.26789: !1216
 	li  	a3, 1048624 !1219
-	slli	t0, a2, 2 !1219
+	
 	add 	t0, t0, a3 !1219
 	lw  	a2, 0(t0) !1219
 	lw  	a3, 20(a2) !338
@@ -6370,7 +6370,7 @@ beq_cont.26792: !1205
 	lw  	a0, 36(sp) !1222
 	addi	a0, a0, 1 !1222
 	lw  	a1, 32(sp) !1215
-	slli	t0, a0, 2 !1215
+	
 	add 	t0, t0, a1 !1215
 	lw  	a2, 0(t0) !1215
 	addi	t0, zero, -1 !1216
@@ -6380,7 +6380,7 @@ beq_cont.26792: !1205
 	jalr	zero, ra, 0
 beq_else.26830: !1216
 	li  	a3, 1048624 !1219
-	slli	t0, a2, 2 !1219
+	
 	add 	t0, t0, a3 !1219
 	lw  	a2, 0(t0) !1219
 	flw  	fa0, 24(sp) !1219
@@ -6395,7 +6395,7 @@ beq_else.26830: !1216
 	lw  	a0, 60(sp) !1222
 	addi	a0, a0, 1 !1222
 	lw  	a1, 32(sp) !1215
-	slli	t0, a0, 2 !1215
+	
 	add 	t0, t0, a1 !1215
 	lw  	a2, 0(t0) !1215
 	addi	t0, zero, -1 !1216
@@ -6405,7 +6405,7 @@ beq_else.26830: !1216
 	jalr	zero, ra, 0
 beq_else.26832: !1216
 	li  	a3, 1048624 !1219
-	slli	t0, a2, 2 !1219
+	
 	add 	t0, t0, a3 !1219
 	lw  	a2, 0(t0) !1219
 	lw  	a3, 20(a2) !338
@@ -6597,7 +6597,7 @@ beq_cont.26834: !1205
 	lw  	a0, 64(sp) !1222
 	addi	a0, a0, 1 !1222
 	lw  	a1, 32(sp) !1215
-	slli	t0, a0, 2 !1215
+	
 	add 	t0, t0, a1 !1215
 	lw  	a2, 0(t0) !1215
 	addi	t0, zero, -1 !1216
@@ -6607,7 +6607,7 @@ beq_cont.26834: !1205
 	jalr	zero, ra, 0
 beq_else.26873: !1216
 	li  	a3, 1048624 !1219
-	slli	t0, a2, 2 !1219
+	
 	add 	t0, t0, a3 !1219
 	lw  	a2, 0(t0) !1219
 	flw  	fa0, 24(sp) !1219
@@ -6645,7 +6645,7 @@ beq_else.26829: !1219
 	jalr	zero, ra, 0
 shadow_check_and_group.2695:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1233
+	
 	add 	t0, t0, a1 !1233
 	lw  	a2, 0(t0) !1233
 	addi	t0, zero, -1 !1233
@@ -6654,11 +6654,11 @@ shadow_check_and_group.2695:
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 beq_else.26875: !1233
-	slli	t0, a0, 2 !1236
+	
 	add 	t0, t0, a1 !1236
 	lw  	a2, 0(t0) !1236
 	li  	a3, 1048624 !984
-	slli	t0, a2, 2 !984
+	
 	add 	t0, t0, a3 !984
 	lw  	a3, 0(t0) !984
 	li  	a4, 1049128 !985
@@ -6677,7 +6677,7 @@ beq_else.26875: !1233
 	flw  	fa3, 8(a4) !363
 	fsub	fa2, fa2, fa3 !987
 	li  	a4, 1049324 !989
-	slli	t0, a2, 2 !989
+	
 	add 	t0, t0, a4 !989
 	lw  	a4, 0(t0) !989
 	lw  	a5, 4(a3) !260
@@ -6749,7 +6749,7 @@ beq_cont.26885: !1239
 	bne 	a0, zero, beq_else.26888 !1239
 	li  	a0, 1048624 !1255
 	lw  	a1, 12(sp) !1255
-	slli	t0, a1, 2 !1255
+	
 	add 	t0, t0, a0 !1255
 	lw  	a0, 0(t0) !1255
 	lw  	a0, 24(a0) !280
@@ -6761,7 +6761,7 @@ beq_else.26889: !1255
 	lw  	a0, 8(sp) !1256
 	addi	a0, a0, 1 !1256
 	lw  	a1, 4(sp) !1233
-	slli	t0, a0, 2 !1233
+	
 	add 	t0, t0, a1 !1233
 	lw  	a2, 0(t0) !1233
 	addi	t0, zero, -1 !1233
@@ -6770,7 +6770,7 @@ beq_else.26889: !1255
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 beq_else.26890: !1233
-	slli	t0, a0, 2 !1236
+	
 	add 	t0, t0, a1 !1236
 	lw  	a2, 0(t0) !1236
 	li  	a3, 1049128 !0
@@ -6801,7 +6801,7 @@ beq_cont.26892: !1239
 	bne 	a0, zero, beq_else.26895 !1239
 	li  	a0, 1048624 !1255
 	lw  	a1, 20(sp) !1255
-	slli	t0, a1, 2 !1255
+	
 	add 	t0, t0, a0 !1255
 	lw  	a0, 0(t0) !1255
 	lw  	a0, 24(a0) !280
@@ -6844,7 +6844,7 @@ beq_else.26895: !1239
 	jal 	zero, beq_cont.26898 !1216
 beq_else.26897: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	lw  	a2, 20(a0) !338
@@ -7040,7 +7040,7 @@ beq_cont.26900: !1205
 	jal 	zero, beq_cont.26940 !1216
 beq_else.26939: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	flw  	fa0, 40(sp) !1219
@@ -7107,7 +7107,7 @@ beq_else.26888: !1239
 	jal 	zero, beq_cont.26945 !1216
 beq_else.26944: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a1, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a1, 0(t0) !1219
 	fsw 	fa3, 72(sp) !1219
@@ -7129,7 +7129,7 @@ beq_else.26944: !1216
 	jal 	zero, beq_cont.26950 !1216
 beq_else.26949: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a1, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a1, 0(t0) !1219
 	lw  	a2, 20(a1) !338
@@ -7325,7 +7325,7 @@ beq_cont.26952: !1205
 	jal 	zero, beq_cont.26992 !1216
 beq_else.26991: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a1, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a1, 0(t0) !1219
 	flw  	fa0, 88(sp) !1219
@@ -7363,7 +7363,7 @@ beq_cont.26945: !1216
 	lw  	a0, 8(sp) !1249
 	addi	a0, a0, 1 !1249
 	lw  	a1, 4(sp) !1233
-	slli	t0, a0, 2 !1233
+	
 	add 	t0, t0, a1 !1233
 	lw  	a2, 0(t0) !1233
 	addi	t0, zero, -1 !1233
@@ -7372,7 +7372,7 @@ beq_cont.26945: !1216
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 beq_else.26996: !1233
-	slli	t0, a0, 2 !1236
+	
 	add 	t0, t0, a1 !1236
 	lw  	a2, 0(t0) !1236
 	li  	a3, 1049128 !0
@@ -7403,7 +7403,7 @@ beq_cont.26998: !1239
 	bne 	a0, zero, beq_else.27001 !1239
 	li  	a0, 1048624 !1255
 	lw  	a1, 120(sp) !1255
-	slli	t0, a1, 2 !1255
+	
 	add 	t0, t0, a0 !1255
 	lw  	a0, 0(t0) !1255
 	lw  	a0, 24(a0) !280
@@ -7446,7 +7446,7 @@ beq_else.27001: !1239
 	jal 	zero, beq_cont.27004 !1216
 beq_else.27003: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	lw  	a2, 20(a0) !338
@@ -7642,7 +7642,7 @@ beq_cont.27007: !1205
 	jal 	zero, beq_cont.27047 !1216
 beq_else.27046: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	flw  	fa0, 144(sp) !1219
@@ -7686,7 +7686,7 @@ beq_else.26995: !1246
 	jalr	zero, ra, 0
 shadow_check_one_or_group.2698:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1263
+	
 	add 	t0, t0, a1 !1263
 	lw  	a2, 0(t0) !1263
 	addi	t0, zero, -1 !1264
@@ -7696,7 +7696,7 @@ shadow_check_one_or_group.2698:
 	jalr	zero, ra, 0
 beq_else.27051: !1264
 	li  	a3, 1048908 !1267
-	slli	t0, a2, 2 !1267
+	
 	add 	t0, t0, a3 !1267
 	lw  	a2, 0(t0) !1267
 	lw  	a3, 0(a2) !1233
@@ -7736,7 +7736,7 @@ beq_cont.27055: !1239
 	bne 	a0, zero, beq_else.27058 !1239
 	li  	a0, 1048624 !1255
 	lw  	a1, 16(sp) !1255
-	slli	t0, a1, 2 !1255
+	
 	add 	t0, t0, a0 !1255
 	lw  	a0, 0(t0) !1255
 	lw  	a0, 24(a0) !280
@@ -7780,7 +7780,7 @@ beq_else.27058: !1239
 	jal 	zero, beq_cont.27063 !1216
 beq_else.27062: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	lw  	a2, 20(a0) !338
@@ -7976,7 +7976,7 @@ beq_cont.27066: !1205
 	jal 	zero, beq_cont.27106 !1216
 beq_else.27105: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	flw  	fa0, 40(sp) !1219
@@ -8020,7 +8020,7 @@ beq_cont.27053: !1233
 	lw  	a0, 8(sp) !1272
 	addi	a0, a0, 1 !1272
 	lw  	a1, 4(sp) !1263
-	slli	t0, a0, 2 !1263
+	
 	add 	t0, t0, a1 !1263
 	lw  	a2, 0(t0) !1263
 	addi	t0, zero, -1 !1264
@@ -8030,7 +8030,7 @@ beq_cont.27053: !1233
 	jalr	zero, ra, 0
 beq_else.27112: !1264
 	li  	a3, 1048908 !1267
-	slli	t0, a2, 2 !1267
+	
 	add 	t0, t0, a3 !1267
 	lw  	a2, 0(t0) !1267
 	addi	a3, zero, 0 !1268
@@ -8056,7 +8056,7 @@ beq_else.27111: !1269
 	jalr	zero, ra, 0
 shadow_check_one_or_matrix.2701:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1278
+	
 	add 	t0, t0, a1 !1278
 	lw  	a2, 0(t0) !1278
 	lw  	a3, 0(a2) !1279
@@ -8075,7 +8075,7 @@ beq_else.27114: !1280
 	jal 	zero, beq_cont.27116 !1284
 beq_else.27115: !1284
 	li  	a4, 1048624 !984
-	slli	t0, a3, 2 !984
+	
 	add 	t0, t0, a4 !984
 	lw  	a4, 0(t0) !984
 	li  	a5, 1049128 !985
@@ -8094,7 +8094,7 @@ beq_else.27115: !1284
 	flw  	fa3, 8(a5) !363
 	fsub	fa2, fa2, fa3 !987
 	li  	a5, 1049324 !989
-	slli	t0, a3, 2 !989
+	
 	add 	t0, t0, a5 !989
 	lw  	a3, 0(t0) !989
 	lw  	a5, 4(a4) !260
@@ -8171,7 +8171,7 @@ beq_else.27129: !1291
 	jal 	zero, beq_cont.27132 !1264
 beq_else.27131: !1264
 	li  	a2, 1048908 !1267
-	slli	t0, a1, 2 !1267
+	
 	add 	t0, t0, a2 !1267
 	lw  	a1, 0(t0) !1267
 	addi	a2, zero, 0 !1268
@@ -8203,7 +8203,7 @@ beq_cont.27116: !1284
 	lw  	a0, 12(sp) !1303
 	addi	a0, a0, 1 !1303
 	lw  	a1, 8(sp) !1278
-	slli	t0, a0, 2 !1278
+	
 	add 	t0, t0, a1 !1278
 	lw  	a2, 0(t0) !1278
 	lw  	a3, 0(a2) !1279
@@ -8291,7 +8291,7 @@ beq_else.27137: !1283
 	jal 	zero, beq_cont.27152 !1264
 beq_else.27151: !1264
 	li  	a2, 1048908 !1267
-	slli	t0, a1, 2 !1267
+	
 	add 	t0, t0, a2 !1267
 	lw  	a1, 0(t0) !1267
 	addi	a2, zero, 0 !1268
@@ -8314,7 +8314,7 @@ beq_cont.27152: !1264
 	lw  	a0, 12(sp) !1301
 	addi	a0, a0, 1 !1301
 	lw  	a1, 8(sp) !1278
-	slli	t0, a0, 2 !1278
+	
 	add 	t0, t0, a1 !1278
 	lw  	a2, 0(t0) !1278
 	lw  	a3, 0(a2) !1279
@@ -8399,7 +8399,7 @@ beq_else.27155: !1298
 	jalr	zero, ra, 0
 solve_each_element.2704:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1312
+	
 	add 	t0, t0, a1 !1312
 	lw  	a3, 0(t0) !1312
 	addi	t0, zero, -1 !1313
@@ -8408,7 +8408,7 @@ solve_each_element.2704:
 	jalr	zero, ra, 0
 beq_else.27169: !1313
 	li  	a4, 1048624 !905
-	slli	t0, a3, 2 !905
+	
 	add 	t0, t0, a4 !905
 	lw  	a4, 0(t0) !905
 	li  	a5, 1049212 !907
@@ -8494,7 +8494,7 @@ beq_cont.27172: !912
 	bne 	a0, zero, beq_else.27180 !1316
 	li  	a0, 1048624 !1344
 	lw  	a1, 16(sp) !1344
-	slli	t0, a1, 2 !1344
+	
 	add 	t0, t0, a0 !1344
 	lw  	a0, 0(t0) !1344
 	lw  	a0, 24(a0) !280
@@ -8565,7 +8565,7 @@ beq_else.27189: !1323
 	jal 	zero, beq_cont.27193 !1216
 beq_else.27192: !1216
 	li  	a4, 1048624 !1219
-	slli	t0, a3, 2 !1219
+	
 	add 	t0, t0, a4 !1219
 	lw  	a3, 0(t0) !1219
 	addi	a0, a3, 0 !1219
@@ -8584,7 +8584,7 @@ beq_else.27192: !1216
 	jal 	zero, beq_cont.27197 !1216
 beq_else.27196: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	lw  	a2, 20(a0) !338
@@ -8780,7 +8780,7 @@ beq_cont.27199: !1205
 	jal 	zero, beq_cont.27239 !1216
 beq_else.27238: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	flw  	fa0, 56(sp) !1219
@@ -8845,7 +8845,7 @@ beq_cont.27186: !1322
 	jal 	zero, solve_each_element.2704 !1340
 solve_one_or_network.2708:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a3, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8854,7 +8854,7 @@ solve_one_or_network.2708:
 	jalr	zero, ra, 0
 beq_else.27244: !1354
 	li  	a4, 1048908 !1355
-	slli	t0, a3, 2 !1355
+	
 	add 	t0, t0, a4 !1355
 	lw  	a3, 0(t0) !1355
 	addi	a4, zero, 0 !1356
@@ -8869,7 +8869,7 @@ beq_else.27244: !1354
 	lw  	a0, 12(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8878,7 +8878,7 @@ beq_else.27244: !1354
 	jalr	zero, ra, 0
 beq_else.27246: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -8893,7 +8893,7 @@ beq_else.27246: !1354
 	lw  	a0, 16(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8902,7 +8902,7 @@ beq_else.27246: !1354
 	jalr	zero, ra, 0
 beq_else.27248: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -8917,7 +8917,7 @@ beq_else.27248: !1354
 	lw  	a0, 20(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8926,7 +8926,7 @@ beq_else.27248: !1354
 	jalr	zero, ra, 0
 beq_else.27250: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -8941,7 +8941,7 @@ beq_else.27250: !1354
 	lw  	a0, 24(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8950,7 +8950,7 @@ beq_else.27250: !1354
 	jalr	zero, ra, 0
 beq_else.27252: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -8965,7 +8965,7 @@ beq_else.27252: !1354
 	lw  	a0, 28(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8974,7 +8974,7 @@ beq_else.27252: !1354
 	jalr	zero, ra, 0
 beq_else.27254: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -8989,7 +8989,7 @@ beq_else.27254: !1354
 	lw  	a0, 32(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -8998,7 +8998,7 @@ beq_else.27254: !1354
 	jalr	zero, ra, 0
 beq_else.27256: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -9013,7 +9013,7 @@ beq_else.27256: !1354
 	lw  	a0, 36(sp) !1357
 	addi	a0, a0, 1 !1357
 	lw  	a1, 8(sp) !1353
-	slli	t0, a0, 2 !1353
+	
 	add 	t0, t0, a1 !1353
 	lw  	a2, 0(t0) !1353
 	addi	t0, zero, -1 !1354
@@ -9022,7 +9022,7 @@ beq_else.27256: !1354
 	jalr	zero, ra, 0
 beq_else.27258: !1354
 	li  	a3, 1048908 !1355
-	slli	t0, a2, 2 !1355
+	
 	add 	t0, t0, a3 !1355
 	lw  	a2, 0(t0) !1355
 	addi	a3, zero, 0 !1356
@@ -9042,7 +9042,7 @@ beq_else.27258: !1354
 	jal 	zero, solve_one_or_network.2708 !1357
 trace_or_matrix.2712:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1363
+	
 	add 	t0, t0, a1 !1363
 	lw  	a3, 0(t0) !1363
 	lw  	a4, 0(a3) !1364
@@ -9062,7 +9062,7 @@ beq_else.27260: !1365
 	jal 	zero, beq_cont.27265 !1354
 beq_else.27264: !1354
 	li  	a5, 1048908 !1355
-	slli	t0, a4, 2 !1355
+	
 	add 	t0, t0, a5 !1355
 	lw  	a4, 0(t0) !1355
 	addi	a5, zero, 0 !1356
@@ -9079,7 +9079,7 @@ beq_else.27264: !1354
 	jal 	zero, beq_cont.27267 !1354
 beq_else.27266: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9096,7 +9096,7 @@ beq_else.27266: !1354
 	jal 	zero, beq_cont.27269 !1354
 beq_else.27268: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9113,7 +9113,7 @@ beq_else.27268: !1354
 	jal 	zero, beq_cont.27271 !1354
 beq_else.27270: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9130,7 +9130,7 @@ beq_else.27270: !1354
 	jal 	zero, beq_cont.27273 !1354
 beq_else.27272: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9147,7 +9147,7 @@ beq_else.27272: !1354
 	jal 	zero, beq_cont.27275 !1354
 beq_else.27274: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9164,7 +9164,7 @@ beq_else.27274: !1354
 	jal 	zero, beq_cont.27277 !1354
 beq_else.27276: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9190,7 +9190,7 @@ beq_cont.27265: !1354
 	jal 	zero, beq_cont.27263 !1368
 beq_else.27262: !1368
 	li  	a5, 1048624 !905
-	slli	t0, a4, 2 !905
+	
 	add 	t0, t0, a5 !905
 	lw  	a4, 0(t0) !905
 	li  	a5, 1049212 !907
@@ -9294,7 +9294,7 @@ beq_else.27291: !1376
 	jal 	zero, beq_cont.27294 !1354
 beq_else.27293: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9311,7 +9311,7 @@ beq_else.27293: !1354
 	jal 	zero, beq_cont.27296 !1354
 beq_else.27295: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9328,7 +9328,7 @@ beq_else.27295: !1354
 	jal 	zero, beq_cont.27298 !1354
 beq_else.27297: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9345,7 +9345,7 @@ beq_else.27297: !1354
 	jal 	zero, beq_cont.27300 !1354
 beq_else.27299: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9362,7 +9362,7 @@ beq_else.27299: !1354
 	jal 	zero, beq_cont.27302 !1354
 beq_else.27301: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9379,7 +9379,7 @@ beq_else.27301: !1354
 	jal 	zero, beq_cont.27304 !1354
 beq_else.27303: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9396,7 +9396,7 @@ beq_else.27303: !1354
 	jal 	zero, beq_cont.27306 !1354
 beq_else.27305: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9425,7 +9425,7 @@ beq_cont.27263: !1368
 	lw  	a0, 12(sp) !1381
 	addi	a0, a0, 1 !1381
 	lw  	a1, 8(sp) !1363
-	slli	t0, a0, 2 !1363
+	
 	add 	t0, t0, a1 !1363
 	lw  	a2, 0(t0) !1363
 	lw  	a3, 0(a2) !1364
@@ -9443,7 +9443,7 @@ beq_else.27307: !1365
 	jal 	zero, beq_cont.27312 !1354
 beq_else.27311: !1354
 	li  	a4, 1048908 !1355
-	slli	t0, a3, 2 !1355
+	
 	add 	t0, t0, a4 !1355
 	lw  	a3, 0(t0) !1355
 	addi	a4, zero, 0 !1356
@@ -9462,7 +9462,7 @@ beq_else.27311: !1354
 	jal 	zero, beq_cont.27314 !1354
 beq_else.27313: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9479,7 +9479,7 @@ beq_else.27313: !1354
 	jal 	zero, beq_cont.27316 !1354
 beq_else.27315: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9496,7 +9496,7 @@ beq_else.27315: !1354
 	jal 	zero, beq_cont.27318 !1354
 beq_else.27317: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9513,7 +9513,7 @@ beq_else.27317: !1354
 	jal 	zero, beq_cont.27320 !1354
 beq_else.27319: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9530,7 +9530,7 @@ beq_else.27319: !1354
 	jal 	zero, beq_cont.27322 !1354
 beq_else.27321: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9587,7 +9587,7 @@ beq_else.27327: !1376
 	jal 	zero, beq_cont.27330 !1354
 beq_else.27329: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9604,7 +9604,7 @@ beq_else.27329: !1354
 	jal 	zero, beq_cont.27332 !1354
 beq_else.27331: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9621,7 +9621,7 @@ beq_else.27331: !1354
 	jal 	zero, beq_cont.27334 !1354
 beq_else.27333: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9638,7 +9638,7 @@ beq_else.27333: !1354
 	jal 	zero, beq_cont.27336 !1354
 beq_else.27335: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9655,7 +9655,7 @@ beq_else.27335: !1354
 	jal 	zero, beq_cont.27338 !1354
 beq_else.27337: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9672,7 +9672,7 @@ beq_else.27337: !1354
 	jal 	zero, beq_cont.27340 !1354
 beq_else.27339: !1354
 	li  	a2, 1048908 !1355
-	slli	t0, a1, 2 !1355
+	
 	add 	t0, t0, a2 !1355
 	lw  	a1, 0(t0) !1355
 	addi	a2, zero, 0 !1356
@@ -9706,7 +9706,7 @@ beq_cont.27310: !1368
 solve_each_element_fast.2718:
 	sw  	ra, 0(sp)
 	lw  	a3, 0(a2) !529
-	slli	t0, a0, 2 !1404
+	
 	add 	t0, t0, a1 !1404
 	lw  	a4, 0(t0) !1404
 	addi	t0, zero, -1 !1405
@@ -9715,7 +9715,7 @@ solve_each_element_fast.2718:
 	jalr	zero, ra, 0
 beq_else.27341: !1405
 	li  	a5, 1048624 !1031
-	slli	t0, a4, 2 !1031
+	
 	add 	t0, t0, a5 !1031
 	lw  	a5, 0(t0) !1031
 	lw  	a6, 40(a5) !449
@@ -9723,7 +9723,7 @@ beq_else.27341: !1405
 	flw  	fa1, 4(a6) !1034
 	flw  	fa2, 8(a6) !1035
 	lw  	a7, 4(a2) !535
-	slli	t0, a4, 2 !1037
+	
 	add 	t0, t0, a7 !1037
 	lw  	a7, 0(t0) !1037
 	lw  	s1, 4(a5) !260
@@ -9837,7 +9837,7 @@ beq_cont.27344: !1039
 	bne 	a0, zero, beq_else.27362 !1408
 	li  	a0, 1048624 !1436
 	lw  	a1, 20(sp) !1436
-	slli	t0, a1, 2 !1436
+	
 	add 	t0, t0, a0 !1436
 	lw  	a0, 0(t0) !1436
 	lw  	a0, 24(a0) !280
@@ -9908,7 +9908,7 @@ beq_else.27371: !1415
 	jal 	zero, beq_cont.27375 !1216
 beq_else.27374: !1216
 	li  	a3, 1048624 !1219
-	slli	t0, a2, 2 !1219
+	
 	add 	t0, t0, a3 !1219
 	lw  	a2, 0(t0) !1219
 	addi	a0, a2, 0 !1219
@@ -9927,7 +9927,7 @@ beq_else.27374: !1216
 	jal 	zero, beq_cont.27379 !1216
 beq_else.27378: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	lw  	a2, 20(a0) !338
@@ -10123,7 +10123,7 @@ beq_cont.27381: !1205
 	jal 	zero, beq_cont.27421 !1216
 beq_else.27420: !1216
 	li  	a2, 1048624 !1219
-	slli	t0, a0, 2 !1219
+	
 	add 	t0, t0, a2 !1219
 	lw  	a0, 0(t0) !1219
 	flw  	fa0, 64(sp) !1219
@@ -10188,7 +10188,7 @@ beq_cont.27368: !1414
 	jal 	zero, solve_each_element_fast.2718 !1432
 solve_one_or_network_fast.2722:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a3, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10197,7 +10197,7 @@ solve_one_or_network_fast.2722:
 	jalr	zero, ra, 0
 beq_else.27426: !1445
 	li  	a4, 1048908 !1446
-	slli	t0, a3, 2 !1446
+	
 	add 	t0, t0, a4 !1446
 	lw  	a3, 0(t0) !1446
 	addi	a4, zero, 0 !1447
@@ -10212,7 +10212,7 @@ beq_else.27426: !1445
 	lw  	a0, 12(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10221,7 +10221,7 @@ beq_else.27426: !1445
 	jalr	zero, ra, 0
 beq_else.27428: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10236,7 +10236,7 @@ beq_else.27428: !1445
 	lw  	a0, 16(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10245,7 +10245,7 @@ beq_else.27428: !1445
 	jalr	zero, ra, 0
 beq_else.27430: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10260,7 +10260,7 @@ beq_else.27430: !1445
 	lw  	a0, 20(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10269,7 +10269,7 @@ beq_else.27430: !1445
 	jalr	zero, ra, 0
 beq_else.27432: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10284,7 +10284,7 @@ beq_else.27432: !1445
 	lw  	a0, 24(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10293,7 +10293,7 @@ beq_else.27432: !1445
 	jalr	zero, ra, 0
 beq_else.27434: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10308,7 +10308,7 @@ beq_else.27434: !1445
 	lw  	a0, 28(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10317,7 +10317,7 @@ beq_else.27434: !1445
 	jalr	zero, ra, 0
 beq_else.27436: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10332,7 +10332,7 @@ beq_else.27436: !1445
 	lw  	a0, 32(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10341,7 +10341,7 @@ beq_else.27436: !1445
 	jalr	zero, ra, 0
 beq_else.27438: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10356,7 +10356,7 @@ beq_else.27438: !1445
 	lw  	a0, 36(sp) !1448
 	addi	a0, a0, 1 !1448
 	lw  	a1, 8(sp) !1444
-	slli	t0, a0, 2 !1444
+	
 	add 	t0, t0, a1 !1444
 	lw  	a2, 0(t0) !1444
 	addi	t0, zero, -1 !1445
@@ -10365,7 +10365,7 @@ beq_else.27438: !1445
 	jalr	zero, ra, 0
 beq_else.27440: !1445
 	li  	a3, 1048908 !1446
-	slli	t0, a2, 2 !1446
+	
 	add 	t0, t0, a3 !1446
 	lw  	a2, 0(t0) !1446
 	addi	a3, zero, 0 !1447
@@ -10385,7 +10385,7 @@ beq_else.27440: !1445
 	jal 	zero, solve_one_or_network_fast.2722 !1448
 trace_or_matrix_fast.2726:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1454
+	
 	add 	t0, t0, a1 !1454
 	lw  	a3, 0(t0) !1454
 	lw  	a4, 0(a3) !1455
@@ -10405,7 +10405,7 @@ beq_else.27442: !1456
 	jal 	zero, beq_cont.27447 !1445
 beq_else.27446: !1445
 	li  	a5, 1048908 !1446
-	slli	t0, a4, 2 !1446
+	
 	add 	t0, t0, a5 !1446
 	lw  	a4, 0(t0) !1446
 	addi	a5, zero, 0 !1447
@@ -10422,7 +10422,7 @@ beq_else.27446: !1445
 	jal 	zero, beq_cont.27449 !1445
 beq_else.27448: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10439,7 +10439,7 @@ beq_else.27448: !1445
 	jal 	zero, beq_cont.27451 !1445
 beq_else.27450: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10456,7 +10456,7 @@ beq_else.27450: !1445
 	jal 	zero, beq_cont.27453 !1445
 beq_else.27452: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10473,7 +10473,7 @@ beq_else.27452: !1445
 	jal 	zero, beq_cont.27455 !1445
 beq_else.27454: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10490,7 +10490,7 @@ beq_else.27454: !1445
 	jal 	zero, beq_cont.27457 !1445
 beq_else.27456: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10507,7 +10507,7 @@ beq_else.27456: !1445
 	jal 	zero, beq_cont.27459 !1445
 beq_else.27458: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10533,7 +10533,7 @@ beq_cont.27447: !1445
 	jal 	zero, beq_cont.27445 !1459
 beq_else.27444: !1459
 	li  	a5, 1048624 !1031
-	slli	t0, a4, 2 !1031
+	
 	add 	t0, t0, a5 !1031
 	lw  	a5, 0(t0) !1031
 	lw  	a6, 40(a5) !449
@@ -10541,7 +10541,7 @@ beq_else.27444: !1459
 	flw  	fa1, 4(a6) !1034
 	flw  	fa2, 8(a6) !1035
 	lw  	a7, 4(a2) !535
-	slli	t0, a4, 2 !1037
+	
 	add 	t0, t0, a7 !1037
 	lw  	a4, 0(t0) !1037
 	lw  	a7, 4(a5) !260
@@ -10672,7 +10672,7 @@ beq_else.27482: !1467
 	jal 	zero, beq_cont.27485 !1445
 beq_else.27484: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10689,7 +10689,7 @@ beq_else.27484: !1445
 	jal 	zero, beq_cont.27487 !1445
 beq_else.27486: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10706,7 +10706,7 @@ beq_else.27486: !1445
 	jal 	zero, beq_cont.27489 !1445
 beq_else.27488: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10723,7 +10723,7 @@ beq_else.27488: !1445
 	jal 	zero, beq_cont.27491 !1445
 beq_else.27490: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10740,7 +10740,7 @@ beq_else.27490: !1445
 	jal 	zero, beq_cont.27493 !1445
 beq_else.27492: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10757,7 +10757,7 @@ beq_else.27492: !1445
 	jal 	zero, beq_cont.27495 !1445
 beq_else.27494: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10774,7 +10774,7 @@ beq_else.27494: !1445
 	jal 	zero, beq_cont.27497 !1445
 beq_else.27496: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10803,7 +10803,7 @@ beq_cont.27445: !1459
 	lw  	a0, 12(sp) !1472
 	addi	a0, a0, 1 !1472
 	lw  	a1, 8(sp) !1454
-	slli	t0, a0, 2 !1454
+	
 	add 	t0, t0, a1 !1454
 	lw  	a2, 0(t0) !1454
 	lw  	a3, 0(a2) !1455
@@ -10821,7 +10821,7 @@ beq_else.27498: !1456
 	jal 	zero, beq_cont.27503 !1445
 beq_else.27502: !1445
 	li  	a4, 1048908 !1446
-	slli	t0, a3, 2 !1446
+	
 	add 	t0, t0, a4 !1446
 	lw  	a3, 0(t0) !1446
 	addi	a4, zero, 0 !1447
@@ -10840,7 +10840,7 @@ beq_else.27502: !1445
 	jal 	zero, beq_cont.27505 !1445
 beq_else.27504: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10857,7 +10857,7 @@ beq_else.27504: !1445
 	jal 	zero, beq_cont.27507 !1445
 beq_else.27506: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10874,7 +10874,7 @@ beq_else.27506: !1445
 	jal 	zero, beq_cont.27509 !1445
 beq_else.27508: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10891,7 +10891,7 @@ beq_else.27508: !1445
 	jal 	zero, beq_cont.27511 !1445
 beq_else.27510: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10908,7 +10908,7 @@ beq_else.27510: !1445
 	jal 	zero, beq_cont.27513 !1445
 beq_else.27512: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10963,7 +10963,7 @@ beq_else.27518: !1467
 	jal 	zero, beq_cont.27521 !1445
 beq_else.27520: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10980,7 +10980,7 @@ beq_else.27520: !1445
 	jal 	zero, beq_cont.27523 !1445
 beq_else.27522: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -10997,7 +10997,7 @@ beq_else.27522: !1445
 	jal 	zero, beq_cont.27525 !1445
 beq_else.27524: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11014,7 +11014,7 @@ beq_else.27524: !1445
 	jal 	zero, beq_cont.27527 !1445
 beq_else.27526: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11031,7 +11031,7 @@ beq_else.27526: !1445
 	jal 	zero, beq_cont.27529 !1445
 beq_else.27528: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11048,7 +11048,7 @@ beq_else.27528: !1445
 	jal 	zero, beq_cont.27531 !1445
 beq_else.27530: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11604,7 +11604,7 @@ trace_reflections.2748:
 	sw  	ra, 0(sp)
 	blt 	a0, zero, bge_else.27588 !1643
 	li  	a2, 1049592 !1644
-	slli	t0, a0, 2 !1644
+	
 	add 	t0, t0, a2 !1644
 	lw  	a2, 0(t0) !1644
 	lw  	a3, 4(a2) !549
@@ -11654,7 +11654,7 @@ beq_cont.27593: !1483
 beq_else.27596: !1648
 	li  	a0, 1049140 !1649
 	lw  	a0, 0(a0) !1649
-	slli	a0, a0, 2 !1649
+	
 	li  	a1, 1049120 !1649
 	lw  	a1, 0(a1) !1649
 	add 	a0, a0, a1 !1649
@@ -11856,7 +11856,7 @@ beq_cont.27597: !1648
 	addi	a0, a0, -1 !1662
 	blt 	a0, zero, bge_else.27626 !1643
 	li  	a1, 1049592 !1644
-	slli	t0, a0, 2 !1644
+	
 	add 	t0, t0, a1 !1644
 	lw  	a1, 0(t0) !1644
 	lw  	a2, 4(a1) !549
@@ -11883,7 +11883,7 @@ beq_else.27627: !1456
 	jal 	zero, beq_cont.27632 !1445
 beq_else.27631: !1445
 	li  	a6, 1048908 !1446
-	slli	t0, a5, 2 !1446
+	
 	add 	t0, t0, a6 !1446
 	lw  	a5, 0(t0) !1446
 	addi	a6, zero, 0 !1447
@@ -11900,7 +11900,7 @@ beq_else.27631: !1445
 	jal 	zero, beq_cont.27634 !1445
 beq_else.27633: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11917,7 +11917,7 @@ beq_else.27633: !1445
 	jal 	zero, beq_cont.27636 !1445
 beq_else.27635: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11934,7 +11934,7 @@ beq_else.27635: !1445
 	jal 	zero, beq_cont.27638 !1445
 beq_else.27637: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -11986,7 +11986,7 @@ beq_else.27643: !1467
 	jal 	zero, beq_cont.27646 !1445
 beq_else.27645: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12003,7 +12003,7 @@ beq_else.27645: !1445
 	jal 	zero, beq_cont.27648 !1445
 beq_else.27647: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12020,7 +12020,7 @@ beq_else.27647: !1445
 	jal 	zero, beq_cont.27650 !1445
 beq_else.27649: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12037,7 +12037,7 @@ beq_else.27649: !1445
 	jal 	zero, beq_cont.27652 !1445
 beq_else.27651: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12095,7 +12095,7 @@ beq_cont.27656: !1483
 beq_else.27659: !1648
 	li  	a0, 1049140 !1649
 	lw  	a0, 0(a0) !1649
-	slli	a0, a0, 2 !1649
+	
 	li  	a1, 1049120 !1649
 	lw  	a1, 0(a1) !1649
 	add 	a0, a0, a1 !1649
@@ -12220,7 +12220,7 @@ beq_cont.27673: !1394
 	addi	a0, zero, -1 !1734
 	lw  	a1, 36(sp) !1734
 	lw  	a2, 40(sp) !1734
-	slli	t0, a1, 2 !1734
+	
 	add 	t0, t0, a2 !1734
 	sw  	a0, 0(t0) !1734
 	bne 	a1, zero, beq_else.27677 !1736
@@ -12283,7 +12283,7 @@ beq_else.27676: !1671
 	li  	a0, 1049140 !1673
 	lw  	a0, 0(a0) !1673
 	li  	a1, 1048624 !1674
-	slli	t0, a0, 2 !1674
+	
 	add 	t0, t0, a1 !1674
 	lw  	a1, 0(t0) !1674
 	lw  	a2, 8(a1) !270
@@ -12310,7 +12310,7 @@ beq_else.27676: !1671
 	addi	a4, a3, -1 !1500
 	addi	a3, a3, -1 !1500
 	lw  	a5, 32(sp) !1500
-	slli	t0, a3, 2 !1500
+	
 	add 	t0, t0, a5 !1500
 	flw  	fa2, 0(t0) !1500
 	li  	fa3, 0.000000 !124
@@ -12345,7 +12345,7 @@ beq_cont.27689: !147
 	fsgnjn  fa0, fa0, fa0
 	li  	a0, 1049144 !1500
 	lw  	a1, 64(sp) !1500
-	slli	t0, a1, 2 !1500
+	
 	add 	t0, t0, a0 !1500
 	sw  	fa0, 0(t0) !1500
 	jal 	zero, beq_cont.27685 !1536
@@ -12396,18 +12396,18 @@ beq_cont.27685: !1536
 	jal 	ra, utexture.2741 !1680
 	addi	sp, sp, -68 !1680
 	lw  	a0, 56(sp) !1683
-	slli	a0, a0, 2 !1683
+	
 	li  	a1, 1049120 !1683
 	lw  	a1, 0(a1) !1683
 	add 	a0, a0, a1 !1683
 	lw  	a1, 36(sp) !1683
 	lw  	a2, 40(sp) !1683
-	slli	t0, a1, 2 !1683
+	
 	add 	t0, t0, a2 !1683
 	sw  	a0, 0(t0) !1683
 	lw  	a0, 16(sp) !468
 	lw  	a3, 4(a0) !468
-	slli	t0, a1, 2 !1685
+	
 	add 	t0, t0, a3 !1685
 	lw  	a3, 0(t0) !1685
 	li  	a4, 1049128 !188
@@ -12433,11 +12433,11 @@ bne_else.27696: !121
 bne_cont.27697: !121
 	bne 	a5, zero, beq_else.27698 !1689
 	addi	a5, zero, 1 !1692
-	slli	t0, a1, 2 !1692
+	
 	add 	t0, t0, a3 !1692
 	sw  	a5, 0(t0) !1692
 	lw  	a3, 16(a0) !490
-	slli	t0, a1, 2 !1694
+	
 	add 	t0, t0, a3 !1694
 	lw  	a5, 0(t0) !1694
 	li  	a6, 1049156 !188
@@ -12449,7 +12449,7 @@ bne_cont.27697: !121
 	li  	a6, 1049156 !190
 	lw  	fa0, 8(a6) !190
 	fsw  	fa0, 8(a5) !190
-	slli	t0, a1, 2 !1695
+	
 	add 	t0, t0, a3 !1695
 	lw  	a3, 0(t0) !1695
 	li  	fa0, 0.003906 !1695
@@ -12465,7 +12465,7 @@ bne_cont.27697: !121
 	fmul	fa2, fa2, fa0 !236
 	fsw  	fa2, 8(a3) !236
 	lw  	a3, 28(a0) !520
-	slli	t0, a1, 2 !1697
+	
 	add 	t0, t0, a3 !1697
 	lw  	a3, 0(t0) !1697
 	li  	a5, 1049144 !188
@@ -12480,7 +12480,7 @@ bne_cont.27697: !121
 	jal 	zero, beq_cont.27699 !1689
 beq_else.27698: !1689
 	addi	a5, zero, 0 !1690
-	slli	t0, a1, 2 !1690
+	
 	add 	t0, t0, a3 !1690
 	sw  	a5, 0(t0) !1690
 beq_cont.27699: !1689
@@ -12739,7 +12739,7 @@ beq_cont.27718: !1707
 	addi	a0, a0, -1 !1715
 	blt 	a0, zero, bge_else.27727 !1643
 	li  	a1, 1049592 !1644
-	slli	t0, a0, 2 !1644
+	
 	add 	t0, t0, a1 !1644
 	lw  	a1, 0(t0) !1644
 	lw  	a2, 4(a1) !549
@@ -12766,7 +12766,7 @@ beq_else.27729: !1456
 	jal 	zero, beq_cont.27734 !1445
 beq_else.27733: !1445
 	li  	a6, 1048908 !1446
-	slli	t0, a5, 2 !1446
+	
 	add 	t0, t0, a6 !1446
 	lw  	a5, 0(t0) !1446
 	addi	a6, zero, 0 !1447
@@ -12783,7 +12783,7 @@ beq_else.27733: !1445
 	jal 	zero, beq_cont.27736 !1445
 beq_else.27735: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12800,7 +12800,7 @@ beq_else.27735: !1445
 	jal 	zero, beq_cont.27738 !1445
 beq_else.27737: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12817,7 +12817,7 @@ beq_else.27737: !1445
 	jal 	zero, beq_cont.27740 !1445
 beq_else.27739: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12869,7 +12869,7 @@ beq_else.27745: !1467
 	jal 	zero, beq_cont.27748 !1445
 beq_else.27747: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12886,7 +12886,7 @@ beq_else.27747: !1445
 	jal 	zero, beq_cont.27750 !1445
 beq_else.27749: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12903,7 +12903,7 @@ beq_else.27749: !1445
 	jal 	zero, beq_cont.27752 !1445
 beq_else.27751: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12920,7 +12920,7 @@ beq_else.27751: !1445
 	jal 	zero, beq_cont.27754 !1445
 beq_else.27753: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -12978,7 +12978,7 @@ beq_cont.27758: !1483
 beq_else.27761: !1648
 	li  	a0, 1049140 !1649
 	lw  	a0, 0(a0) !1649
-	slli	a0, a0, 2 !1649
+	
 	li  	a1, 1049120 !1649
 	lw  	a1, 0(a1) !1649
 	add 	a0, a0, a1 !1649
@@ -13072,7 +13072,7 @@ bge_else.27771: !1720
 	addi	a1, a0, 1 !1721
 	addi	a2, zero, -1 !1721
 	lw  	a3, 40(sp) !1721
-	slli	t0, a1, 2 !1721
+	
 	add 	t0, t0, a3 !1721
 	sw  	a2, 0(t0) !1721
 bge_cont.27772: !1720
@@ -13147,7 +13147,7 @@ beq_else.27783: !1761
 	li  	a0, 1049140 !1762
 	lw  	a0, 0(a0) !1762
 	li  	a1, 1048624 !1762
-	slli	t0, a0, 2 !1762
+	
 	add 	t0, t0, a1 !1762
 	lw  	a0, 0(t0) !1762
 	lw  	a1, 16(sp) !529
@@ -13167,7 +13167,7 @@ beq_else.27783: !1761
 	sw  	fa0, 8(a3) !178
 	addi	a3, a2, -1 !1500
 	addi	a2, a2, -1 !1500
-	slli	t0, a2, 2 !1500
+	
 	add 	t0, t0, a1 !1500
 	flw  	fa0, 0(t0) !1500
 	li  	fa1, 0.000000 !124
@@ -13201,7 +13201,7 @@ beq_cont.27790: !147
 	fsgnjn  fa0, fa0, fa0
 	li  	a0, 1049144 !1500
 	lw  	a1, 24(sp) !1500
-	slli	t0, a1, 2 !1500
+	
 	add 	t0, t0, a0 !1500
 	sw  	fa0, 0(t0) !1500
 	jal 	zero, beq_cont.27786 !1536
@@ -13388,7 +13388,7 @@ beq_else.27813: !1767
 iter_trace_diffuse_rays.2762:
 	sw  	ra, 0(sp)
 	blt 	a3, zero, bge_else.27820 !1777
-	slli	t0, a3, 2 !1778
+	
 	add 	t0, t0, a0 !1778
 	lw  	a4, 0(t0) !1778
 	lw  	a4, 0(a4) !529
@@ -13416,7 +13416,7 @@ bne_cont.27822: !123
 	sw  	a0, 12(sp) !1781
 	sw  	a3, 16(sp) !1781
 	bne 	a4, zero, beq_else.27823 !1781
-	slli	t0, a3, 2 !1784
+	
 	add 	t0, t0, a0 !1784
 	lw  	a4, 0(t0) !1784
 	li  	fa1, 150.000000 !1784
@@ -13443,7 +13443,7 @@ beq_else.27826: !1456
 	jal 	zero, beq_cont.27831 !1445
 beq_else.27830: !1445
 	li  	s1, 1048908 !1446
-	slli	t0, a7, 2 !1446
+	
 	add 	t0, t0, s1 !1446
 	lw  	a7, 0(t0) !1446
 	addi	s1, zero, 0 !1447
@@ -13461,7 +13461,7 @@ beq_else.27830: !1445
 	jal 	zero, beq_cont.27833 !1445
 beq_else.27832: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13478,7 +13478,7 @@ beq_else.27832: !1445
 	jal 	zero, beq_cont.27835 !1445
 beq_else.27834: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13495,7 +13495,7 @@ beq_else.27834: !1445
 	jal 	zero, beq_cont.27837 !1445
 beq_else.27836: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13547,7 +13547,7 @@ beq_else.27842: !1467
 	jal 	zero, beq_cont.27845 !1445
 beq_else.27844: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13564,7 +13564,7 @@ beq_else.27844: !1445
 	jal 	zero, beq_cont.27847 !1445
 beq_else.27846: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13581,7 +13581,7 @@ beq_else.27846: !1445
 	jal 	zero, beq_cont.27849 !1445
 beq_else.27848: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13598,7 +13598,7 @@ beq_else.27848: !1445
 	jal 	zero, beq_cont.27851 !1445
 beq_else.27850: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13657,7 +13657,7 @@ beq_else.27858: !1761
 	li  	a0, 1049140 !1762
 	lw  	a0, 0(a0) !1762
 	li  	a1, 1048624 !1762
-	slli	t0, a0, 2 !1762
+	
 	add 	t0, t0, a1 !1762
 	lw  	a0, 0(t0) !1762
 	lw  	a1, 32(sp) !529
@@ -13677,7 +13677,7 @@ beq_else.27858: !1761
 	sw  	fa0, 8(a3) !178
 	addi	a3, a2, -1 !1500
 	addi	a2, a2, -1 !1500
-	slli	t0, a2, 2 !1500
+	
 	add 	t0, t0, a1 !1500
 	flw  	fa0, 0(t0) !1500
 	li  	fa1, 0.000000 !124
@@ -13711,7 +13711,7 @@ beq_cont.27865: !147
 	fsgnjn  fa0, fa0, fa0
 	li  	a0, 1049144 !1500
 	lw  	a1, 48(sp) !1500
-	slli	t0, a1, 2 !1500
+	
 	add 	t0, t0, a0 !1500
 	sw  	fa0, 0(t0) !1500
 	jal 	zero, beq_cont.27861 !1536
@@ -13822,7 +13822,7 @@ beq_cont.27859: !1761
 	jal 	zero, beq_cont.27824 !1781
 beq_else.27823: !1781
 	addi	a4, a3, 1 !1782
-	slli	t0, a4, 2 !1782
+	
 	add 	t0, t0, a0 !1782
 	lw  	a4, 0(t0) !1782
 	li  	fa1, -150.000000 !1782
@@ -13849,7 +13849,7 @@ beq_else.27879: !1456
 	jal 	zero, beq_cont.27884 !1445
 beq_else.27883: !1445
 	li  	s1, 1048908 !1446
-	slli	t0, a7, 2 !1446
+	
 	add 	t0, t0, s1 !1446
 	lw  	a7, 0(t0) !1446
 	addi	s1, zero, 0 !1447
@@ -13867,7 +13867,7 @@ beq_else.27883: !1445
 	jal 	zero, beq_cont.27886 !1445
 beq_else.27885: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13884,7 +13884,7 @@ beq_else.27885: !1445
 	jal 	zero, beq_cont.27888 !1445
 beq_else.27887: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13901,7 +13901,7 @@ beq_else.27887: !1445
 	jal 	zero, beq_cont.27890 !1445
 beq_else.27889: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13953,7 +13953,7 @@ beq_else.27895: !1467
 	jal 	zero, beq_cont.27898 !1445
 beq_else.27897: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13970,7 +13970,7 @@ beq_else.27897: !1445
 	jal 	zero, beq_cont.27900 !1445
 beq_else.27899: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -13987,7 +13987,7 @@ beq_else.27899: !1445
 	jal 	zero, beq_cont.27902 !1445
 beq_else.27901: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -14004,7 +14004,7 @@ beq_else.27901: !1445
 	jal 	zero, beq_cont.27904 !1445
 beq_else.27903: !1445
 	li  	a2, 1048908 !1446
-	slli	t0, a1, 2 !1446
+	
 	add 	t0, t0, a2 !1446
 	lw  	a1, 0(t0) !1446
 	addi	a2, zero, 0 !1447
@@ -14063,7 +14063,7 @@ beq_else.27911: !1761
 	li  	a0, 1049140 !1762
 	lw  	a0, 0(a0) !1762
 	li  	a1, 1048624 !1762
-	slli	t0, a0, 2 !1762
+	
 	add 	t0, t0, a1 !1762
 	lw  	a0, 0(t0) !1762
 	lw  	a1, 64(sp) !529
@@ -14083,7 +14083,7 @@ beq_else.27911: !1761
 	sw  	fa0, 8(a3) !178
 	addi	a3, a2, -1 !1500
 	addi	a2, a2, -1 !1500
-	slli	t0, a2, 2 !1500
+	
 	add 	t0, t0, a1 !1500
 	flw  	fa0, 0(t0) !1500
 	li  	fa1, 0.000000 !124
@@ -14117,7 +14117,7 @@ beq_cont.27918: !147
 	fsgnjn  fa0, fa0, fa0
 	li  	a0, 1049144 !1500
 	lw  	a1, 80(sp) !1500
-	slli	t0, a1, 2 !1500
+	
 	add 	t0, t0, a0 !1500
 	sw  	fa0, 0(t0) !1500
 	jal 	zero, beq_cont.27914 !1536
@@ -14230,7 +14230,7 @@ beq_cont.27824: !1781
 	addi	a0, a0, -2 !1786
 	blt 	a0, zero, bge_else.27931 !1777
 	lw  	a1, 12(sp) !1778
-	slli	t0, a0, 2 !1778
+	
 	add 	t0, t0, a1 !1778
 	lw  	a2, 0(t0) !1778
 	lw  	a2, 0(a2) !529
@@ -14256,7 +14256,7 @@ bne_else.27932: !123
 bne_cont.27933: !123
 	sw  	a0, 84(sp) !1781
 	bne 	a2, zero, beq_else.27934 !1781
-	slli	t0, a0, 2 !1784
+	
 	add 	t0, t0, a1 !1784
 	lw  	a2, 0(t0) !1784
 	li  	fa1, 150.000000 !1784
@@ -14268,7 +14268,7 @@ bne_cont.27933: !123
 	jal 	zero, beq_cont.27935 !1781
 beq_else.27934: !1781
 	addi	a2, a0, 1 !1782
-	slli	t0, a2, 2 !1782
+	
 	add 	t0, t0, a1 !1782
 	lw  	a2, 0(t0) !1782
 	li  	fa1, -150.000000 !1782
@@ -14468,7 +14468,7 @@ calc_diffuse_using_1point.2775:
 	lw  	a3, 28(a0) !520
 	lw  	a4, 4(a0) !468
 	lw  	a5, 16(a0) !490
-	slli	t0, a1, 2 !1831
+	
 	add 	t0, t0, a2 !1831
 	lw  	a2, 0(t0) !1831
 	flw  	fa0, 0(a2) !188
@@ -14482,10 +14482,10 @@ calc_diffuse_using_1point.2775:
 	sw  	fa0, 8(a2) !190
 	lw  	a0, 24(a0) !506
 	lw  	a0, 0(a0) !508
-	slli	t0, a1, 2 !1834
+	
 	add 	t0, t0, a3 !1834
 	lw  	a2, 0(t0) !1834
-	slli	t0, a1, 2 !1835
+	
 	add 	t0, t0, a4 !1835
 	lw  	a3, 0(t0) !1835
 	sw  	a1, 4(sp) !1801
@@ -14867,7 +14867,7 @@ beq_cont.27977: !1781
 beq_cont.27973: !1817
 	lw  	a0, 4(sp) !1836
 	lw  	a1, 8(sp) !1836
-	slli	t0, a0, 2 !1836
+	
 	add 	t0, t0, a1 !1836
 	lw  	a0, 0(t0) !1836
 	li  	a1, 1049180 !241
@@ -14901,29 +14901,29 @@ beq_cont.27973: !1817
 	jalr	zero, ra, 0
 calc_diffuse_using_5points.2778:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1844
+	
 	add 	t0, t0, a1 !1844
 	lw  	a1, 0(t0) !1844
 	lw  	a1, 20(a1) !497
 	addi	a5, a0, -1 !1845
-	slli	t0, a5, 2 !1845
+	
 	add 	t0, t0, a2 !1845
 	lw  	a5, 0(t0) !1845
 	lw  	a5, 20(a5) !497
-	slli	t0, a0, 2 !1846
+	
 	add 	t0, t0, a2 !1846
 	lw  	a6, 0(t0) !1846
 	lw  	a6, 20(a6) !497
 	addi	a7, a0, 1 !1847
-	slli	t0, a7, 2 !1847
+	
 	add 	t0, t0, a2 !1847
 	lw  	a7, 0(t0) !1847
 	lw  	a7, 20(a7) !497
-	slli	t0, a0, 2 !1848
+	
 	add 	t0, t0, a3 !1848
 	lw  	a3, 0(t0) !1848
 	lw  	a3, 20(a3) !497
-	slli	t0, a4, 2 !1850
+	
 	add 	t0, t0, a1 !1850
 	lw  	a1, 0(t0) !1850
 	flw  	fa0, 0(a1) !188
@@ -14935,7 +14935,7 @@ calc_diffuse_using_5points.2778:
 	flw  	fa0, 8(a1) !190
 	li  	a1, 1049168 !190
 	sw  	fa0, 8(a1) !190
-	slli	t0, a4, 2 !1851
+	
 	add 	t0, t0, a5 !1851
 	lw  	a1, 0(t0) !1851
 	li  	a5, 1049168 !225
@@ -14956,7 +14956,7 @@ calc_diffuse_using_5points.2778:
 	fadd	fa0, fa0, fa1 !227
 	li  	a1, 1049168 !227
 	sw  	fa0, 8(a1) !227
-	slli	t0, a4, 2 !1852
+	
 	add 	t0, t0, a6 !1852
 	lw  	a1, 0(t0) !1852
 	li  	a5, 1049168 !225
@@ -14977,7 +14977,7 @@ calc_diffuse_using_5points.2778:
 	fadd	fa0, fa0, fa1 !227
 	li  	a1, 1049168 !227
 	sw  	fa0, 8(a1) !227
-	slli	t0, a4, 2 !1853
+	
 	add 	t0, t0, a7 !1853
 	lw  	a1, 0(t0) !1853
 	li  	a5, 1049168 !225
@@ -14998,7 +14998,7 @@ calc_diffuse_using_5points.2778:
 	fadd	fa0, fa0, fa1 !227
 	li  	a1, 1049168 !227
 	sw  	fa0, 8(a1) !227
-	slli	t0, a4, 2 !1854
+	
 	add 	t0, t0, a3 !1854
 	lw  	a1, 0(t0) !1854
 	li  	a3, 1049168 !225
@@ -15019,11 +15019,11 @@ calc_diffuse_using_5points.2778:
 	fadd	fa0, fa0, fa1 !227
 	li  	a1, 1049168 !227
 	sw  	fa0, 8(a1) !227
-	slli	t0, a0, 2 !1856
+	
 	add 	t0, t0, a2 !1856
 	lw  	a0, 0(t0) !1856
 	lw  	a0, 16(a0) !490
-	slli	t0, a4, 2 !1857
+	
 	add 	t0, t0, a0 !1857
 	lw  	a0, 0(t0) !1857
 	li  	a1, 1049180 !241
@@ -15060,12 +15060,12 @@ do_without_neighbors.2784:
 	addi	t0, zero, 4 !1863
 	blt 	t0, a1, bge_else.27980 !1863
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.27981 !1866
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	sw  	a0, 4(sp) !1868
@@ -15077,7 +15077,7 @@ beq_else.27982: !1868
 	lw  	a3, 28(a0) !520
 	lw  	a4, 4(a0) !468
 	lw  	a5, 16(a0) !490
-	slli	t0, a1, 2 !1831
+	
 	add 	t0, t0, a2 !1831
 	lw  	a2, 0(t0) !1831
 	flw  	fa0, 0(a2) !188
@@ -15091,10 +15091,10 @@ beq_else.27982: !1868
 	sw  	fa0, 8(a2) !190
 	lw  	a2, 24(a0) !506
 	lw  	a2, 0(a2) !508
-	slli	t0, a1, 2 !1834
+	
 	add 	t0, t0, a3 !1834
 	lw  	a3, 0(t0) !1834
-	slli	t0, a1, 2 !1835
+	
 	add 	t0, t0, a4 !1835
 	lw  	a4, 0(t0) !1835
 	sw  	a5, 12(sp) !1801
@@ -15270,7 +15270,7 @@ beq_else.27992: !1817
 beq_cont.27993: !1817
 	lw  	a0, 8(sp) !1836
 	lw  	a1, 12(sp) !1836
-	slli	t0, a0, 2 !1836
+	
 	add 	t0, t0, a1 !1836
 	lw  	a1, 0(t0) !1836
 	li  	a2, 1049180 !241
@@ -15307,12 +15307,12 @@ beq_cont.27983: !1868
 	blt 	t0, a1, bge_else.27994 !1863
 	lw  	a0, 4(sp) !476
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.27995 !1866
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	sw  	a1, 48(sp) !1868
@@ -15329,12 +15329,12 @@ beq_cont.27997: !1868
 	blt 	t0, a0, bge_else.27998 !1863
 	lw  	a1, 4(sp) !476
 	lw  	a2, 8(a1) !476
-	slli	t0, a0, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.27999 !1866
 	lw  	a2, 12(a1) !483
-	slli	t0, a0, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	bne 	a2, zero, beq_else.28000 !1868
@@ -15344,7 +15344,7 @@ beq_else.28000: !1868
 	lw  	a3, 28(a1) !520
 	lw  	a4, 4(a1) !468
 	lw  	a5, 16(a1) !490
-	slli	t0, a0, 2 !1831
+	
 	add 	t0, t0, a2 !1831
 	lw  	a2, 0(t0) !1831
 	flw  	fa0, 0(a2) !188
@@ -15358,10 +15358,10 @@ beq_else.28000: !1868
 	sw  	fa0, 8(a2) !190
 	lw  	a2, 24(a1) !506
 	lw  	a2, 0(a2) !508
-	slli	t0, a0, 2 !1834
+	
 	add 	t0, t0, a3 !1834
 	lw  	a3, 0(t0) !1834
-	slli	t0, a0, 2 !1835
+	
 	add 	t0, t0, a4 !1835
 	lw  	a4, 0(t0) !1835
 	sw  	a0, 52(sp) !1832
@@ -15374,7 +15374,7 @@ beq_else.28000: !1868
 	addi	sp, sp, -60 !1832
 	lw  	a0, 52(sp) !1836
 	lw  	a1, 56(sp) !1836
-	slli	t0, a0, 2 !1836
+	
 	add 	t0, t0, a1 !1836
 	lw  	a1, 0(t0) !1836
 	li  	a2, 1049180 !241
@@ -15410,12 +15410,12 @@ beq_cont.28001: !1868
 	blt 	t0, a1, bge_else.28002 !1863
 	lw  	a0, 4(sp) !476
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.28003 !1866
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	sw  	a1, 60(sp) !1868
@@ -15457,54 +15457,54 @@ bge_else.27980: !1863
 	jalr	zero, ra, 0
 try_exploit_neighbors.2800:
 	sw  	ra, 0(sp)
-	slli	t0, a0, 2 !1912
+	
 	add 	t0, t0, a3 !1912
 	lw  	a6, 0(t0) !1912
 	addi	t0, zero, 4 !1913
 	blt 	t0, a5, bge_else.28014 !1913
 	lw  	a7, 8(a6) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, a7 !1891
 	lw  	a7, 0(t0) !1891
 	blt 	a7, zero, bge_else.28015 !1916
-	slli	t0, a0, 2 !1896
+	
 	add 	t0, t0, a3 !1896
 	lw  	a7, 0(t0) !1896
 	lw  	a7, 8(a7) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, a7 !1891
 	lw  	a7, 0(t0) !1891
-	slli	t0, a0, 2 !1898
+	
 	add 	t0, t0, a2 !1898
 	lw  	s1, 0(t0) !1898
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28016 !1898
-	slli	t0, a0, 2 !1899
+	
 	add 	t0, t0, a4 !1899
 	lw  	s1, 0(t0) !1899
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28018 !1899
 	addi	s1, a0, -1 !1900
-	slli	t0, s1, 2 !1900
+	
 	add 	t0, t0, a3 !1900
 	lw  	s1, 0(t0) !1900
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28020 !1900
 	addi	s1, a0, 1 !1901
-	slli	t0, s1, 2 !1901
+	
 	add 	t0, t0, a3 !1901
 	lw  	s1, 0(t0) !1901
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28022 !1901
@@ -15526,18 +15526,18 @@ beq_else.28016: !1898
 	addi	a7, zero, 0 !1906
 beq_cont.28017: !1898
 	bne 	a7, zero, beq_else.28024 !1918
-	slli	t0, a0, 2 !1930
+	
 	add 	t0, t0, a3 !1930
 	lw  	a0, 0(t0) !1930
 	addi	t0, zero, 4 !1863
 	blt 	t0, a5, bge_else.28025 !1863
 	lw  	a1, 8(a0) !476
-	slli	t0, a5, 2 !1866
+	
 	add 	t0, t0, a1 !1866
 	lw  	a1, 0(t0) !1866
 	blt 	a1, zero, bge_else.28026 !1866
 	lw  	a1, 12(a0) !483
-	slli	t0, a5, 2 !1868
+	
 	add 	t0, t0, a1 !1868
 	lw  	a1, 0(t0) !1868
 	sw  	a0, 4(sp) !1868
@@ -15556,12 +15556,12 @@ beq_cont.28028: !1868
 	blt 	t0, a0, bge_else.28029 !1863
 	lw  	a1, 4(sp) !476
 	lw  	a2, 8(a1) !476
-	slli	t0, a0, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.28030 !1866
 	lw  	a2, 12(a1) !483
-	slli	t0, a0, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	bne 	a2, zero, beq_else.28031 !1868
@@ -15571,7 +15571,7 @@ beq_else.28031: !1868
 	lw  	a3, 28(a1) !520
 	lw  	a4, 4(a1) !468
 	lw  	a5, 16(a1) !490
-	slli	t0, a0, 2 !1831
+	
 	add 	t0, t0, a2 !1831
 	lw  	a2, 0(t0) !1831
 	flw  	fa0, 0(a2) !188
@@ -15585,10 +15585,10 @@ beq_else.28031: !1868
 	sw  	fa0, 8(a2) !190
 	lw  	a2, 24(a1) !506
 	lw  	a2, 0(a2) !508
-	slli	t0, a0, 2 !1834
+	
 	add 	t0, t0, a3 !1834
 	lw  	a3, 0(t0) !1834
-	slli	t0, a0, 2 !1835
+	
 	add 	t0, t0, a4 !1835
 	lw  	a4, 0(t0) !1835
 	sw  	a0, 12(sp) !1832
@@ -15601,7 +15601,7 @@ beq_else.28031: !1868
 	addi	sp, sp, -20 !1832
 	lw  	a0, 12(sp) !1836
 	lw  	a1, 16(sp) !1836
-	slli	t0, a0, 2 !1836
+	
 	add 	t0, t0, a1 !1836
 	lw  	a1, 0(t0) !1836
 	li  	a2, 1049180 !241
@@ -15637,12 +15637,12 @@ beq_cont.28032: !1868
 	blt 	t0, a1, bge_else.28033 !1863
 	lw  	a0, 4(sp) !476
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.28034 !1866
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	sw  	a1, 20(sp) !1868
@@ -15678,35 +15678,35 @@ bge_else.28025: !1863
 	jalr	zero, ra, 0
 beq_else.28024: !1918
 	lw  	a6, 12(a6) !483
-	slli	t0, a5, 2 !1922
+	
 	add 	t0, t0, a6 !1922
 	lw  	a6, 0(t0) !1922
 	bne 	a6, zero, beq_else.28043 !1922
 	jal 	zero, beq_cont.28044 !1922
 beq_else.28043: !1922
-	slli	t0, a0, 2 !1844
+	
 	add 	t0, t0, a2 !1844
 	lw  	a6, 0(t0) !1844
 	lw  	a6, 20(a6) !497
 	addi	a7, a0, -1 !1845
-	slli	t0, a7, 2 !1845
+	
 	add 	t0, t0, a3 !1845
 	lw  	a7, 0(t0) !1845
 	lw  	a7, 20(a7) !497
-	slli	t0, a0, 2 !1846
+	
 	add 	t0, t0, a3 !1846
 	lw  	s1, 0(t0) !1846
 	lw  	s1, 20(s1) !497
 	addi	s2, a0, 1 !1847
-	slli	t0, s2, 2 !1847
+	
 	add 	t0, t0, a3 !1847
 	lw  	s2, 0(t0) !1847
 	lw  	s2, 20(s2) !497
-	slli	t0, a0, 2 !1848
+	
 	add 	t0, t0, a4 !1848
 	lw  	s3, 0(t0) !1848
 	lw  	s3, 20(s3) !497
-	slli	t0, a5, 2 !1850
+	
 	add 	t0, t0, a6 !1850
 	lw  	a6, 0(t0) !1850
 	flw  	fa0, 0(a6) !188
@@ -15718,7 +15718,7 @@ beq_else.28043: !1922
 	flw  	fa0, 8(a6) !190
 	li  	a6, 1049168 !190
 	sw  	fa0, 8(a6) !190
-	slli	t0, a5, 2 !1851
+	
 	add 	t0, t0, a7 !1851
 	lw  	a6, 0(t0) !1851
 	li  	a7, 1049168 !225
@@ -15739,7 +15739,7 @@ beq_else.28043: !1922
 	fadd	fa0, fa0, fa1 !227
 	li  	a6, 1049168 !227
 	sw  	fa0, 8(a6) !227
-	slli	t0, a5, 2 !1852
+	
 	add 	t0, t0, s1 !1852
 	lw  	a6, 0(t0) !1852
 	li  	a7, 1049168 !225
@@ -15760,7 +15760,7 @@ beq_else.28043: !1922
 	fadd	fa0, fa0, fa1 !227
 	li  	a6, 1049168 !227
 	sw  	fa0, 8(a6) !227
-	slli	t0, a5, 2 !1853
+	
 	add 	t0, t0, s2 !1853
 	lw  	a6, 0(t0) !1853
 	li  	a7, 1049168 !225
@@ -15781,7 +15781,7 @@ beq_else.28043: !1922
 	fadd	fa0, fa0, fa1 !227
 	li  	a6, 1049168 !227
 	sw  	fa0, 8(a6) !227
-	slli	t0, a5, 2 !1854
+	
 	add 	t0, t0, s3 !1854
 	lw  	a6, 0(t0) !1854
 	li  	a7, 1049168 !225
@@ -15802,11 +15802,11 @@ beq_else.28043: !1922
 	fadd	fa0, fa0, fa1 !227
 	li  	a6, 1049168 !227
 	sw  	fa0, 8(a6) !227
-	slli	t0, a0, 2 !1856
+	
 	add 	t0, t0, a3 !1856
 	lw  	a6, 0(t0) !1856
 	lw  	a6, 16(a6) !490
-	slli	t0, a5, 2 !1857
+	
 	add 	t0, t0, a6 !1857
 	lw  	a6, 0(t0) !1857
 	li  	a7, 1049180 !241
@@ -15838,54 +15838,54 @@ beq_else.28043: !1922
 	sw  	fa0, 8(a6) !243
 beq_cont.28044: !1922
 	addi	a5, a5, 1 !1927
-	slli	t0, a0, 2 !1912
+	
 	add 	t0, t0, a3 !1912
 	lw  	a6, 0(t0) !1912
 	addi	t0, zero, 4 !1913
 	blt 	t0, a5, bge_else.28045 !1913
 	lw  	a7, 8(a6) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, a7 !1891
 	lw  	a7, 0(t0) !1891
 	blt 	a7, zero, bge_else.28046 !1916
-	slli	t0, a0, 2 !1896
+	
 	add 	t0, t0, a3 !1896
 	lw  	a7, 0(t0) !1896
 	lw  	a7, 8(a7) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, a7 !1891
 	lw  	a7, 0(t0) !1891
-	slli	t0, a0, 2 !1898
+	
 	add 	t0, t0, a2 !1898
 	lw  	s1, 0(t0) !1898
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28047 !1898
-	slli	t0, a0, 2 !1899
+	
 	add 	t0, t0, a4 !1899
 	lw  	s1, 0(t0) !1899
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28049 !1899
 	addi	s1, a0, -1 !1900
-	slli	t0, s1, 2 !1900
+	
 	add 	t0, t0, a3 !1900
 	lw  	s1, 0(t0) !1900
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28051 !1900
 	addi	s1, a0, 1 !1901
-	slli	t0, s1, 2 !1901
+	
 	add 	t0, t0, a3 !1901
 	lw  	s1, 0(t0) !1901
 	lw  	s1, 8(s1) !476
-	slli	t0, a5, 2 !1891
+	
 	add 	t0, t0, s1 !1891
 	lw  	s1, 0(t0) !1891
 	bne 	s1, a7, beq_else.28053 !1901
@@ -15907,18 +15907,18 @@ beq_else.28047: !1898
 	addi	a7, zero, 0 !1906
 beq_cont.28048: !1898
 	bne 	a7, zero, beq_else.28055 !1918
-	slli	t0, a0, 2 !1930
+	
 	add 	t0, t0, a3 !1930
 	lw  	a0, 0(t0) !1930
 	addi	t0, zero, 4 !1863
 	blt 	t0, a5, bge_else.28056 !1863
 	lw  	a1, 8(a0) !476
-	slli	t0, a5, 2 !1866
+	
 	add 	t0, t0, a1 !1866
 	lw  	a1, 0(t0) !1866
 	blt 	a1, zero, bge_else.28057 !1866
 	lw  	a1, 12(a0) !483
-	slli	t0, a5, 2 !1868
+	
 	add 	t0, t0, a1 !1868
 	lw  	a1, 0(t0) !1868
 	sw  	a0, 24(sp) !1868
@@ -15930,7 +15930,7 @@ beq_else.28058: !1868
 	lw  	a2, 28(a0) !520
 	lw  	a3, 4(a0) !468
 	lw  	a4, 16(a0) !490
-	slli	t0, a5, 2 !1831
+	
 	add 	t0, t0, a1 !1831
 	lw  	a1, 0(t0) !1831
 	flw  	fa0, 0(a1) !188
@@ -15944,10 +15944,10 @@ beq_else.28058: !1868
 	sw  	fa0, 8(a1) !190
 	lw  	a1, 24(a0) !506
 	lw  	a1, 0(a1) !508
-	slli	t0, a5, 2 !1834
+	
 	add 	t0, t0, a2 !1834
 	lw  	a2, 0(t0) !1834
-	slli	t0, a5, 2 !1835
+	
 	add 	t0, t0, a3 !1835
 	lw  	a3, 0(t0) !1835
 	sw  	a4, 32(sp) !1832
@@ -15959,7 +15959,7 @@ beq_else.28058: !1868
 	addi	sp, sp, -36 !1832
 	lw  	a0, 28(sp) !1836
 	lw  	a1, 32(sp) !1836
-	slli	t0, a0, 2 !1836
+	
 	add 	t0, t0, a1 !1836
 	lw  	a1, 0(t0) !1836
 	li  	a2, 1049180 !241
@@ -15996,12 +15996,12 @@ beq_cont.28059: !1868
 	blt 	t0, a1, bge_else.28060 !1863
 	lw  	a0, 24(sp) !476
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1866
+	
 	add 	t0, t0, a2 !1866
 	lw  	a2, 0(t0) !1866
 	blt 	a2, zero, bge_else.28061 !1866
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1868
+	
 	add 	t0, t0, a2 !1868
 	lw  	a2, 0(t0) !1868
 	sw  	a1, 36(sp) !1868
@@ -16031,7 +16031,7 @@ bge_else.28056: !1863
 	jalr	zero, ra, 0
 beq_else.28055: !1918
 	lw  	a6, 12(a6) !483
-	slli	t0, a5, 2 !1922
+	
 	add 	t0, t0, a6 !1922
 	lw  	a6, 0(t0) !1922
 	sw  	a4, 40(sp) !1922
@@ -16188,12 +16188,12 @@ pretrace_diffuse_rays.2815:
 	addi	t0, zero, 4 !1983
 	blt 	t0, a1, bge_else.28099 !1983
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1891
+	
 	add 	t0, t0, a2 !1891
 	lw  	a2, 0(t0) !1891
 	blt 	a2, zero, bge_else.28100 !1987
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1990
+	
 	add 	t0, t0, a2 !1990
 	lw  	a2, 0(t0) !1990
 	sw  	a1, 4(sp) !1990
@@ -16212,13 +16212,13 @@ beq_else.28101: !1990
 	lw  	a3, 28(a0) !520
 	lw  	a4, 4(a0) !468
 	li  	a5, 1049292 !1998
-	slli	t0, a2, 2 !1998
+	
 	add 	t0, t0, a5 !1998
 	lw  	a2, 0(t0) !1998
-	slli	t0, a1, 2 !1999
+	
 	add 	t0, t0, a3 !1999
 	lw  	a3, 0(t0) !1999
-	slli	t0, a1, 2 !2000
+	
 	add 	t0, t0, a4 !2000
 	lw  	a4, 0(t0) !2000
 	flw  	fa0, 0(a4) !188
@@ -16252,7 +16252,7 @@ beq_else.28101: !1990
 	lw  	a0, 8(sp) !497
 	lw  	a1, 20(a0) !497
 	lw  	a2, 4(sp) !2002
-	slli	t0, a2, 2 !2002
+	
 	add 	t0, t0, a1 !2002
 	lw  	a1, 0(t0) !2002
 	li  	a3, 1049168 !188
@@ -16270,12 +16270,12 @@ beq_cont.28102: !1990
 	addi	t0, zero, 4 !1983
 	blt 	t0, a1, bge_else.28103 !1983
 	lw  	a2, 8(a0) !476
-	slli	t0, a1, 2 !1891
+	
 	add 	t0, t0, a2 !1891
 	lw  	a2, 0(t0) !1891
 	blt 	a2, zero, bge_else.28104 !1987
 	lw  	a2, 12(a0) !483
-	slli	t0, a1, 2 !1990
+	
 	add 	t0, t0, a2 !1990
 	lw  	a2, 0(t0) !1990
 	sw  	a1, 24(sp) !1990
@@ -16294,13 +16294,13 @@ beq_else.28105: !1990
 	lw  	a3, 28(a0) !520
 	lw  	a4, 4(a0) !468
 	li  	a5, 1049292 !1998
-	slli	t0, a2, 2 !1998
+	
 	add 	t0, t0, a5 !1998
 	lw  	a2, 0(t0) !1998
-	slli	t0, a1, 2 !1999
+	
 	add 	t0, t0, a3 !1999
 	lw  	a3, 0(t0) !1999
-	slli	t0, a1, 2 !2000
+	
 	add 	t0, t0, a4 !2000
 	lw  	a4, 0(t0) !2000
 	flw  	fa0, 0(a4) !188
@@ -16375,7 +16375,7 @@ beq_cont.28110: !1781
 	lw  	a0, 8(sp) !497
 	lw  	a1, 20(a0) !497
 	lw  	a2, 24(sp) !2002
-	slli	t0, a2, 2 !2002
+	
 	add 	t0, t0, a1 !2002
 	lw  	a1, 0(t0) !2002
 	li  	a3, 1049168 !188
@@ -16510,7 +16510,7 @@ beq_cont.28119: !200
 	li  	fa0, 1.000000 !2023
 	lw  	a1, 8(sp) !2023
 	lw  	a2, 12(sp) !2023
-	slli	t0, a1, 2 !2023
+	
 	add 	t0, t0, a2 !2023
 	lw  	a3, 0(t0) !2023
 	li  	fa1, 0.000000 !2023
@@ -16522,7 +16522,7 @@ beq_cont.28119: !200
 	addi	sp, sp, -48 !2023
 	lw  	a0, 8(sp) !2024
 	lw  	a1, 12(sp) !2024
-	slli	t0, a0, 2 !2024
+	
 	add 	t0, t0, a1 !2024
 	lw  	a2, 0(t0) !2024
 	lw  	a2, 0(a2) !461
@@ -16535,13 +16535,13 @@ beq_cont.28119: !200
 	li  	a3, 1049180 !190
 	lw  	fa0, 8(a3) !190
 	fsw  	fa0, 8(a2) !190
-	slli	t0, a0, 2 !2025
+	
 	add 	t0, t0, a1 !2025
 	lw  	a2, 0(t0) !2025
 	lw  	a2, 24(a2) !513
 	lw  	a3, 4(sp) !515
 	sw  	a3, 0(a2) !515
-	slli	t0, a0, 2 !2028
+	
 	add 	t0, t0, a1 !2028
 	lw  	a2, 0(t0) !2028
 	lw  	a4, 8(a2) !476
@@ -16565,7 +16565,7 @@ beq_else.28122: !1990
 	lw  	a5, 28(a2) !520
 	lw  	a6, 4(a2) !468
 	li  	a7, 1049292 !1998
-	slli	t0, a4, 2 !1998
+	
 	add 	t0, t0, a7 !1998
 	lw  	a4, 0(t0) !1998
 	lw  	a5, 0(a5) !1999
@@ -16769,7 +16769,7 @@ beq_cont.28134: !200
 	li  	fa0, 1.000000 !2023
 	lw  	a1, 68(sp) !2023
 	lw  	a2, 12(sp) !2023
-	slli	t0, a1, 2 !2023
+	
 	add 	t0, t0, a2 !2023
 	lw  	a3, 0(t0) !2023
 	li  	fa1, 0.000000 !2023
@@ -16781,7 +16781,7 @@ beq_cont.28134: !200
 	addi	sp, sp, -80 !2023
 	lw  	a0, 68(sp) !2024
 	lw  	a1, 12(sp) !2024
-	slli	t0, a0, 2 !2024
+	
 	add 	t0, t0, a1 !2024
 	lw  	a2, 0(t0) !2024
 	lw  	a2, 0(a2) !461
@@ -16794,13 +16794,13 @@ beq_cont.28134: !200
 	li  	a3, 1049180 !190
 	lw  	fa0, 8(a3) !190
 	fsw  	fa0, 8(a2) !190
-	slli	t0, a0, 2 !2025
+	
 	add 	t0, t0, a1 !2025
 	lw  	a2, 0(t0) !2025
 	lw  	a2, 24(a2) !513
 	lw  	a3, 64(sp) !515
 	sw  	a3, 0(a2) !515
-	slli	t0, a0, 2 !2028
+	
 	add 	t0, t0, a1 !2028
 	lw  	a2, 0(t0) !2028
 	addi	a4, zero, 0 !2028
@@ -16969,7 +16969,7 @@ beq_cont.28145: !200
 	li  	fa0, 1.000000 !2023
 	lw  	a1, 24(sp) !2023
 	lw  	a2, 8(sp) !2023
-	slli	t0, a1, 2 !2023
+	
 	add 	t0, t0, a2 !2023
 	lw  	a3, 0(t0) !2023
 	li  	fa1, 0.000000 !2023
@@ -16981,7 +16981,7 @@ beq_cont.28145: !200
 	addi	sp, sp, -64 !2023
 	lw  	a0, 24(sp) !2024
 	lw  	a1, 8(sp) !2024
-	slli	t0, a0, 2 !2024
+	
 	add 	t0, t0, a1 !2024
 	lw  	a2, 0(t0) !2024
 	lw  	a2, 0(a2) !461
@@ -16994,13 +16994,13 @@ beq_cont.28145: !200
 	li  	a3, 1049180 !190
 	lw  	fa0, 8(a3) !190
 	fsw  	fa0, 8(a2) !190
-	slli	t0, a0, 2 !2025
+	
 	add 	t0, t0, a1 !2025
 	lw  	a2, 0(t0) !2025
 	lw  	a2, 24(a2) !513
 	lw  	a3, 4(sp) !515
 	sw  	a3, 0(a2) !515
-	slli	t0, a0, 2 !2028
+	
 	add 	t0, t0, a1 !2028
 	lw  	a2, 0(t0) !2028
 	addi	a4, zero, 0 !2028
@@ -17037,7 +17037,7 @@ scan_pixel.2829:
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 bge_else.28149: !2051
-	slli	t0, a0, 2 !2054
+	
 	add 	t0, t0, a3 !2054
 	lw  	a6, 0(t0) !2054
 	lw  	a6, 0(a6) !461
@@ -17084,7 +17084,7 @@ bge_cont.28152: !1878
 	sw  	a0, 20(sp) !2057
 	sw  	a5, 24(sp) !2057
 	bne 	a6, zero, beq_else.28159 !2057
-	slli	t0, a0, 2 !2060
+	
 	add 	t0, t0, a3 !2060
 	lw  	a6, 0(t0) !2060
 	addi	a7, zero, 0 !2060
@@ -17198,38 +17198,38 @@ bge_cont.28162: !1866
 	jal 	zero, beq_cont.28160 !2057
 beq_else.28159: !2057
 	addi	a6, zero, 0 !2058
-	slli	t0, a0, 2 !1912
+	
 	add 	t0, t0, a3 !1912
 	lw  	a7, 0(t0) !1912
 	lw  	s1, 8(a7) !476
 	lw  	s1, 0(s1) !1891
 	blt 	s1, zero, bge_else.28173 !1916
-	slli	t0, a0, 2 !1896
+	
 	add 	t0, t0, a3 !1896
 	lw  	s1, 0(t0) !1896
 	lw  	s1, 8(s1) !476
 	lw  	s1, 0(s1) !1891
-	slli	t0, a0, 2 !1898
+	
 	add 	t0, t0, a2 !1898
 	lw  	s2, 0(t0) !1898
 	lw  	s2, 8(s2) !476
 	lw  	s2, 0(s2) !1891
 	bne 	s2, s1, beq_else.28175 !1898
-	slli	t0, a0, 2 !1899
+	
 	add 	t0, t0, a4 !1899
 	lw  	s2, 0(t0) !1899
 	lw  	s2, 8(s2) !476
 	lw  	s2, 0(s2) !1891
 	bne 	s2, s1, beq_else.28177 !1899
 	addi	s2, a0, -1 !1900
-	slli	t0, s2, 2 !1900
+	
 	add 	t0, t0, a3 !1900
 	lw  	s2, 0(t0) !1900
 	lw  	s2, 8(s2) !476
 	lw  	s2, 0(s2) !1891
 	bne 	s2, s1, beq_else.28179 !1900
 	addi	s2, a0, 1 !1901
-	slli	t0, s2, 2 !1901
+	
 	add 	t0, t0, a3 !1901
 	lw  	s2, 0(t0) !1901
 	lw  	s2, 8(s2) !476
@@ -17253,7 +17253,7 @@ beq_else.28175: !1898
 	addi	s1, zero, 0 !1906
 beq_cont.28176: !1898
 	bne 	s1, zero, beq_else.28183 !1918
-	slli	t0, a0, 2 !1930
+	
 	add 	t0, t0, a3 !1930
 	lw  	a6, 0(t0) !1930
 	lw  	a7, 8(a6) !476
@@ -17491,7 +17491,7 @@ beq_cont.28196: !1963
 	jalr	zero, ra, 0
 bge_else.28221: !2051
 	lw  	a3, 16(sp) !2054
-	slli	t0, a0, 2 !2054
+	
 	add 	t0, t0, a3 !2054
 	lw  	a1, 0(t0) !2054
 	lw  	a1, 0(a1) !461
@@ -17534,7 +17534,7 @@ bge_cont.28226: !1879
 bge_cont.28224: !1878
 	sw  	a0, 44(sp) !2057
 	bne 	a1, zero, beq_else.28231 !2057
-	slli	t0, a0, 2 !2060
+	
 	add 	t0, t0, a3 !2060
 	lw  	a1, 0(t0) !2060
 	lw  	a4, 8(a1) !476
@@ -18357,7 +18357,7 @@ init_line_elements.2847:
 	sw  	a1, 0(a0) !2107
 	lw  	a1, 4(sp) !2113
 	lw  	a2, 8(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -18368,7 +18368,7 @@ init_line_elements.2847:
 	addi	sp, sp, -48 !2113
 	lw  	a1, 44(sp) !2113
 	lw  	a2, 8(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -18584,7 +18584,7 @@ init_line_elements.2847:
 	sw  	a1, 0(a0) !2107
 	lw  	a1, 48(sp) !2113
 	lw  	a2, 8(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -18595,7 +18595,7 @@ init_line_elements.2847:
 	addi	sp, sp, -88 !2113
 	lw  	a1, 84(sp) !2113
 	lw  	a2, 8(sp) !2113
-	slli	t0, a1, 2 !2113
+	
 	add 	t0, t0, a2 !2113
 	sw  	a0, 0(t0) !2113
 	addi	a1, a1, -1 !2114
@@ -18640,11 +18640,11 @@ calc_dirvec.2857:
 	fdiv	fa0, fa3, fa0 !2148
 	li  	a0, 1049292 !2151
 	lw  	a1, 8(sp) !2151
-	slli	t0, a1, 2 !2151
+	
 	add 	t0, t0, a0 !2151
 	lw  	a0, 0(t0) !2151
 	lw  	a1, 4(sp) !2152
-	slli	t0, a1, 2 !2152
+	
 	add 	t0, t0, a0 !2152
 	lw  	a2, 0(t0) !2152
 	lw  	a2, 0(a2) !529
@@ -18652,7 +18652,7 @@ calc_dirvec.2857:
 	fsw  	fa2, 4(a2) !170
 	fsw  	fa0, 8(a2) !171
 	addi	a2, a1, 40 !2153
-	slli	t0, a2, 2 !2153
+	
 	add 	t0, t0, a0 !2153
 	lw  	a2, 0(t0) !2153
 	lw  	a2, 0(a2) !529
@@ -18672,7 +18672,7 @@ calc_dirvec.2857:
 	lw  	a0, 4(sp) !2154
 	addi	a1, a0, 80 !2154
 	lw  	a2, 40(sp) !2154
-	slli	t0, a1, 2 !2154
+	
 	add 	t0, t0, a2 !2154
 	lw  	a1, 0(t0) !2154
 	lw  	a1, 0(a1) !529
@@ -18692,7 +18692,7 @@ calc_dirvec.2857:
 	lw  	a0, 4(sp) !2155
 	addi	a1, a0, 1 !2155
 	lw  	a2, 40(sp) !2155
-	slli	t0, a1, 2 !2155
+	
 	add 	t0, t0, a2 !2155
 	lw  	a1, 0(t0) !2155
 	lw  	a1, 0(a1) !529
@@ -18716,7 +18716,7 @@ calc_dirvec.2857:
 	lw  	a0, 4(sp) !2156
 	addi	a1, a0, 41 !2156
 	lw  	a2, 40(sp) !2156
-	slli	t0, a1, 2 !2156
+	
 	add 	t0, t0, a2 !2156
 	lw  	a1, 0(t0) !2156
 	lw  	a1, 0(a1) !529
@@ -18736,7 +18736,7 @@ calc_dirvec.2857:
 	lw  	a0, 4(sp) !2157
 	addi	a0, a0, 81 !2157
 	lw  	a1, 40(sp) !2157
-	slli	t0, a0, 2 !2157
+	
 	add 	t0, t0, a1 !2157
 	lw  	a0, 0(t0) !2157
 	lw  	a0, 0(a0) !529
@@ -19059,7 +19059,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 4(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19085,7 +19085,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 16(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19111,7 +19111,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 24(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19137,7 +19137,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 32(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19163,7 +19163,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 40(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19189,7 +19189,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 48(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19215,7 +19215,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 56(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a0, a0, -1 !2198
@@ -19241,7 +19241,7 @@ create_dirvec_elements.2876:
 	sw  	a0, 0(a1) !2192
 	lw  	a0, 64(sp) !2197
 	lw  	a2, 8(sp) !2197
-	slli	t0, a0, 2 !2197
+	
 	add 	t0, t0, a2 !2197
 	sw  	a1, 0(t0) !2197
 	addi	a1, a0, -1 !2198
@@ -19302,11 +19302,11 @@ create_dirvecs.2879:
 	addi	sp, sp, -16 !2204
 	li  	a1, 1049292 !2204
 	lw  	a2, 4(sp) !2204
-	slli	t0, a2, 2 !2204
+	
 	add 	t0, t0, a1 !2204
 	sw  	a0, 0(t0) !2204
 	li  	a0, 1049292 !2205
-	slli	t0, a2, 2 !2205
+	
 	add 	t0, t0, a0 !2205
 	lw  	a0, 0(t0) !2205
 	addi	a1, zero, 3 !2190
@@ -19484,11 +19484,11 @@ create_dirvecs.2879:
 	addi	sp, sp, -60 !2204
 	li  	a1, 1049292 !2204
 	lw  	a2, 48(sp) !2204
-	slli	t0, a2, 2 !2204
+	
 	add 	t0, t0, a1 !2204
 	sw  	a0, 0(t0) !2204
 	li  	a0, 1049292 !2205
-	slli	t0, a2, 2 !2205
+	
 	add 	t0, t0, a0 !2205
 	lw  	a0, 0(t0) !2205
 	addi	a1, zero, 3 !2190
@@ -19646,11 +19646,11 @@ create_dirvecs.2879:
 	addi	sp, sp, -100 !2204
 	li  	a1, 1049292 !2204
 	lw  	a2, 88(sp) !2204
-	slli	t0, a2, 2 !2204
+	
 	add 	t0, t0, a1 !2204
 	sw  	a0, 0(t0) !2204
 	li  	a0, 1049292 !2205
-	slli	t0, a2, 2 !2205
+	
 	add 	t0, t0, a0 !2205
 	lw  	a0, 0(t0) !2205
 	addi	a1, zero, 3 !2190
@@ -19788,11 +19788,11 @@ create_dirvecs.2879:
 	addi	sp, sp, -136 !2204
 	li  	a1, 1049292 !2204
 	lw  	a2, 124(sp) !2204
-	slli	t0, a2, 2 !2204
+	
 	add 	t0, t0, a1 !2204
 	sw  	a0, 0(t0) !2204
 	li  	a0, 1049292 !2205
-	slli	t0, a2, 2 !2205
+	
 	add 	t0, t0, a0 !2205
 	lw  	a0, 0(t0) !2205
 	addi	a1, zero, 3 !2190
@@ -19899,7 +19899,7 @@ bge_else.28322: !2203
 init_dirvec_constants.2881:
 	sw  	ra, 0(sp)
 	blt 	a1, zero, bge_else.28330 !2213
-	slli	t0, a1, 2 !2214
+	
 	add 	t0, t0, a0 !2214
 	lw  	a2, 0(t0) !2214
 	li  	a3, 1048576 !1142
@@ -19916,7 +19916,7 @@ init_dirvec_constants.2881:
 	addi	a0, a0, -1 !2215
 	blt 	a0, zero, bge_else.28331 !2213
 	lw  	a1, 4(sp) !2214
-	slli	t0, a0, 2 !2214
+	
 	add 	t0, t0, a1 !2214
 	lw  	a2, 0(t0) !2214
 	li  	a3, 1048576 !1142
@@ -19925,7 +19925,7 @@ init_dirvec_constants.2881:
 	sw  	a0, 12(sp) !1125
 	blt 	a3, zero, bge_else.28332 !1125
 	li  	a4, 1048624 !1126
-	slli	t0, a3, 2 !1126
+	
 	add 	t0, t0, a4 !1126
 	lw  	a4, 0(t0) !1126
 	lw  	a5, 4(a2) !535
@@ -19943,7 +19943,7 @@ init_dirvec_constants.2881:
 	addi	sp, sp, -28 !1131
 	lw  	a1, 20(sp) !1131
 	lw  	a2, 24(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28335 !1130
@@ -19959,7 +19959,7 @@ beq_else.28334: !1130
 	addi	sp, sp, -28 !1133
 	lw  	a1, 20(sp) !1133
 	lw  	a2, 24(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28337 !1132
@@ -19973,7 +19973,7 @@ beq_else.28336: !1132
 	addi	sp, sp, -28 !1135
 	lw  	a1, 20(sp) !1135
 	lw  	a2, 24(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28337: !1132
@@ -19990,7 +19990,7 @@ bge_cont.28333: !1125
 	addi	a0, a0, -1 !2215
 	blt 	a0, zero, bge_else.28338 !2213
 	lw  	a1, 4(sp) !2214
-	slli	t0, a0, 2 !2214
+	
 	add 	t0, t0, a1 !2214
 	lw  	a2, 0(t0) !2214
 	li  	a3, 1048576 !1142
@@ -20006,7 +20006,7 @@ bge_cont.28333: !1125
 	addi	a0, a0, -1 !2215
 	blt 	a0, zero, bge_else.28339 !2213
 	lw  	a1, 4(sp) !2214
-	slli	t0, a0, 2 !2214
+	
 	add 	t0, t0, a1 !2214
 	lw  	a2, 0(t0) !2214
 	li  	a3, 1048576 !1142
@@ -20015,7 +20015,7 @@ bge_cont.28333: !1125
 	sw  	a0, 32(sp) !1125
 	blt 	a3, zero, bge_else.28340 !1125
 	li  	a4, 1048624 !1126
-	slli	t0, a3, 2 !1126
+	
 	add 	t0, t0, a4 !1126
 	lw  	a4, 0(t0) !1126
 	lw  	a5, 4(a2) !535
@@ -20033,7 +20033,7 @@ bge_cont.28333: !1125
 	addi	sp, sp, -48 !1131
 	lw  	a1, 40(sp) !1131
 	lw  	a2, 44(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28343 !1130
@@ -20049,7 +20049,7 @@ beq_else.28342: !1130
 	addi	sp, sp, -48 !1133
 	lw  	a1, 40(sp) !1133
 	lw  	a2, 44(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28345 !1132
@@ -20063,7 +20063,7 @@ beq_else.28344: !1132
 	addi	sp, sp, -48 !1135
 	lw  	a1, 40(sp) !1135
 	lw  	a2, 44(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28345: !1132
@@ -20097,7 +20097,7 @@ init_vecset_constants.2884:
 	sw  	ra, 0(sp)
 	blt 	a0, zero, bge_else.28350 !2220
 	li  	a1, 1049292 !2221
-	slli	t0, a0, 2 !2221
+	
 	add 	t0, t0, a1 !2221
 	lw  	a1, 0(t0) !2221
 	lw  	a2, 476(a1) !2214
@@ -20108,7 +20108,7 @@ init_vecset_constants.2884:
 	sw  	a1, 8(sp) !1125
 	blt 	a3, zero, bge_else.28351 !1125
 	li  	a4, 1048624 !1126
-	slli	t0, a3, 2 !1126
+	
 	add 	t0, t0, a4 !1126
 	lw  	a4, 0(t0) !1126
 	lw  	a5, 4(a2) !535
@@ -20126,7 +20126,7 @@ init_vecset_constants.2884:
 	addi	sp, sp, -24 !1131
 	lw  	a1, 16(sp) !1131
 	lw  	a2, 20(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28354 !1130
@@ -20142,7 +20142,7 @@ beq_else.28353: !1130
 	addi	sp, sp, -24 !1133
 	lw  	a1, 16(sp) !1133
 	lw  	a2, 20(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28356 !1132
@@ -20156,7 +20156,7 @@ beq_else.28355: !1132
 	addi	sp, sp, -24 !1135
 	lw  	a1, 16(sp) !1135
 	lw  	a2, 20(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28356: !1132
@@ -20186,7 +20186,7 @@ bge_cont.28352: !1125
 	addi	a2, a2, -1 !1142
 	blt 	a2, zero, bge_else.28357 !1125
 	li  	a3, 1048624 !1126
-	slli	t0, a2, 2 !1126
+	
 	add 	t0, t0, a3 !1126
 	lw  	a3, 0(t0) !1126
 	lw  	a4, 4(a1) !535
@@ -20204,7 +20204,7 @@ bge_cont.28352: !1125
 	addi	sp, sp, -36 !1131
 	lw  	a1, 28(sp) !1131
 	lw  	a2, 32(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28360 !1130
@@ -20220,7 +20220,7 @@ beq_else.28359: !1130
 	addi	sp, sp, -36 !1133
 	lw  	a1, 28(sp) !1133
 	lw  	a2, 32(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28362 !1132
@@ -20234,7 +20234,7 @@ beq_else.28361: !1132
 	addi	sp, sp, -36 !1135
 	lw  	a1, 28(sp) !1135
 	lw  	a2, 32(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28362: !1132
@@ -20256,7 +20256,7 @@ bge_cont.28358: !1125
 	addi	a0, a0, -1 !2222
 	blt 	a0, zero, bge_else.28363 !2220
 	li  	a1, 1049292 !2221
-	slli	t0, a0, 2 !2221
+	
 	add 	t0, t0, a1 !2221
 	lw  	a1, 0(t0) !2221
 	lw  	a2, 476(a1) !2214
@@ -20277,7 +20277,7 @@ bge_cont.28358: !1125
 	addi	a2, a2, -1 !1142
 	blt 	a2, zero, bge_else.28364 !1125
 	li  	a3, 1048624 !1126
-	slli	t0, a2, 2 !1126
+	
 	add 	t0, t0, a3 !1126
 	lw  	a3, 0(t0) !1126
 	lw  	a4, 4(a1) !535
@@ -20295,7 +20295,7 @@ bge_cont.28358: !1125
 	addi	sp, sp, -56 !1131
 	lw  	a1, 48(sp) !1131
 	lw  	a2, 52(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28367 !1130
@@ -20311,7 +20311,7 @@ beq_else.28366: !1130
 	addi	sp, sp, -56 !1133
 	lw  	a1, 48(sp) !1133
 	lw  	a2, 52(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28369 !1132
@@ -20325,7 +20325,7 @@ beq_else.28368: !1132
 	addi	sp, sp, -56 !1135
 	lw  	a1, 48(sp) !1135
 	lw  	a2, 52(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28369: !1132
@@ -20347,7 +20347,7 @@ bge_cont.28365: !1125
 	addi	a0, a0, -1 !2222
 	blt 	a0, zero, bge_else.28370 !2220
 	li  	a1, 1049292 !2221
-	slli	t0, a0, 2 !2221
+	
 	add 	t0, t0, a1 !2221
 	lw  	a1, 0(t0) !2221
 	lw  	a2, 476(a1) !2214
@@ -20358,7 +20358,7 @@ bge_cont.28365: !1125
 	sw  	a1, 60(sp) !1125
 	blt 	a3, zero, bge_else.28371 !1125
 	li  	a4, 1048624 !1126
-	slli	t0, a3, 2 !1126
+	
 	add 	t0, t0, a4 !1126
 	lw  	a4, 0(t0) !1126
 	lw  	a5, 4(a2) !535
@@ -20376,7 +20376,7 @@ bge_cont.28365: !1125
 	addi	sp, sp, -76 !1131
 	lw  	a1, 68(sp) !1131
 	lw  	a2, 72(sp) !1131
-	slli	t0, a1, 2 !1131
+	
 	add 	t0, t0, a2 !1131
 	sw  	a0, 0(t0) !1131
 	jal 	zero, beq_cont.28374 !1130
@@ -20392,7 +20392,7 @@ beq_else.28373: !1130
 	addi	sp, sp, -76 !1133
 	lw  	a1, 68(sp) !1133
 	lw  	a2, 72(sp) !1133
-	slli	t0, a1, 2 !1133
+	
 	add 	t0, t0, a2 !1133
 	sw  	a0, 0(t0) !1133
 	jal 	zero, beq_cont.28376 !1132
@@ -20406,7 +20406,7 @@ beq_else.28375: !1132
 	addi	sp, sp, -76 !1135
 	lw  	a1, 68(sp) !1135
 	lw  	a2, 72(sp) !1135
-	slli	t0, a1, 2 !1135
+	
 	add 	t0, t0, a2 !1135
 	sw  	a0, 0(t0) !1135
 beq_cont.28376: !1132
@@ -20428,7 +20428,7 @@ bge_cont.28372: !1125
 	addi	a0, a0, -1 !2222
 	blt 	a0, zero, bge_else.28377 !2220
 	li  	a1, 1049292 !2221
-	slli	t0, a0, 2 !2221
+	
 	add 	t0, t0, a1 !2221
 	lw  	a1, 0(t0) !2221
 	addi	a2, zero, 119 !2221
@@ -20458,7 +20458,7 @@ setup_reflections.2901:
 	sw  	ra, 0(sp)
 	blt 	a0, zero, bge_else.28382 !2274
 	li  	a1, 1048624 !2275
-	slli	t0, a0, 2 !2275
+	
 	add 	t0, t0, a1 !2275
 	lw  	a1, 0(t0) !2275
 	lw  	a2, 8(a1) !270
@@ -20481,7 +20481,7 @@ beq_else.28386: !2277
 	lw  	a2, 4(a1) !260
 	addi	t0, zero, 1 !2280
 	bne 	a2, t0, beq_else.28388 !2280
-	slli	a0, a0, 2 !2245
+	
 	li  	a2, 1050312 !2246
 	lw  	a2, 0(a2) !2246
 	li  	fa0, 1.000000 !2247
@@ -20557,7 +20557,7 @@ beq_else.28386: !2277
 	sw  	a1, 0(a0) !2240
 	li  	a1, 1049592 !2240
 	lw  	a2, 4(sp) !2240
-	slli	t0, a2, 2 !2240
+	
 	add 	t0, t0, a1 !2240
 	sw  	a0, 0(t0) !2240
 	addi	a0, a2, 1 !2252
@@ -20613,7 +20613,7 @@ beq_else.28386: !2277
 	sw  	a1, 0(a0) !2240
 	li  	a1, 1049592 !2240
 	lw  	a2, 72(sp) !2240
-	slli	t0, a2, 2 !2240
+	
 	add 	t0, t0, a1 !2240
 	sw  	a0, 0(t0) !2240
 	lw  	a0, 4(sp) !2253
@@ -20670,7 +20670,7 @@ beq_else.28386: !2277
 	sw  	a1, 0(a0) !2240
 	li  	a1, 1049592 !2240
 	lw  	a2, 96(sp) !2240
-	slli	t0, a2, 2 !2240
+	
 	add 	t0, t0, a1 !2240
 	sw  	a0, 0(t0) !2240
 	lw  	a0, 4(sp) !2254
@@ -20682,7 +20682,7 @@ beq_else.28386: !2277
 beq_else.28388: !2280
 	addi	t0, zero, 2 !2282
 	bne 	a2, t0, beq_else.28392 !2282
-	slli	a0, a0, 2 !2259
+	
 	addi	a0, a0, 1 !2259
 	li  	a2, 1050312 !2260
 	lw  	a2, 0(a2) !2260
@@ -20780,7 +20780,7 @@ beq_else.28388: !2280
 	sw  	a1, 0(a0) !2240
 	li  	a1, 1049592 !2240
 	lw  	a2, 120(sp) !2240
-	slli	t0, a2, 2 !2240
+	
 	add 	t0, t0, a1 !2240
 	sw  	a0, 0(t0) !2240
 	addi	a2, a2, 1 !2268

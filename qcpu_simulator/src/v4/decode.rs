@@ -145,13 +145,25 @@ pub fn decode(mc: u32) -> OpV4 {
         _ => {}
     }
 
-    OpV4 {
-        mc,
-        opcode,
-        opname,
-        rd,
-        rs1,
-        rs2,
-        imm,
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "debug")] {
+            OpV4 {
+                opcode,
+                opname,
+                rd,
+                rs1,
+                rs2,
+                imm,
+                mc
+            }
+        } else {
+            OpV4 {
+                opname,
+                rd,
+                rs1,
+                rs2,
+                imm,
+            }
+        }
     }
 }

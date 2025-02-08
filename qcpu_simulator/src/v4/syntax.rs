@@ -187,9 +187,11 @@ pub enum OpName {
 
 #[derive(Default, Clone, Copy)]
 pub struct OpV4 {
+    #[cfg(feature = "debug")]
     pub mc: u32,
     pub imm: u32,
     pub opname: OpName,
+    #[cfg(feature = "debug")]
     pub opcode: OpCode,
     pub rd: Reg,
     pub rs1: Reg,
@@ -198,10 +200,20 @@ pub struct OpV4 {
 
 impl Debug for OpV4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "OpV4 {{ imm: {:?}, opname: {:?}, opcode: {:?}, rd: {}, rs1: {}, rs2: {} }} (mc: {:032b})",
-            self.imm, self.opname, self.opcode, get_reg_name(self.rd), get_reg_name(self.rs1), get_reg_name(self.rs2), self.mc
-        )
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "debug")] {
+                write!(
+                    f,
+                    "OpV4 {{ imm: {:?}, opname: {:?}, opcode: {:?}, rd: {}, rs1: {}, rs2: {} }} (mc: {:032b})",
+                    self.imm, self.opname, self.opcode, get_reg_name(self.rd), get_reg_name(self.rs1), get_reg_name(self.rs2), self.mc
+                )
+            } else {
+                write!(
+                    f,
+                    "OpV4 {{ imm: {:?}, opname: {:?}, rd: {}, rs1: {}, rs2: {} }}",
+                    self.imm, self.opname, get_reg_name(self.rd), get_reg_name(self.rs1), get_reg_name(self.rs2)
+                )
+            }
+        }
     }
 }

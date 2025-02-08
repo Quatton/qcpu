@@ -11,9 +11,9 @@ pub struct MemoryV4 {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CacheLine {
-    tag: u32, // Use u32 for tag (assuming 32-bit address space is sufficient)
+    tag: u32,
     data: u32,
-    valid: bool, // Keep bool for simplicity, but consider bitflags later if needed
+    valid: bool,
 }
 
 impl CacheLine {
@@ -23,7 +23,7 @@ impl CacheLine {
 
     #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
-        let tag = (addr / CACHE_LINE) as u32;
+        let tag = (addr >> CACHE_LINE_BITS) as u32;
 
         if self.valid && self.tag == tag {
             Some(self.data)
@@ -34,7 +34,7 @@ impl CacheLine {
 
     #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) {
-        let tag = (addr / CACHE_LINE) as u32;
+        let tag = (addr >> CACHE_LINE_BITS) as u32;
 
         self.tag = tag;
         self.data = val;
@@ -61,11 +61,13 @@ impl Display for CacheStat {
     }
 }
 
-pub const MEMORY_SIZE: usize = 2097152;
-pub const CACHE_LINE: usize = 4096;
+pub const CACHE_LINE_BITS: usize = 13;
+pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
+pub const MEMORY_SIZE: usize = 1 << 21;
 pub const CACHE_WAY: usize = 1;
 
 impl MemoryV4 {
+    #[inline(always)]
     pub fn new() -> Self {
         Self {
             m: vec![0; MEMORY_SIZE],
@@ -111,9 +113,10 @@ impl MemoryV4 {
     /// Read a 32-bit word from memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
+    #[inline(always)]
     pub unsafe fn read_unchecked(&mut self, addr: usize) -> u32 {
         let idx = addr & (CACHE_LINE - 1);
-        let entry = &mut self.cache[idx];
+        let entry = &mut self.cache.get_unchecked_mut(idx);
 
         self.stat.read += 1;
 
@@ -130,9 +133,10 @@ impl MemoryV4 {
     /// Write a 32-bit word to memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
+    #[inline(always)]
     pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) {
         let idx = addr & (CACHE_LINE - 1);
-        let entry = &mut self.cache[idx];
+        let entry = &mut self.cache.get_unchecked_mut(idx);
         entry.write(addr, val);
         *self.m.get_unchecked_mut(addr) = val;
     }
