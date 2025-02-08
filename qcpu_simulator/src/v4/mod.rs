@@ -135,11 +135,11 @@ fn get_delay(op: &OpV4) -> u64 {
     }
 }
 
-const CACHE_MISS_PENALTY_LOW: u64 = 20;
-const CACHE_MISS_PENALTY_HIGH: u64 = 100;
-const WARMED_UP_CYCLE: u64 = 10_000_000_000;
+const CACHE_MISS_PENALTY_LOW: u64 = 28;
+// const CACHE_MISS_PENALTY_HIGH: u64 = 100;
+// const WARMED_UP_CYCLE: u64 = 10_000_000_000;
 
-const CACHE_HIT_PENALTY: u64 = 2;
+const CACHE_HIT_PENALTY: u64 = 1;
 
 impl SimulatorV4 {
     pub fn log_stat(&self) {
@@ -190,17 +190,13 @@ impl SimulatorV4 {
                 get_delay(op)
                     + if self.ctx.cache_hit {
                         CACHE_HIT_PENALTY
-                    } else if self.stat.cycle_count > WARMED_UP_CYCLE {
-                        CACHE_MISS_PENALTY_LOW
                     } else {
-                        CACHE_MISS_PENALTY_HIGH
+                        CACHE_MISS_PENALTY_LOW
                     }
             } else if self.ctx.cache_hit {
                 get_delay(op).max(CACHE_HIT_PENALTY)
-            } else if self.stat.cycle_count > WARMED_UP_CYCLE {
-                CACHE_MISS_PENALTY_LOW
             } else {
-                CACHE_MISS_PENALTY_HIGH
+                get_delay(op).max(CACHE_MISS_PENALTY_LOW)
             };
             self.stat.instr_count += 1;
         }
@@ -259,6 +255,7 @@ impl SimulatorV4 {
                     })?;
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
+                self.stat.cycle_count += CACHE_MISS_PENALTY_LOW;
             }
             OpCode::O => {
                 self.output

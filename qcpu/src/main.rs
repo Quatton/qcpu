@@ -115,10 +115,9 @@ enum Commands {
         #[clap(long, default_value = "false")]
         it: bool,
 
-        /// Low-memory mode. You can't go back too far in the program.
+        // /// Low-memory mode. You can't go back too far in the program.
         // #[arg(short, long, default_value = "32")]
         // low_memory: usize,
-
         #[clap(short, long, default_value = "1048576")]
         memory_size: usize,
 
