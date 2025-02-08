@@ -10,3 +10,7 @@ qcpu_syntax.workspace = true
 qcpu_assembler.workspace = true
 bitvec.workspace = true
 tracing.workspace = true
+
+
+[features]
+unsafe = []

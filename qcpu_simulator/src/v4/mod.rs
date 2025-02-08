@@ -135,11 +135,9 @@ fn get_delay(op: &OpV4) -> u64 {
     }
 }
 
-const CACHE_MISS_PENALTY_LOW: u64 = 28;
-// const CACHE_MISS_PENALTY_HIGH: u64 = 100;
-// const WARMED_UP_CYCLE: u64 = 10_000_000_000;
+const CACHE_MISS_PENALTY_LOW: u64 = 25;
 
-const CACHE_HIT_PENALTY: u64 = 1;
+const CACHE_HIT_PENALTY: u64 = 2;
 
 impl SimulatorV4 {
     pub fn log_stat(&self) {
@@ -215,20 +213,25 @@ impl SimulatorV4 {
                     addr >>= 2;
                 }
 
-                if self.verbose {
-                    self.ctx.cache_hit = self.ctx.memory.update_cache(addr, true);
-                }
-
                 if op.rd != 0 {
-                    self.ctx.current.reg[op.rd as usize] =
-                        self.ctx
-                            .memory
-                            .read(addr)
-                            .map_err(|e| SimulatorV4HaltDetail {
-                                op: *op,
-                                line: pc >> 2,
-                                kind: e,
-                            })?;
+                    #[cfg(not(feature = "unsafe"))]
+                    {
+                        self.ctx.current.reg[op.rd as usize] =
+                            self.ctx
+                                .memory
+                                .read(addr)
+                                .map_err(|e| SimulatorV4HaltDetail {
+                                    op: *op,
+                                    line: pc >> 2,
+                                    kind: e,
+                                })?;
+                    }
+
+                    #[cfg(feature = "unsafe")]
+                    {
+                        self.ctx.current.reg[op.rd as usize] =
+                            unsafe { self.ctx.memory.read_unchecked(addr) };
+                    }
 
                     self.ctx.current.busy[op.rd as usize] = true;
                 }
@@ -241,10 +244,7 @@ impl SimulatorV4 {
                     addr >>= 2;
                 }
 
-                if self.verbose {
-                    self.ctx.memory.update_cache(addr, false);
-                }
-
+                #[cfg(not(feature = "unsafe"))]
                 self.ctx
                     .memory
                     .write(addr, self.ctx.current.reg[op.rs2 as usize])
@@ -253,6 +253,14 @@ impl SimulatorV4 {
                         line: pc >> 2,
                         kind: e,
                     })?;
+
+                #[cfg(feature = "unsafe")]
+                unsafe {
+                    self.ctx
+                        .memory
+                        .write_unchecked(addr, self.ctx.current.reg[op.rs2 as usize]);
+                }
+
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
                 self.stat.cycle_count += CACHE_MISS_PENALTY_LOW;
@@ -270,6 +278,7 @@ impl SimulatorV4 {
                     self.input.read_exact(&mut buf).unwrap();
                     self.ctx.current.reg[op.rd as usize] = u32::from_le_bytes(buf);
                 }
+
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
             }

@@ -31,7 +31,10 @@ qcpu_tui = { path = "./qcpu_tui" }
 
 [profile.dev]
 opt-level = 3
+lto = true
+codegen-units = 1
 
 [profile.profiling]
 inherits = "release"
+opt-level = 3
 debug = true
