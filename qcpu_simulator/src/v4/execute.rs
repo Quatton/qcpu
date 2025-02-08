@@ -1,9 +1,4 @@
-use cfg_if::cfg_if;
-
-use super::{
-    syntax::{OpName, OpV4},
-    Snapshot,
-};
+use super::syntax::{OpName, OpV4};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ExecuteResult {
@@ -175,18 +170,7 @@ fn exec_fsqrt(rs1f: f32) -> Option<u32> {
     Some(f32::to_bits(rs1f.sqrt()))
 }
 
-#[inline(always)]
-pub fn execute(ctx: &Snapshot, op: &OpV4) -> ExecuteResult {
-    cfg_if! {
-        if #[cfg(feature = "unsafe")] {
-            let rs1u = unsafe { *ctx.reg.get_unchecked(op.rs1 as usize) };
-            let rs2u = unsafe { *ctx.reg.get_unchecked(op.rs2 as usize) };
-        } else {
-            let rs1u = ctx.reg[op.rs1 as usize];
-            let rs2u = ctx.reg[op.rs2 as usize];
-        }
-    }
-
+pub fn execute(rs1u: u32, rs2u: u32, pc: usize, op: &OpV4) -> ExecuteResult {
     let rs1i = rs1u as i32;
     let rs2i = rs2u as i32;
 
@@ -195,10 +179,8 @@ pub fn execute(ctx: &Snapshot, op: &OpV4) -> ExecuteResult {
 
     let imm = op.imm;
 
-    let pc = ctx.pc;
-
     let mut exe = ExecuteResult {
-        next_pc: ctx.pc + 4,
+        next_pc: pc + 4,
         ..Default::default()
     };
 

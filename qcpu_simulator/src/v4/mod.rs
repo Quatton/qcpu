@@ -202,18 +202,33 @@ impl SimulatorV4 {
         let next_pc_predicted = self.ctx.current.pc + 4;
         let mut next_pc_true = next_pc_predicted;
 
+        cfg_if! {
+            if #[cfg(not(feature = "unsafe"))] {
+                let rs1u = self.ctx.current.reg[op.rs1 as usize];
+                let rs2u = self.ctx.current.reg[op.rs2 as usize];
+                let rd_mut = &mut self.ctx.current.reg[op.rd as usize];
+                let busy_rd_mut = &mut self.ctx.current.busy[op.rd as usize];
+            } else {
+                let rs1u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs1 as usize) };
+                let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
+                let rd_mut = unsafe { self.ctx.current.reg.get_unchecked_mut(op.rd as usize) };
+                let busy_rd_mut = unsafe { self.ctx.current.busy.get_unchecked_mut(op.rd as usize) };
+            }
+        }
+
+        let imm = op.imm as i32;
+
         match op.opname {
             OpName::Lw => {
                 cfg_if! {
                     if #[cfg(not(feature = "debug"))] {
                         let addr =
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2;
-
+                            (rs1u as i32 + imm) as usize >> 2;
                     } else {
                         let addr = if self.legacy_addressing {
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                            (rs1u + imm) as usize >> 2
                         } else {
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + (op.imm as i32 >> 2)) as usize
+                            (rs1u + (imm >> 2)) as usize
                         };
                     }
                 }
@@ -221,7 +236,7 @@ impl SimulatorV4 {
                 if op.rd != 0 {
                     #[cfg(not(feature = "unsafe"))]
                     {
-                        self.ctx.current.reg[op.rd as usize] =
+                        *rd_mut =
                             self.ctx
                                 .memory
                                 .read(addr)
@@ -234,24 +249,23 @@ impl SimulatorV4 {
 
                     #[cfg(feature = "unsafe")]
                     {
-                        self.ctx.current.reg[op.rd as usize] =
-                            unsafe { self.ctx.memory.read_unchecked(addr) };
+                        *rd_mut = unsafe { self.ctx.memory.read_unchecked(addr) };
                     }
 
-                    self.ctx.current.busy[op.rd as usize] = true;
+                    *busy_rd_mut = true;
                 }
             }
             OpName::Sw => {
                 cfg_if! {
                     if #[cfg(not(feature = "debug"))] {
                         let addr =
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2;
+                            (rs1u as i32 + imm) as usize >> 2;
 
                     } else {
                         let addr = if self.legacy_addressing {
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                            (rs1u + op.imm as i32) as usize >> 2
                         } else {
-                            (self.ctx.current.reg[op.rs1 as usize] as i32 + (op.imm as i32 >> 2)) as usize
+                            (rs1u + (op.imm as i32 >> 2)) as usize
                         };
                     }
                 }
@@ -259,7 +273,7 @@ impl SimulatorV4 {
                 #[cfg(not(feature = "unsafe"))]
                 self.ctx
                     .memory
-                    .write(addr, self.ctx.current.reg[op.rs2 as usize])
+                    .write(addr, rs2u)
                     .map_err(|e| SimulatorV4HaltDetail {
                         op: *op,
                         line: pc >> 2,
@@ -268,9 +282,7 @@ impl SimulatorV4 {
 
                 #[cfg(feature = "unsafe")]
                 unsafe {
-                    self.ctx
-                        .memory
-                        .write_unchecked(addr, self.ctx.current.reg[op.rs2 as usize]);
+                    self.ctx.memory.write_unchecked(addr, rs2u);
                 }
 
                 self.ctx.current.busy = [false; 64];
@@ -278,9 +290,7 @@ impl SimulatorV4 {
                 self.stat.cycle_count += CACHE_MISS_PENALTY_LOW;
             }
             OpName::Outb => {
-                self.output
-                    .write_all(&[(self.ctx.current.reg[op.rs2 as usize] & 0xff) as u8])
-                    .unwrap();
+                self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
             }
@@ -295,20 +305,18 @@ impl SimulatorV4 {
                 self.ctx.cache_hit = true;
             }
             _ => {
-                let ExecuteResult { next_pc, wb } = execute(&self.ctx.current, op);
+                let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, op);
                 next_pc_true = next_pc;
                 if let Some(wb) = wb {
                     if op.rd != 0 {
-                        self.ctx.current.reg[op.rd as usize] = wb
+                        *rd_mut = wb;
                     }
                 }
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
             }
         };
-
         self.ctx.current.pc = next_pc_true;
-
         Ok(())
     }
 
