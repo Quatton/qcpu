@@ -23,7 +23,7 @@ impl CacheLine {
 
     #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
-        let tag = (addr >> CACHE_LINE_BITS) as u32;
+        let tag = (addr) as u32;
 
         if self.valid && self.tag == tag {
             Some(self.data)
@@ -34,7 +34,7 @@ impl CacheLine {
 
     #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) {
-        let tag = (addr >> CACHE_LINE_BITS) as u32;
+        let tag = (addr) as u32;
 
         self.tag = tag;
         self.data = val;

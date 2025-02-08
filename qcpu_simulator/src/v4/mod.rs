@@ -9,6 +9,7 @@ use std::{
     io::{BufReader, BufWriter, Read, Write as _},
 };
 
+use cfg_if::cfg_if;
 use decode::decode;
 use execute::{execute, ExecuteResult};
 use memory::MemoryV4;
@@ -164,18 +165,15 @@ impl SimulatorV4 {
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
-        let pc = if self.legacy_addressing {
-            self.ctx.current.pc >> 2
-        } else {
-            self.ctx.current.pc
-        };
+        let pc = self.ctx.current.pc;
 
-        let op = match self.decoded.get(pc) {
+        let op = match self.decoded.get(pc >> 2) {
             Some(op) => op,
             _ => {
+                // println!();
                 return Err(SimulatorV4HaltDetail {
-                    op: self.decoded[pc - 1],
-                    line: pc - 1,
+                    op: self.decoded[self.ctx.prev.pc >> 2],
+                    line: self.ctx.prev.pc >> 2,
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
@@ -201,20 +199,24 @@ impl SimulatorV4 {
 
         // println!("{:?}", op);
 
-        let next_pc_predicted = if self.legacy_addressing {
-            self.ctx.current.pc + 4
-        } else {
-            self.ctx.current.pc + 1
-        };
+        let next_pc_predicted = self.ctx.current.pc + 4;
         let mut next_pc_true = next_pc_predicted;
 
         match op.opname {
             OpName::Lw => {
-                let addr = if self.legacy_addressing {
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
-                } else {
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize
-                };
+                cfg_if! {
+                    if #[cfg(not(feature = "debug"))] {
+                        let addr =
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2;
+
+                    } else {
+                        let addr = if self.legacy_addressing {
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                        } else {
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + (op.imm as i32 >> 2)) as usize
+                        };
+                    }
+                }
 
                 if op.rd != 0 {
                     #[cfg(not(feature = "unsafe"))]
@@ -240,11 +242,19 @@ impl SimulatorV4 {
                 }
             }
             OpName::Sw => {
-                let addr = if self.legacy_addressing {
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
-                } else {
-                    (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize
-                };
+                cfg_if! {
+                    if #[cfg(not(feature = "debug"))] {
+                        let addr =
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2;
+
+                    } else {
+                        let addr = if self.legacy_addressing {
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + op.imm as i32) as usize >> 2
+                        } else {
+                            (self.ctx.current.reg[op.rs1 as usize] as i32 + (op.imm as i32 >> 2)) as usize
+                        };
+                    }
+                }
 
                 #[cfg(not(feature = "unsafe"))]
                 self.ctx
