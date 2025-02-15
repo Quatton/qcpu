@@ -172,7 +172,7 @@ enum Commands {
 
         /// Word addressing
         #[clap(long, default_value = "false")]
-        word_addressing: bool,
+        legacy_addressing: bool,
 
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
@@ -585,7 +585,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             source,
             input,
             output,
-            word_addressing,
+            legacy_addressing,
             verbose,
             clock,
         } => {
@@ -603,7 +603,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let path = tmp_dir.join("tmp.bin");
 
-                let mut output_file = std::fs::File::create(&path).unwrap();
+                let mut output_file = std::fs::File::options()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&path)
+                    .unwrap();
 
                 let mut writer = std::io::BufWriter::new(&mut output_file);
 
@@ -623,7 +628,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bin: bin.unwrap(),
                 input,
                 output,
-                legacy_addressing: !word_addressing,
+                legacy_addressing,
                 verbose,
             })
             .build();
