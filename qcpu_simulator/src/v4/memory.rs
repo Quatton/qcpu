@@ -61,7 +61,7 @@ impl Display for CacheStat {
     }
 }
 
-pub const CACHE_LINE_BITS: usize = 13;
+pub const CACHE_LINE_BITS: usize = 12;
 pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
 pub const MEMORY_SIZE: usize = 1 << 21;
 pub const CACHE_WAY: usize = 1;

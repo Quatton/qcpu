@@ -179,7 +179,7 @@ enum Commands {
         verbose: bool,
 
         /// Clock (MHz)
-        #[clap(long, default_value = "50")]
+        #[clap(long, default_value = "90")]
         clock: f64,
     },
 }

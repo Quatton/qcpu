@@ -142,9 +142,9 @@ fn get_delay(op: &OpV4) -> u64 {
     }
 }
 
-const CACHE_MISS_PENALTY_LOW: u64 = 25;
+const CACHE_MISS_PENALTY_LOW: u64 = 30;
 
-const CACHE_HIT_PENALTY: u64 = 2;
+const CACHE_HIT_PENALTY: u64 = 1;
 
 impl SimulatorV4 {
     pub fn log_stat(&self) {
@@ -199,7 +199,7 @@ impl SimulatorV4 {
                         CACHE_MISS_PENALTY_LOW
                     }
             } else if self.ctx.cache_hit {
-                CACHE_HIT_PENALTY
+                get_delay(op)
             } else {
                 CACHE_MISS_PENALTY_LOW
             };

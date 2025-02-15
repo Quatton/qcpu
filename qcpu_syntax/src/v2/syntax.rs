@@ -187,14 +187,14 @@ enum_properties! {
       optype: OpType::R,
       opcode: 0b1100,
       funct3: Some(0b010),
-      funct7: None,
+      funct7: Some(0b0000000),
     },
 
     SWR {
       optype: OpType::R,
       opcode: 0b1101,
       funct3: Some(0b010),
-      funct7: None,
+      funct7: Some(0b0000000),
     },
 
     LB {
