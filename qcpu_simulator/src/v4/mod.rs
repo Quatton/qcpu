@@ -226,8 +226,12 @@ impl SimulatorV4 {
         let imm = op.imm as i32;
 
         match op.opname {
-            OpName::Lw => {
-                let mut addr = (rs1u as i32 + imm) as usize;
+            OpName::Lw | OpName::Lwr => {
+                let mut addr = match op.opname {
+                    OpName::Lw => rs1u as i32 + imm,
+                    OpName::Lwr => rs1u as i32 + rs2u as i32,
+                    _ => unreachable!(),
+                } as usize;
 
                 if self.legacy_addressing {
                     addr >>= 2
@@ -255,8 +259,12 @@ impl SimulatorV4 {
                     *busy_rd_mut = true;
                 }
             }
-            OpName::Sw => {
-                let mut addr = (rs1u as i32 + imm) as usize;
+            OpName::Sw | OpName::Swr => {
+                let mut addr = match op.opname {
+                    OpName::Sw => rs1u as i32 + imm,
+                    OpName::Swr => rs1u as i32 + rs2u as i32,
+                    _ => unreachable!(),
+                } as usize;
 
                 if self.legacy_addressing {
                     addr >>= 2

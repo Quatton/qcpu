@@ -28,7 +28,7 @@ beq_cont.36: !7
 	addi	sp, sp, 2 !7
 	jal 	ra, print_int !7
 	addi	sp, sp, -2 !7
-	addi	sp, sp, -1
+	addi	sp, sp, 1
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 f.14:

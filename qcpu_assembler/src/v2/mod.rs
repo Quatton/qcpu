@@ -577,4 +577,26 @@ _min_caml_finish:
         println!("{:?}", ops[226]);
         assert!(ops.iter().any(|op| matches!(op.o, OpName::OUTB)));
     }
+
+    #[test]
+    fn swr() {
+        let code = r#"
+li sp, 123
+li a0, 123
+sw a0, 0(sp)
+li a1, 120
+li a2, 3
+lwr a3, a1, a2
+        "#;
+
+        let (mc, _ctx) = assemble(code, false).unwrap();
+
+        let ops = disassemble(&mc);
+
+        let mc2 = to_machine_code(&ops);
+
+        for (i, (a, b)) in mc.iter().zip(mc2.iter()).enumerate() {
+            assert_eq!(a, b, "at {}", i);
+        }
+    }
 }

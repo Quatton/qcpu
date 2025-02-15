@@ -16,6 +16,8 @@ pub fn decode(mc: u32) -> OpV4 {
         super::syntax::N_CODE => OpCode::N,
         super::syntax::O_CODE => OpCode::O,
         super::syntax::F_CODE => OpCode::F,
+        super::syntax::X_CODE => OpCode::X,
+        super::syntax::Y_CODE => OpCode::Y,
         opcode => unimplemented!("Not supported for {opcode:04b}"),
     };
 
@@ -30,6 +32,8 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::I
         | OpCode::N
         | OpCode::L
+        | OpCode::X
+        | OpCode::Y
         | OpCode::A => bits[4..10].load::<Reg>(),
         OpCode::B | OpCode::O => 0,
     };
@@ -41,14 +45,21 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::I
         | OpCode::B
         | OpCode::L
+        | OpCode::X
+        | OpCode::Y
         | OpCode::A => bits[13..19].load::<Reg>(),
         OpCode::J | OpCode::N | OpCode::O => 0,
     };
 
     let rs2 = match opcode {
-        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O | OpCode::A => {
-            bits[19..25].load::<Reg>()
-        }
+        OpCode::R
+        | OpCode::F
+        | OpCode::S
+        | OpCode::B
+        | OpCode::O
+        | OpCode::A
+        | OpCode::X
+        | OpCode::Y => bits[19..25].load::<Reg>(),
         OpCode::I | OpCode::U | OpCode::J | OpCode::N | OpCode::L => 0,
     };
 
@@ -78,6 +89,8 @@ pub fn decode(mc: u32) -> OpV4 {
         },
         OpCode::L => super::syntax::OpName::Lw,
         OpCode::S => super::syntax::OpName::Sw,
+        OpCode::X => super::syntax::OpName::Lwr,
+        OpCode::Y => super::syntax::OpName::Swr,
         OpCode::B => match funct3 {
             super::syntax::BEQ_FUNC3 => OpName::Beq,
             super::syntax::BNE_FUNC3 => OpName::Bne,

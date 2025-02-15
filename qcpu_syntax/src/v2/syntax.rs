@@ -183,6 +183,20 @@ enum_properties! {
       funct7: None,
     },
 
+    LWR {
+      optype: OpType::R,
+      opcode: 0b1100,
+      funct3: Some(0b010),
+      funct7: None,
+    },
+
+    SWR {
+      optype: OpType::R,
+      opcode: 0b1101,
+      funct3: Some(0b010),
+      funct7: None,
+    },
+
     LB {
       optype: OpType::L,
       opcode: 0b0010,
