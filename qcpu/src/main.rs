@@ -157,18 +157,22 @@ enum Commands {
 
     Simv4 {
         /// The input file in machine code
-        #[clap(short, long)]
-        bin: String,
+        #[arg(short, long)]
+        bin: Option<String>,
+
+        /// The input file in assembly (This will override the bin)
+        #[arg(short, long)]
+        source: Option<String>,
 
         #[clap(short, long)]
-        output: String,
+        output: Option<String>,
 
         #[clap(short, long)]
-        input: String,
+        input: Option<String>,
 
-        /// Byte addressing
+        /// Word addressing
         #[clap(long, default_value = "false")]
-        new_addressing: bool,
+        word_addressing: bool,
 
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
@@ -577,19 +581,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("stdout: ");
         }
         Commands::Simv4 {
-            bin,
+            mut bin,
+            source,
             input,
             output,
-            new_addressing,
+            word_addressing,
             verbose,
             clock,
         } => {
             let s = std::time::Instant::now();
+
+            if let Some(source) = source {
+                let asm = std::fs::read_to_string(source).unwrap();
+
+                let (mc, _) = qcpu_assembler::v2::assemble(&asm, false).unwrap();
+                let tmp_dir = std::env::temp_dir().join("qcpu");
+
+                if !tmp_dir.exists() {
+                    std::fs::create_dir(&tmp_dir).unwrap();
+                }
+
+                let path = tmp_dir.join("tmp.bin");
+
+                let mut output_file = std::fs::File::create(&path).unwrap();
+
+                let mut writer = std::io::BufWriter::new(&mut output_file);
+
+                for mc in mc {
+                    writer.write_all(&mc.to_le_bytes()).unwrap();
+                }
+
+                bin = Some(path.to_str().unwrap().to_string());
+            }
+
+            if bin.is_none() {
+                eprintln!("No input file provided");
+                std::process::exit(1);
+            }
+
             let mut sim = (SimulatorV4Builder {
-                bin,
+                bin: bin.unwrap(),
                 input,
                 output,
-                legacy_addressing: !new_addressing,
+                legacy_addressing: !word_addressing,
                 verbose,
             })
             .build();

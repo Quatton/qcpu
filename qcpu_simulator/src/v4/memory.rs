@@ -102,7 +102,12 @@ impl MemoryV4 {
     }
 
     pub fn write(&mut self, addr: usize, val: u32) -> Result<(), SimulatorV4HaltKind> {
-        // Shift out 2 bits for the 4-byte word size, then mask to find the set index
+        if addr >= MEMORY_SIZE {
+            return Err(SimulatorV4HaltKind::MemoryAccess {
+                bound: MEMORY_SIZE,
+                index: addr,
+            });
+        }
         let idx = addr & (CACHE_LINE - 1);
         let entry = &mut self.cache[idx];
         entry.write(addr, val);

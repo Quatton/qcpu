@@ -334,7 +334,7 @@ impl Op {
                     }
                     _ => {
                         let target = target as i32;
-                        imm.raw = Some(target - offset);
+                        imm.raw = Some((target - offset) * 4);
                     }
                 },
                 None => {

@@ -18,8 +18,8 @@ use syntax::{get_reg_name, OpName, OpV4};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
-    pub input: String,
-    pub output: String,
+    pub input: Option<String>,
+    pub output: Option<String>,
     pub bin: String,
     pub legacy_addressing: bool,
     pub verbose: bool,
@@ -37,12 +37,21 @@ impl SimulatorV4Builder {
             .map(|c| u32::from_le_bytes(unsafe { *(c.as_ptr() as *const [_; 4]) }))
             .collect();
 
-        let input_target = File::options().read(true).open(self.input).unwrap();
+        let input_target = File::options()
+            .read(true)
+            .open(self.input.unwrap_or_else(|| {
+                let tmp_file_path = std::env::temp_dir().join("in.txt");
+                if !tmp_file_path.exists() {
+                    File::create(&tmp_file_path).unwrap();
+                }
+                tmp_file_path.to_str().unwrap().to_string()
+            }))
+            .unwrap();
         let output_target = File::options()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(self.output)
+            .open(self.output.unwrap_or_else(|| String::from("result.txt")))
             .unwrap();
 
         let input = BufReader::new(input_target);
@@ -147,10 +156,10 @@ impl SimulatorV4 {
         for (i, reg) in self.ctx.current.reg.iter().enumerate() {
             let reg_name = get_reg_name(i as u8);
             if i < 32 {
-                print!("{:5}: 0x{:08x} ({:15})", reg_name, reg, *reg as i32);
+                print!("{:5}: 0x{:08x} ({:12})", reg_name, reg, *reg as i32);
             } else {
                 print!(
-                    "{:5}: 0x{:08x} ({:15.6e})",
+                    "{:5}: 0x{:08x} ({:12.6e})",
                     reg_name,
                     reg,
                     f32::from_bits(*reg)
@@ -197,8 +206,6 @@ impl SimulatorV4 {
             self.stat.instr_count += 1;
         }
 
-        // println!("{:?}", op);
-
         let next_pc_predicted = self.ctx.current.pc + 4;
         let mut next_pc_true = next_pc_predicted;
 
@@ -220,18 +227,11 @@ impl SimulatorV4 {
 
         match op.opname {
             OpName::Lw => {
-                cfg_if! {
-                    if #[cfg(not(feature = "debug"))] {
-                        let addr =
-                            (rs1u as i32 + imm) as usize >> 2;
-                    } else {
-                        let addr = if self.legacy_addressing {
-                            (rs1u + imm) as usize >> 2
-                        } else {
-                            (rs1u + (imm >> 2)) as usize
-                        };
-                    }
-                }
+                let mut addr = (rs1u as i32 + imm) as usize;
+
+                if self.legacy_addressing {
+                    addr >>= 2
+                };
 
                 if op.rd != 0 {
                     #[cfg(not(feature = "unsafe"))]
@@ -256,19 +256,11 @@ impl SimulatorV4 {
                 }
             }
             OpName::Sw => {
-                cfg_if! {
-                    if #[cfg(not(feature = "debug"))] {
-                        let addr =
-                            (rs1u as i32 + imm) as usize >> 2;
+                let mut addr = (rs1u as i32 + imm) as usize;
 
-                    } else {
-                        let addr = if self.legacy_addressing {
-                            (rs1u + op.imm as i32) as usize >> 2
-                        } else {
-                            (rs1u + (op.imm as i32 >> 2)) as usize
-                        };
-                    }
-                }
+                if self.legacy_addressing {
+                    addr >>= 2
+                };
 
                 #[cfg(not(feature = "unsafe"))]
                 self.ctx
@@ -407,8 +399,8 @@ mod test {
         let file_bin = dir.join("test_data/minrt_32.bin");
 
         let mut sim = SimulatorV4Builder {
-            input: file_in.to_str().unwrap().to_string(),
-            output: file_out.to_str().unwrap().to_string(),
+            input: Some(file_in.to_str().unwrap().to_string()),
+            output: Some(file_out.to_str().unwrap().to_string()),
             bin: file_bin.to_str().unwrap().to_string(),
             legacy_addressing: true,
             verbose: false,

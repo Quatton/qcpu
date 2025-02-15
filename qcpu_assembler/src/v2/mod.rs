@@ -136,9 +136,29 @@ min_caml_print_int:
 
         let ops = disassemble(&mc);
 
+        for op in ops.iter() {
+            // match op.imm.raw() {
+            //     Some(thing) if matches!(op.o.optype, OpType::B | OpType::J) => {
+            println!("{:?}", op)
+            //     }
+            //     _ => {}
+            // }
+        }
+
         let mc2 = to_machine_code(&ops);
 
         assert_eq!(mc, mc2);
+
+        let ops = disassemble(&mc2);
+
+        for op in ops.iter() {
+            // match op.imm.raw() {
+            //     Some(thing) if matches!(op.o.optype, OpType::B | OpType::J) => {
+            println!("{:?}", op)
+            //     }
+            //     _ => {}
+            // }
+        }
     }
 
     #[test]

@@ -3,12 +3,9 @@ _min_caml_start:
 	jal 	ra, fib.10 !4
 	jal 	ra, min_caml_print_int !4
 fib.10:
-	ecount fib
-	estart fib
 	sw  	ra, 0(sp)
 	addi	t0, zero, 1 !2
 	blt 	t0, a0, bge_else.24 !2
-	estop fib
 	lw  	ra, 0(sp)
 	jalr	zero, ra, 0
 bge_else.24: !2

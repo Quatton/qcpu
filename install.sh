@@ -1,2 +1,2 @@
 git pull
-cargo install --path ./qcpu
+cargo install --features qcpu_simulator/unsafe --path ./qcpu
