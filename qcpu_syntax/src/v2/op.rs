@@ -185,11 +185,11 @@ impl Op {
                 vec[13..=30].store(imm);
             }
             OpType::LU => {
-                vec[10..29].store(imm);
+                vec[10..31].store(imm as u32);
             }
             OpType::SU => {
                 vec[4..=18].store(imm);
-                vec[25..=29].store(imm >> 14);
+                vec[25..31].store(imm >> 15);
             }
         }
 
@@ -301,12 +301,12 @@ impl Op {
                 op.imm = Immediate::from_offset(bv[10..=29].load::<i32>());
             }
             OpType::LU => {
-                op.imm = Immediate::from_offset(bv[10..=29].load::<i32>());
+                op.imm = Immediate::from_offset(bv[10..=31].load::<u32>() as i32);
             }
             OpType::SU => {
                 let mut of = bv[4..=18].to_bitvec();
-                of.extend_from_bitslice(&bv[25..=29]);
-                op.imm = Immediate::from_offset(of.load::<i32>());
+                of.extend_from_bitslice(&bv[25..=31]);
+                op.imm = Immediate::from_offset(of.load::<u32>() as i32);
             }
             OpType::B => {
                 let mut of = bv[5..=9].to_bitvec();

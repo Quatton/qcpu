@@ -157,7 +157,13 @@ pub fn decode(mc: u32) -> OpV4 {
         OpCode::U => {
             imm = bits[10..30].load::<u32>() << 12;
         }
-        _ => {}
+        OpCode::LU => {
+            imm = bits[10..31].load::<u32>();
+        }
+        OpCode::SU => {
+            imm = bits[4..=18].load::<u32>() | bits[25..31].load::<u32>() << 15;
+        }
+        OpCode::F | OpCode::N | OpCode::O | OpCode::R | OpCode::LR => {}
     }
 
     cfg_if::cfg_if! {
