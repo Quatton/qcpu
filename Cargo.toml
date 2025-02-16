@@ -4,7 +4,7 @@ resolver = "2"
 default-members = ["qcpu"]
 
 [workspace.package]
-version = "4.2.0"
+version = "4.3.0"
 edition = "2021"
 
 [workspace.dependencies]
@@ -30,7 +30,9 @@ qcpu_syntax = { path = "./qcpu_syntax" }
 qcpu_simulator = { path = "./qcpu_simulator" }
 qcpu_tui = { path = "./qcpu_tui" }
 
-[profile.dev]
+
+[profile.opt]
+inherits = "dev"
 opt-level = 3
 lto = true
 codegen-units = 1

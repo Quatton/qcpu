@@ -190,11 +190,11 @@ enum_properties! {
       funct7: Some(0b0000000),
     },
 
-    SWR {
-      optype: OpType::R,
+    LWI {
+      optype: OpType::LU,
       opcode: 0b1101,
-      funct3: Some(0b010),
-      funct7: Some(0b0000000),
+      funct3: None,
+      funct7: None,
     },
 
     LB {
@@ -244,6 +244,13 @@ enum_properties! {
       optype: OpType::S,
       opcode: 0b0011,
       funct3: Some(0b001),
+      funct7: None,
+    },
+
+    SWI {
+      optype: OpType::SU,
+      opcode: 0b0111,
+      funct3: None,
       funct7: None,
     },
 
@@ -473,6 +480,8 @@ pub enum OpType {
     O,
     L,
     E,
+    LU,
+    SU,
     Raw,
 }
 

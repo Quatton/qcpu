@@ -226,10 +226,11 @@ impl SimulatorV4 {
         let imm = op.imm as i32;
 
         match op.opname {
-            OpName::Lw | OpName::Lwr => {
+            OpName::Lw | OpName::Lwr | OpName::Lwi => {
                 let mut addr = match op.opname {
                     OpName::Lw => rs1u as i32 + imm,
                     OpName::Lwr => rs1u as i32 + rs2u as i32,
+                    OpName::Lwi => imm,
                     _ => unreachable!(),
                 } as usize;
 
@@ -259,10 +260,10 @@ impl SimulatorV4 {
                     *busy_rd_mut = true;
                 }
             }
-            OpName::Sw | OpName::Swr => {
+            OpName::Sw | OpName::Swi => {
                 let mut addr = match op.opname {
                     OpName::Sw => rs1u as i32 + imm,
-                    OpName::Swr => rs1u as i32 + rs2u as i32,
+                    OpName::Swi => imm,
                     _ => unreachable!(),
                 } as usize;
 

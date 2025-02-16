@@ -139,15 +139,6 @@ impl Simulator {
         let taken = pc.wrapping_add_signed(op.imm.raw().unwrap_or_default() as isize);
 
         match op.o.optype {
-            OpType::R
-            | OpType::U
-            | OpType::L
-            | OpType::E
-            | OpType::F
-            | OpType::N
-            | OpType::O
-            | OpType::S
-            | OpType::Raw => pc + 4,
             OpType::I => {
                 if op.o == OpName::JALR && self.ctx.jalr_addr[(pc >> 2) & 1023] > 0 {
                     self.ctx.jalr_addr[(pc >> 2) & 1023]
@@ -166,6 +157,7 @@ impl Simulator {
                     pc + 4
                 }
             }
+            _ => pc + 4,
         }
     }
 
@@ -373,7 +365,7 @@ impl Simulator {
                 OpName::FCVTSW => 3,
                 _ => 1,
             },
-            OpType::Raw | OpType::O | OpType::S | OpType::B | OpType::E | OpType::L => 0,
+            _ => 0,
         }
     }
 }

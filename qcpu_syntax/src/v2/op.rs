@@ -142,6 +142,8 @@ impl Op {
             OpType::O => format!("{:?} {:?}", self.o, self.rs2),
             OpType::Raw => format!(".word {:08x}", self.imm.raw().unwrap()),
             OpType::E => format!("{:?} {:?}", self.o, self.imm),
+            OpType::LU => format!("{:?} {:?}, {:?}", self.o, self.rd, self.imm),
+            OpType::SU => format!("{:?} {:?}, {:?}", self.o, self.rs2, self.imm),
         }
         .to_ascii_lowercase()
     }
@@ -181,6 +183,13 @@ impl Op {
             }
             OpType::E => {
                 vec[13..=30].store(imm);
+            }
+            OpType::LU => {
+                vec[10..29].store(imm);
+            }
+            OpType::SU => {
+                vec[4..=18].store(imm);
+                vec[25..=29].store(imm >> 14);
             }
         }
 
@@ -241,28 +250,42 @@ impl Op {
             | OpType::F
             | OpType::J
             | OpType::U
-            | OpType::S
             | OpType::I
             | OpType::N
-            | OpType::L => {
+            | OpType::L
+            | OpType::LU => {
                 op.rd = Register::from_usize(rd);
             }
-            OpType::B | OpType::Raw | OpType::O | OpType::E => {}
+            OpType::S | OpType::SU | OpType::B | OpType::Raw | OpType::O | OpType::E => {}
         };
 
         match opname.optype {
-            OpType::R | OpType::F | OpType::U | OpType::S | OpType::I | OpType::B | OpType::L => {
+            OpType::R | OpType::F | OpType::S | OpType::B | OpType::L => {
                 op.rs1 = Register::from_usize(rs1);
             }
-            OpType::Raw | OpType::J | OpType::N | OpType::O | OpType::E => {}
+            OpType::U
+            | OpType::I
+            | OpType::Raw
+            | OpType::J
+            | OpType::LU
+            | OpType::SU
+            | OpType::N
+            | OpType::O
+            | OpType::E => {}
         };
 
         match opname.optype {
-            OpType::R | OpType::F | OpType::S | OpType::B | OpType::O => {
+            OpType::SU | OpType::R | OpType::F | OpType::S | OpType::B | OpType::O => {
                 op.rs2 = Register::from_usize(rs2);
             }
-            OpType::I | OpType::U | OpType::J | OpType::Raw | OpType::N | OpType::L | OpType::E => {
-            }
+            OpType::I
+            | OpType::U
+            | OpType::J
+            | OpType::Raw
+            | OpType::LU
+            | OpType::N
+            | OpType::L
+            | OpType::E => {}
         };
 
         match opname.optype {
@@ -276,6 +299,14 @@ impl Op {
             }
             OpType::U => {
                 op.imm = Immediate::from_offset(bv[10..=29].load::<i32>());
+            }
+            OpType::LU => {
+                op.imm = Immediate::from_offset(bv[10..=29].load::<i32>());
+            }
+            OpType::SU => {
+                let mut of = bv[4..=18].to_bitvec();
+                of.extend_from_bitslice(&bv[25..=29]);
+                op.imm = Immediate::from_offset(of.load::<i32>());
             }
             OpType::B => {
                 let mut of = bv[5..=9].to_bitvec();
@@ -296,7 +327,7 @@ impl Op {
 
     pub fn resolve_label(&mut self, label_map: &mut LabelMap, idx: usize) -> Result<(), String> {
         let offset = match self.o.optype {
-            OpType::I | OpType::L | OpType::U => 0,
+            OpType::I | OpType::L | OpType::U | OpType::LU | OpType::SU => 0,
             OpType::B | OpType::S | OpType::J => idx as i32,
             OpType::R | OpType::F | OpType::N | OpType::Raw | OpType::O => return Ok(()),
             OpType::E => {
@@ -522,6 +553,41 @@ impl Op {
                     },
                 )
             }
+
+            OpType::LU => {
+                // lwi a0 imm
+                let (s, rd) = Register::parse(s)?;
+                let (s, _) = multispace1(s)?;
+                let (s, imm) = Immediate::parse(s)?;
+
+                (
+                    s,
+                    Self {
+                        o,
+                        rd,
+                        imm,
+                        ..Default::default()
+                    },
+                )
+            }
+
+            OpType::SU => {
+                // swi a0 imm
+                let (s, rs2) = Register::parse(s)?;
+                let (s, _) = multispace1(s)?;
+                let (s, imm) = Immediate::parse(s)?;
+
+                (
+                    s,
+                    Self {
+                        o,
+                        rs2,
+                        imm,
+                        ..Default::default()
+                    },
+                )
+            }
+
             OpType::U => {
                 // lui a0 imm
                 let (s, rd) = Register::parse(s)?;
@@ -538,6 +604,7 @@ impl Op {
                     },
                 )
             }
+
             OpType::N => {
                 // inb a0
                 let (s, rd) = Register::parse(s)?;

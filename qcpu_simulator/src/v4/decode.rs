@@ -16,8 +16,9 @@ pub fn decode(mc: u32) -> OpV4 {
         super::syntax::N_CODE => OpCode::N,
         super::syntax::O_CODE => OpCode::O,
         super::syntax::F_CODE => OpCode::F,
-        super::syntax::X_CODE => OpCode::X,
-        super::syntax::Y_CODE => OpCode::Y,
+        super::syntax::LR_CODE => OpCode::LR,
+        super::syntax::LU_CODE => OpCode::LU,
+        super::syntax::SU_CODE => OpCode::SU,
         opcode => unimplemented!("Not supported for {opcode:04b}"),
     };
 
@@ -32,11 +33,12 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::I
         | OpCode::N
         | OpCode::L
-        | OpCode::X
-        | OpCode::Y
+        | OpCode::LR
+        | OpCode::LU
         | OpCode::A => bits[4..10].load::<Reg>(),
-        OpCode::B | OpCode::O => 0,
+        OpCode::B | OpCode::O | OpCode::SU => 0,
     };
+
     let rs1 = match opcode {
         OpCode::R
         | OpCode::F
@@ -45,10 +47,9 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::I
         | OpCode::B
         | OpCode::L
-        | OpCode::X
-        | OpCode::Y
+        | OpCode::LR
         | OpCode::A => bits[13..19].load::<Reg>(),
-        OpCode::J | OpCode::N | OpCode::O => 0,
+        OpCode::J | OpCode::N | OpCode::O | OpCode::SU | OpCode::LU => 0,
     };
 
     let rs2 = match opcode {
@@ -58,9 +59,9 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::B
         | OpCode::O
         | OpCode::A
-        | OpCode::X
-        | OpCode::Y => bits[19..25].load::<Reg>(),
-        OpCode::I | OpCode::U | OpCode::J | OpCode::N | OpCode::L => 0,
+        | OpCode::LR
+        | OpCode::SU => bits[19..25].load::<Reg>(),
+        OpCode::I | OpCode::U | OpCode::J | OpCode::N | OpCode::L | OpCode::LU => 0,
     };
 
     let funct3 = bits[10..13].load::<u32>();
@@ -89,8 +90,9 @@ pub fn decode(mc: u32) -> OpV4 {
         },
         OpCode::L => super::syntax::OpName::Lw,
         OpCode::S => super::syntax::OpName::Sw,
-        OpCode::X => super::syntax::OpName::Lwr,
-        OpCode::Y => super::syntax::OpName::Swr,
+        OpCode::LR => super::syntax::OpName::Lwr,
+        OpCode::LU => super::syntax::OpName::Lwi,
+        OpCode::SU => super::syntax::OpName::Swi,
         OpCode::B => match funct3 {
             super::syntax::BEQ_FUNC3 => OpName::Beq,
             super::syntax::BNE_FUNC3 => OpName::Bne,

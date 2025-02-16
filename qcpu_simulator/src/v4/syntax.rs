@@ -86,15 +86,17 @@ pub enum OpCode {
     N = 0b1001,
     O = 0b1010,
     F = 0b1011,
-    X = 0b1100,
-    Y = 0b1101,
+    LR = 0b1100,
+    LU = 0b1101,
+    SU = 0b0111,
 }
 
 pub const R_CODE: u32 = OpCode::R as u32;
 pub const I_CODE: u32 = OpCode::I as u32;
 pub const L_CODE: u32 = OpCode::L as u32;
-pub const X_CODE: u32 = OpCode::X as u32;
-pub const Y_CODE: u32 = OpCode::Y as u32;
+pub const LR_CODE: u32 = OpCode::LR as u32;
+pub const LU_CODE: u32 = OpCode::LU as u32;
+pub const SU_CODE: u32 = OpCode::SU as u32;
 pub const S_CODE: u32 = OpCode::S as u32;
 pub const B_CODE: u32 = OpCode::B as u32;
 pub const A_CODE: u32 = OpCode::A as u32;
@@ -158,8 +160,9 @@ pub enum OpName {
 
     Lw,
     Lwr,
+    Lwi,
     Sw,
-    Swr,
+    Swi,
 
     Beq,
     Bne,

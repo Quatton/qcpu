@@ -599,4 +599,23 @@ lwr a3, a1, a2
             assert_eq!(a, b, "at {}", i);
         }
     }
+
+    #[test]
+    fn swi() {
+        let code = r#"
+li a0, 123
+swi a0, 123
+lwi a1, 123
+"#;
+
+        let (mc, _ctx) = assemble(code, false).unwrap();
+
+        let ops = disassemble(&mc);
+
+        let mc2 = to_machine_code(&ops);
+
+        for (i, (a, b)) in mc.iter().zip(mc2.iter()).enumerate() {
+            assert_eq!(a, b, "at {}", i);
+        }
+    }
 }
