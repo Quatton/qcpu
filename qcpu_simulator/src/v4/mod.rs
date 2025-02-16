@@ -225,8 +225,6 @@ impl SimulatorV4 {
 
         let imm = op.imm as i32;
 
-        println!("{:?}", op);
-
         match op.opname {
             OpName::Lw | OpName::Lwr | OpName::Lwi => {
                 let mut addr = match op.opname {
