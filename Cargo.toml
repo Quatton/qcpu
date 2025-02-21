@@ -30,6 +30,10 @@ qcpu_syntax = { path = "./qcpu_syntax" }
 qcpu_simulator = { path = "./qcpu_simulator" }
 qcpu_tui = { path = "./qcpu_tui" }
 
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
 
 [profile.opt]
 inherits = "dev"

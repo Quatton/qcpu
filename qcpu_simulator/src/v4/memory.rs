@@ -26,11 +26,7 @@ impl CacheLine {
     #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
-        if self.valid && self.tag == tag {
-            Some(self.data)
-        } else {
-            None
-        }
+        (self.valid && self.tag == tag).then_some(self.data)
     }
 
     #[inline(always)]
