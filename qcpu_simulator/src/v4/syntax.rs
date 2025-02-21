@@ -141,6 +141,7 @@ pub const FITOF_FUNC7: u32 = 0b1101000;
 pub const FCMP_FUNC7: u32 = 0b1010000;
 pub const FSGN_FUNC7: u32 = 0b0010000;
 
+#[repr(u8)]
 #[derive(Debug, Default, Clone, Copy)]
 pub enum OpName {
     #[default]
@@ -198,10 +199,10 @@ pub enum OpName {
 pub struct OpV4 {
     #[cfg(feature = "debug")]
     pub mc: u32,
-    pub imm: u32,
-    pub opname: OpName,
     #[cfg(feature = "debug")]
     pub opcode: OpCode,
+    pub imm: u32,
+    pub opname: OpName,
     pub rd: Reg,
     pub rs1: Reg,
     pub rs2: Reg,

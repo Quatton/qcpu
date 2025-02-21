@@ -8,6 +8,7 @@ pub struct MemoryV4 {
     pub cache: Vec<CacheLine>,
     pub stat: CacheStat,
     pub cache_line: usize,
+    cache_mask: usize, // optimization: precomputed mask
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -25,7 +26,6 @@ impl CacheLine {
     #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
-
         if self.valid && self.tag == tag {
             Some(self.data)
         } else {
@@ -36,7 +36,6 @@ impl CacheLine {
     #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
-
         self.tag = tag;
         self.data = val;
         self.valid = true;
@@ -72,21 +71,21 @@ pub const CACHE_WAY: usize = 1;
 impl MemoryV4 {
     #[inline(always)]
     pub fn new(cache_line: Option<usize>) -> Self {
+        let line = cache_line.unwrap_or(CACHE_LINE);
         Self {
             m: vec![0; MEMORY_SIZE],
-            cache: vec![CacheLine::default(); cache_line.unwrap_or(CACHE_LINE)],
+            cache: vec![CacheLine::default(); line],
             stat: CacheStat::default(),
-            cache_line: cache_line.unwrap_or(CACHE_LINE),
+            cache_line: line,
+            cache_mask: line - 1, // precompute mask
         }
     }
 
     pub fn read(&mut self, addr: usize) -> Result<u32, SimulatorV4HaltKind> {
-        // Shift out 2 bits for the 4-byte word size, then mask to find the set index
-        let idx = addr & (self.cache_line - 1);
+        let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
 
         self.stat.read += 1;
-
         if let Some(val) = entry.read(addr) {
             self.stat.hit += 1;
             return Ok(val);
@@ -100,7 +99,6 @@ impl MemoryV4 {
                 bound: MEMORY_SIZE,
                 index: addr,
             })?;
-
         entry.write(addr, value);
         Ok(value)
     }
@@ -112,7 +110,7 @@ impl MemoryV4 {
                 index: addr,
             });
         }
-        let idx = addr & (self.cache_line - 1);
+        let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
         entry.write(addr, val);
         self.m[addr] = val;
@@ -124,16 +122,13 @@ impl MemoryV4 {
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
     pub unsafe fn read_unchecked(&mut self, addr: usize) -> u32 {
-        let idx = addr & (self.cache_line - 1);
+        let idx = addr & self.cache_mask;
         let entry = &mut self.cache.get_unchecked_mut(idx);
-
         self.stat.read += 1;
-
         if let Some(val) = entry.read(addr) {
             self.stat.hit += 1;
             return val;
         }
-
         let value = *self.m.get_unchecked(addr);
         entry.write(addr, value);
         value
@@ -144,9 +139,8 @@ impl MemoryV4 {
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
     pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) {
-        let idx = addr & (self.cache_line - 1);
-        let entry = &mut self.cache.get_unchecked_mut(idx);
-        entry.write(addr, val);
+        let idx = addr & self.cache_mask;
+        self.cache.get_unchecked_mut(idx).write(addr, val);
         *self.m.get_unchecked_mut(addr) = val;
     }
 }
