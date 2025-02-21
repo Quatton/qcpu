@@ -256,16 +256,16 @@ _min_caml_start:
 	addi	sp, sp, 6 !118
 	jal 	ra, create_array !118
 	addi	sp, sp, -6 !118
-	addi	a0, zero, 128 !2314
-	addi	a1, zero, 128 !2314
+	addi	a0, zero, 256 !2314
+	addi	a1, zero, 256 !2314
 	addi	a2, zero, 6 !2314
 	swi 	a0, 262298 !2294
 	swi 	a1, 262299 !2295
-	addi	a0, zero, 64 !2296
+	addi	a0, zero, 128 !2296
 	swi 	a0, 262300 !2296
-	addi	a0, zero, 64 !2297
+	addi	a0, zero, 128 !2297
 	swi 	a0, 262301 !2297
-	li  	fa0, 1.000000 !2298
+	li  	fa0, 0.500000 !2298
 	swi 	fa0, 262302 !2298
 	lwi 	a0, 262298 !2121
 	addi	a1, zero, 3 !2099
