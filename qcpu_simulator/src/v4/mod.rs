@@ -60,12 +60,13 @@ impl SimulatorV4Builder {
         let input = BufReader::new(input_target);
         let output = BufWriter::new(output_target);
 
-        let decoded = program.iter().map(|&p| decode(p)).collect();
+        let decoded = program.iter().map(|&p| decode(p)).collect::<Vec<_>>();
 
         SimulatorV4 {
             program,
             input,
             output,
+            decoded_len: decoded.len(),
             decoded,
             legacy_addressing: self.legacy_addressing,
             verbose: self.verbose,
@@ -116,6 +117,7 @@ pub struct SimulatorV4Context {
 pub struct SimulatorV4 {
     pub program: Vec<u32>,
     pub decoded: Vec<OpV4>,
+    pub decoded_len: usize,
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
     pub ctx: SimulatorV4Context,
@@ -138,15 +140,24 @@ pub enum SimulatorV4HaltKind {
     Complete,
 }
 
+const NUM_OPNAMES: usize = 64;
+
+const DEFAULT_DELAY: u8 = 1;
+const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
+    let mut delays = [DEFAULT_DELAY; NUM_OPNAMES];
+    delays[OpName::Fadd as usize] = 3;
+    delays[OpName::Fsub as usize] = 3;
+    delays[OpName::Fmul as usize] = 3;
+    delays[OpName::Ftoi as usize] = 3;
+    delays[OpName::Fitof as usize] = 3;
+    delays[OpName::Fdiv as usize] = 9;
+    delays
+};
+
 #[inline(always)]
 fn get_delay(op: &OpV4) -> u64 {
-    match op.opname {
-        OpName::Fadd | OpName::Fsub | OpName::Fmul | OpName::Ftoi | OpName::Fitof => 3,
-        OpName::Fdiv => 9,
-        _ => 1,
-    }
+    DELAY_LOOKUP[op.opname as usize] as u64
 }
-
 const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
 
@@ -180,34 +191,44 @@ impl SimulatorV4 {
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
         let pc = self.ctx.current.pc;
 
-        let op = match self.decoded.get(pc >> 2) {
-            Some(op) => op,
-            _ => {
-                // println!();
-                return Err(SimulatorV4HaltDetail {
-                    op: self.decoded[self.ctx.prev.pc >> 2],
-                    line: self.ctx.prev.pc >> 2,
-                    kind: SimulatorV4HaltKind::Complete,
-                });
-            }
-        };
+        let index = pc >> 2;
+        if index >= self.decoded_len {
+            return Err(SimulatorV4HaltDetail {
+                op: unsafe { *self.decoded.get_unchecked(self.ctx.prev.pc >> 2) },
+                line: self.ctx.prev.pc >> 2,
+                kind: SimulatorV4HaltKind::Complete,
+            });
+        }
+        let op = unsafe { *self.decoded.get_unchecked(index) };
 
         if self.verbose {
-            self.stat.cycle_count += if self.ctx.current.busy[op.rs1 as usize]
-                || self.ctx.current.busy[op.rs2 as usize]
-            {
-                self.stat.hazard_count += 1;
-                get_delay(op)
-                    + if self.ctx.cache_hit {
-                        CACHE_HIT_PENALTY
-                    } else {
-                        self.cache_miss_penalty
-                    }
-            } else if self.ctx.cache_hit {
-                get_delay(op) + CACHE_HIT_PENALTY
+            // Always use unsafe indexing to avoid bounds checks.
+            let busy = unsafe {
+                *self.ctx.current.busy.get_unchecked(op.rs1 as usize)
+                    || *self.ctx.current.busy.get_unchecked(op.rs2 as usize)
+            };
+            let delay = get_delay(&op);
+            let cache_hit = self.ctx.cache_hit;
+            // Compute both cases inline to let the optimizer fuse branches.
+            let busy_penalty = delay
+                + if cache_hit {
+                    CACHE_HIT_PENALTY
+                } else {
+                    self.cache_miss_penalty
+                };
+            let nonbusy_penalty = if cache_hit {
+                delay.max(CACHE_HIT_PENALTY)
             } else {
                 self.cache_miss_penalty
             };
+
+            if busy {
+                self.stat.hazard_count += 1;
+            }
+            // Invert the branch if it helps with prediction (or use a likely/hint crate if available).
+            let penalty = if busy { busy_penalty } else { nonbusy_penalty };
+
+            self.stat.cycle_count += penalty;
             self.stat.instr_count += 1;
         }
 
@@ -228,13 +249,13 @@ impl SimulatorV4 {
             }
         }
 
-        let imm = op.imm as i32;
+        let imm = op.imm;
 
         match op.opname {
             OpName::Lw | OpName::Lwr | OpName::Lwi => {
                 let mut addr = match op.opname {
-                    OpName::Lw => rs1u as i32 + imm,
-                    OpName::Lwr => rs1u as i32 + rs2u as i32,
+                    OpName::Lw => rs1u.wrapping_add(imm),
+                    OpName::Lwr => rs1u.wrapping_add(rs2u),
                     OpName::Lwi => imm,
                     _ => unreachable!(),
                 } as usize;
@@ -251,7 +272,7 @@ impl SimulatorV4 {
                                 .memory
                                 .read(addr)
                                 .map_err(|e| SimulatorV4HaltDetail {
-                                    op: *op,
+                                    op,
                                     line: pc >> 2,
                                     kind: e,
                                 })?;
@@ -267,7 +288,7 @@ impl SimulatorV4 {
             }
             OpName::Sw | OpName::Swi => {
                 let mut addr = match op.opname {
-                    OpName::Sw => rs1u as i32 + imm,
+                    OpName::Sw => rs1u.wrapping_add(imm),
                     OpName::Swi => imm,
                     _ => unreachable!(),
                 } as usize;
@@ -281,7 +302,7 @@ impl SimulatorV4 {
                     .memory
                     .write(addr, rs2u)
                     .map_err(|e| SimulatorV4HaltDetail {
-                        op: *op,
+                        op,
                         line: pc >> 2,
                         kind: e,
                     })?;
@@ -293,7 +314,7 @@ impl SimulatorV4 {
 
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
-                self.stat.cycle_count += CACHE_MISS_PENALTY;
+                self.stat.cycle_count += self.cache_miss_penalty;
             }
             OpName::Outb => {
                 self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
@@ -311,10 +332,10 @@ impl SimulatorV4 {
                 self.ctx.cache_hit = true;
             }
             _ => {
-                let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, op);
+                let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, &op);
                 next_pc_true = next_pc;
-                if let Some(wb) = wb {
-                    if op.rd != 0 {
+                if op.rd != 0 {
+                    if let Some(wb) = wb {
                         *rd_mut = wb;
                     }
                 }

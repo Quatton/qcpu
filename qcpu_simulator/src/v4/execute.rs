@@ -169,14 +169,9 @@ fn exec_fle(rs1f: f32, rs2f: f32) -> Option<u32> {
 fn exec_fsqrt(rs1f: f32) -> Option<u32> {
     Some(f32::to_bits(rs1f.sqrt()))
 }
-
 pub fn execute(rs1u: u32, rs2u: u32, pc: usize, op: &OpV4) -> ExecuteResult {
     let rs1i = rs1u as i32;
     let rs2i = rs2u as i32;
-
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
-
     let imm = op.imm;
 
     let mut exe = ExecuteResult {
@@ -202,19 +197,53 @@ pub fn execute(rs1u: u32, rs2u: u32, pc: usize, op: &OpV4) -> ExecuteResult {
         OpName::Jal => exec_jal(pc, imm as i32, &mut exe),
         OpName::Jalr => exec_jalr(rs1u, imm as i32, pc, &mut exe),
         OpName::Lui => exec_lui(imm),
-        OpName::Fadd => exec_fadd(rs1f, rs2f),
-        OpName::Fsub => exec_fsub(rs1f, rs2f),
-        OpName::Fmul => exec_fmul(rs1f, rs2f),
-        OpName::Fdiv => exec_fdiv(rs1f, rs2f),
+        OpName::Fadd => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_fadd(rs1f, rs2f)
+        }
+        OpName::Fsub => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_fsub(rs1f, rs2f)
+        }
+        OpName::Fmul => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_fmul(rs1f, rs2f)
+        }
+        OpName::Fdiv => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_fdiv(rs1f, rs2f)
+        }
         OpName::Fsgnj => exec_fsgnj(rs1u, rs2u),
         OpName::Fsgnjn => exec_fsgnjn(rs1u, rs2u),
         OpName::Fsgnjx => exec_fsgnjx(rs1u, rs2u),
-        OpName::Ftoi => exec_ftoi(rs1f),
+        OpName::Ftoi => {
+            let rs1f = f32::from_bits(rs1u);
+            exec_ftoi(rs1f)
+        }
         OpName::Fitof => exec_fitof(rs1i),
-        OpName::Feq => exec_feq(rs1f, rs2f),
-        OpName::Flt => exec_flt(rs1f, rs2f),
-        OpName::Fle => exec_fle(rs1f, rs2f),
-        OpName::Fsqrt => exec_fsqrt(rs1f),
+        OpName::Feq => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_feq(rs1f, rs2f)
+        }
+        OpName::Flt => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_flt(rs1f, rs2f)
+        }
+        OpName::Fle => {
+            let rs1f = f32::from_bits(rs1u);
+            let rs2f = f32::from_bits(rs2u);
+            exec_fle(rs1f, rs2f)
+        }
+        OpName::Fsqrt => {
+            let rs1f = f32::from_bits(rs1u);
+            exec_fsqrt(rs1f)
+        }
         _ => unimplemented!(),
     };
 
