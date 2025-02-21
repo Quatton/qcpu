@@ -23,6 +23,9 @@ pub struct SimulatorV4Builder {
     pub bin: String,
     pub legacy_addressing: bool,
     pub verbose: bool,
+
+    pub cache_miss_penalty: Option<u64>,
+    pub cache_line: Option<usize>,
 }
 
 impl SimulatorV4Builder {
@@ -77,10 +80,11 @@ impl SimulatorV4Builder {
                     pc: 0,
                     busy: [false; 64],
                 },
-                memory: MemoryV4::new(),
+                memory: MemoryV4::new(self.cache_line),
                 cache_hit: false,
             },
             stat: Statistics::default(),
+            cache_miss_penalty: self.cache_miss_penalty.unwrap_or(CACHE_MISS_PENALTY),
         }
     }
 }
@@ -116,6 +120,7 @@ pub struct SimulatorV4 {
     pub output: BufWriter<File>,
     pub ctx: SimulatorV4Context,
     pub stat: Statistics,
+    pub cache_miss_penalty: u64,
     pub legacy_addressing: bool,
     pub verbose: bool,
 }
@@ -196,12 +201,12 @@ impl SimulatorV4 {
                     + if self.ctx.cache_hit {
                         CACHE_HIT_PENALTY
                     } else {
-                        CACHE_MISS_PENALTY
+                        self.cache_miss_penalty
                     }
             } else if self.ctx.cache_hit {
-                get_delay(op)
+                get_delay(op) + CACHE_HIT_PENALTY
             } else {
-                CACHE_MISS_PENALTY
+                self.cache_miss_penalty
             };
             self.stat.instr_count += 1;
         }
@@ -413,6 +418,8 @@ mod test {
             bin: file_bin.to_str().unwrap().to_string(),
             legacy_addressing: true,
             verbose: false,
+            cache_line: None,
+            cache_miss_penalty: None,
         }
         .build();
 

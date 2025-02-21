@@ -181,6 +181,14 @@ enum Commands {
         /// Clock (MHz)
         #[clap(long, default_value = "120")]
         clock: f64,
+
+        /// Cache line
+        #[clap(long)]
+        cache_line: Option<usize>,
+
+        /// Cache miss penalty
+        #[clap(long)]
+        cache_miss_penalty: Option<u64>,
     },
 }
 
@@ -588,6 +596,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             legacy_addressing,
             verbose,
             clock,
+            cache_line,
+            cache_miss_penalty,
         } => {
             let s = std::time::Instant::now();
 
@@ -630,6 +640,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 output,
                 legacy_addressing,
                 verbose,
+                cache_line,
+                cache_miss_penalty,
             })
             .build();
             let e = s.elapsed();

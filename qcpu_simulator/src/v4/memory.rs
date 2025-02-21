@@ -7,6 +7,7 @@ pub struct MemoryV4 {
     pub m: Vec<u32>,
     pub cache: Vec<CacheLine>,
     pub stat: CacheStat,
+    pub cache_line: usize,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -70,17 +71,18 @@ pub const CACHE_WAY: usize = 1;
 
 impl MemoryV4 {
     #[inline(always)]
-    pub fn new() -> Self {
+    pub fn new(cache_line: Option<usize>) -> Self {
         Self {
             m: vec![0; MEMORY_SIZE],
-            cache: vec![CacheLine::default(); CACHE_LINE],
+            cache: vec![CacheLine::default(); cache_line.unwrap_or(CACHE_LINE)],
             stat: CacheStat::default(),
+            cache_line: cache_line.unwrap_or(CACHE_LINE),
         }
     }
 
     pub fn read(&mut self, addr: usize) -> Result<u32, SimulatorV4HaltKind> {
         // Shift out 2 bits for the 4-byte word size, then mask to find the set index
-        let idx = addr & (CACHE_LINE - 1);
+        let idx = addr & (self.cache_line - 1);
         let entry = &mut self.cache[idx];
 
         self.stat.read += 1;
@@ -110,7 +112,7 @@ impl MemoryV4 {
                 index: addr,
             });
         }
-        let idx = addr & (CACHE_LINE - 1);
+        let idx = addr & (self.cache_line - 1);
         let entry = &mut self.cache[idx];
         entry.write(addr, val);
         self.m[addr] = val;
@@ -122,7 +124,7 @@ impl MemoryV4 {
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
     pub unsafe fn read_unchecked(&mut self, addr: usize) -> u32 {
-        let idx = addr & (CACHE_LINE - 1);
+        let idx = addr & (self.cache_line - 1);
         let entry = &mut self.cache.get_unchecked_mut(idx);
 
         self.stat.read += 1;
@@ -142,7 +144,7 @@ impl MemoryV4 {
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
     pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) {
-        let idx = addr & (CACHE_LINE - 1);
+        let idx = addr & (self.cache_line - 1);
         let entry = &mut self.cache.get_unchecked_mut(idx);
         entry.write(addr, val);
         *self.m.get_unchecked_mut(addr) = val;
@@ -151,6 +153,6 @@ impl MemoryV4 {
 
 impl Default for MemoryV4 {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
