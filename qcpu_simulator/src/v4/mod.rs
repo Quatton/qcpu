@@ -115,9 +115,9 @@ pub struct SimulatorV4 {
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
     pub ctx: SimulatorV4Context,
+    pub stat: Statistics,
     pub legacy_addressing: bool,
     pub verbose: bool,
-    pub stat: Statistics,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -142,9 +142,8 @@ fn get_delay(op: &OpV4) -> u64 {
     }
 }
 
-const CACHE_MISS_PENALTY_LOW: u64 = 30;
-
-const CACHE_HIT_PENALTY: u64 = 1;
+const CACHE_MISS_PENALTY: u64 = 55;
+const CACHE_HIT_PENALTY: u64 = 2;
 
 impl SimulatorV4 {
     pub fn log_stat(&self) {
@@ -192,16 +191,17 @@ impl SimulatorV4 {
             self.stat.cycle_count += if self.ctx.current.busy[op.rs1 as usize]
                 || self.ctx.current.busy[op.rs2 as usize]
             {
+                self.stat.hazard_count += 1;
                 get_delay(op)
                     + if self.ctx.cache_hit {
                         CACHE_HIT_PENALTY
                     } else {
-                        CACHE_MISS_PENALTY_LOW
+                        CACHE_MISS_PENALTY
                     }
             } else if self.ctx.cache_hit {
                 get_delay(op)
             } else {
-                CACHE_MISS_PENALTY_LOW
+                CACHE_MISS_PENALTY
             };
             self.stat.instr_count += 1;
         }
@@ -288,7 +288,7 @@ impl SimulatorV4 {
 
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
-                self.stat.cycle_count += CACHE_MISS_PENALTY_LOW;
+                self.stat.cycle_count += CACHE_MISS_PENALTY;
             }
             OpName::Outb => {
                 self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();

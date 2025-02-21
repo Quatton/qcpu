@@ -53,15 +53,17 @@ impl Display for CacheStat {
         writeln!(f, "{} lines * {} ways", CACHE_LINE, CACHE_WAY)?;
         write!(
             f,
-            "Total: {}, Hit: {} ({:.02}%)",
+            "Total: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
             self.read,
             self.hit,
-            self.hit as f64 / self.read as f64 * 100.0
+            self.hit as f64 / self.read as f64 * 100.0,
+            self.read - self.hit,
+            (self.read - self.hit) as f64 / self.read as f64 * 100.0
         )
     }
 }
 
-pub const CACHE_LINE_BITS: usize = 12;
+pub const CACHE_LINE_BITS: usize = 14;
 pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
 pub const MEMORY_SIZE: usize = 1 << 21;
 pub const CACHE_WAY: usize = 1;
