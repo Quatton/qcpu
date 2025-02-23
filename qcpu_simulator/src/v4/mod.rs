@@ -76,11 +76,6 @@ impl SimulatorV4Builder {
                     pc: 0,
                     busy: [false; 64],
                 },
-                prev: Snapshot {
-                    reg: [0; 64],
-                    pc: 0,
-                    busy: [false; 64],
-                },
                 memory: MemoryV4::new(self.cache_line),
                 cache_hit: false,
             },
@@ -109,7 +104,6 @@ impl Default for Snapshot {
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Context {
     pub current: Snapshot,
-    pub prev: Snapshot,
     pub memory: MemoryV4,
     pub cache_hit: bool,
 }
@@ -195,8 +189,8 @@ impl SimulatorV4 {
         let index = pc >> 2;
         if index >= self.decoded_len {
             return Err(SimulatorV4HaltDetail {
-                op: unsafe { *self.decoded.get_unchecked(self.ctx.prev.pc >> 2) },
-                line: self.ctx.prev.pc >> 2,
+                op: unsafe { *self.decoded.get_unchecked((self.ctx.current.pc >> 2) - 1) },
+                line: (self.ctx.current.pc >> 2) - 1,
                 kind: SimulatorV4HaltKind::Complete,
             });
         }
@@ -512,8 +506,8 @@ mod test {
                         current2.regs[i],
                         "reg mismatch at {} {:?} {:?}",
                         get_reg_name(i as u8),
-                        Op::decode(sim.program[sim.ctx.prev.pc >> 2]),
-                        sim.ctx.prev.reg
+                        Op::decode(sim.program[sim.ctx.current.pc >> 2]),
+                        sim.ctx.current.reg
                     );
                 }
             }
