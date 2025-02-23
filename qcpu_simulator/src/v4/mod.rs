@@ -148,7 +148,7 @@ const DELAY_LOOKUP: [u64; NUM_OPNAMES] = {
 
 #[inline(always)]
 fn get_delay(op: &OpV4) -> u64 {
-    DELAY_LOOKUP[op.opname as usize]
+    *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) }
 }
 
 const CACHE_MISS_PENALTY: u64 = 55;
@@ -184,22 +184,22 @@ impl SimulatorV4 {
 
     #[inline(always)]
     pub fn get_reg(&self, reg: u8) -> u32 {
-        self.current.reg[reg as usize]
+        *unsafe { self.current.reg.get_unchecked(reg as usize) }
     }
 
     #[inline(always)]
     pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
-        &mut self.current.reg[reg as usize]
+        unsafe { self.current.reg.get_unchecked_mut(reg as usize) }
     }
 
     #[inline(always)]
     pub fn get_busy(&self, reg: u8) -> bool {
-        self.current.busy[reg as usize]
+        *unsafe { self.current.busy.get_unchecked(reg as usize) }
     }
 
     #[inline(always)]
     pub fn get_busy_mut(&mut self, reg: u8) -> &mut bool {
-        &mut self.current.busy[reg as usize]
+        unsafe { self.current.busy.get_unchecked_mut(reg as usize) }
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
@@ -273,11 +273,15 @@ impl SimulatorV4 {
                 }
 
                 if op.rd != 0 {
+                    #[cfg(not(feature = "unsafe"))]
                     let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
                         op,
                         line: pc >> 2,
                         kind: e,
                     })?;
+
+                    #[cfg(feature = "unsafe")]
+                    let (val, hit) = unsafe { self.memory.read_unchecked(addr) };
 
                     *self.get_reg_mut(op.rd) = val;
 
@@ -299,6 +303,7 @@ impl SimulatorV4 {
                     addr >>= 2;
                 }
 
+                #[cfg(not(feature = "unsafe"))]
                 let hit = self
                     .memory
                     .write(addr, rs2u)
@@ -307,6 +312,9 @@ impl SimulatorV4 {
                         line: pc >> 2,
                         kind: e,
                     })?;
+
+                #[cfg(feature = "unsafe")]
+                let hit = unsafe { self.memory.write_unchecked(addr, rs2u) };
 
                 self.cache_hit = hit;
             }
