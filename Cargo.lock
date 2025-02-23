@@ -634,18 +634,12 @@ name = "qcpu"
 version = "4.5.0"
 dependencies = [
  "clap",
- "crossterm",
- "futures",
  "qcpu_assembler",
  "qcpu_simulator",
  "qcpu_syntax",
  "qcpu_tui",
- "signal-hook",
  "strum",
  "strum_macros",
- "tokio",
- "tokio-util",
- "tracing",
 ]
 
 [[package]]

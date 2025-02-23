@@ -247,9 +247,6 @@ impl SimulatorV4 {
                     self.stat.cycle_count += delay;
                 }
             }
-
-            self.current.busy = [false; 64];
-            self.cache_hit = false;
         }
 
         let mut next_pc_true = pc + 4;
