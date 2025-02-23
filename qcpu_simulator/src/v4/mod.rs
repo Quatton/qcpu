@@ -72,7 +72,9 @@ impl SimulatorV4Builder {
             decoded,
             legacy_addressing: self.legacy_addressing,
             verbose: self.verbose,
-            current: Snapshot::default(),
+            reg: [0; 64],
+            pc: 0,
+            busy: 0,
             memory: MemoryV4::new(self.cache_line),
             cache_hit: false,
             stat: Statistics::default(),
@@ -82,37 +84,29 @@ impl SimulatorV4Builder {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Snapshot {
-    pub reg: [u32; 64],
-    pub pc: usize,
-    pub busy: u64,
-}
-
-impl Default for Snapshot {
-    fn default() -> Self {
-        Self {
-            reg: [0; 64],
-            pc: 0,
-            busy: 0,
-        }
-    }
-}
 pub struct SimulatorV4 {
+    // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
     pub program: Vec<u32>,
     pub decoded: Vec<OpV4>,
-    pub decoded_len: usize,
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
-    pub current: Snapshot,
-    pub prev_op: OpV4,
+    // Fixed-size array (256 bytes)
+    pub reg: [u32; 64],
+    // Memory and other larger structs
     pub memory: MemoryV4,
-    pub cache_hit: bool,
+    pub bp: BranchPredictor,
     pub stat: Statistics,
+    // usize (8 bytes)
+    pub pc: usize,
+    pub decoded_len: usize,
     pub cache_miss_penalty: u64,
+    // OpV4 (likely 8 or 16 bytes)
+    pub prev_op: OpV4,
+    pub busy: u8,
+    // bool (1 byte each, will be packed)
+    pub cache_hit: bool,
     pub legacy_addressing: bool,
     pub verbose: bool,
-    pub bp: BranchPredictor,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -153,7 +147,7 @@ impl SimulatorV4 {
     }
 
     pub fn log_registers(&self) {
-        for (i, reg) in self.current.reg.iter().enumerate() {
+        for (i, reg) in self.reg.iter().enumerate() {
             let reg_name = get_reg_name(i as u8);
             if i < 32 {
                 print!("{:5}: 0x{:08x} ({:12})", reg_name, reg, *reg as i32);
@@ -175,35 +169,35 @@ impl SimulatorV4 {
 
     #[inline]
     pub fn get_reg(&self, reg: u8) -> u32 {
-        *unsafe { self.current.reg.get_unchecked(reg as usize) }
+        *unsafe { self.reg.get_unchecked(reg as usize) }
     }
 
     #[inline]
     pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
-        unsafe { self.current.reg.get_unchecked_mut(reg as usize) }
+        unsafe { self.reg.get_unchecked_mut(reg as usize) }
     }
 
     #[inline]
     pub fn get_busy(&self, reg: u8) -> bool {
-        self.current.busy & (1 << reg) != 0
+        self.busy & (1 << reg) != 0
     }
 
     #[inline]
     pub fn set_busy(&mut self, reg: u8, busy: bool) {
         if busy {
-            self.current.busy |= 1 << reg;
+            self.busy |= 1 << reg;
         } else {
-            self.current.busy &= !(1 << reg);
+            self.busy &= !(1 << reg);
         }
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
-        let pc = self.current.pc;
+        let pc = self.pc;
         let index = pc >> 2;
         if index >= self.decoded_len {
             return Err(SimulatorV4HaltDetail {
                 op: self.prev_op,
-                line: (self.current.pc >> 2) - 1,
+                line: (self.pc >> 2) - 1,
                 kind: SimulatorV4HaltKind::Complete,
             });
         }
@@ -214,7 +208,7 @@ impl SimulatorV4 {
             let delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
             self.stat.cycle_count += match self.prev_op.opname {
                 OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
-                    let delay = if self.current.busy & ((1 << op.rs1) | (1 << op.rs2)) != 0 {
+                    let delay = if self.busy & ((1 << op.rs1) | (1 << op.rs2)) != 0 {
                         self.stat.hazard_count += 1;
                         delay
                             + if self.cache_hit {
@@ -229,7 +223,7 @@ impl SimulatorV4 {
                     };
 
                     self.cache_hit = true;
-                    self.current.busy = 0;
+                    self.busy = 0;
 
                     delay
                 }
@@ -326,8 +320,8 @@ impl SimulatorV4 {
                     match op.opname {
                         OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
                             let next_pc_predicted = self.bp.predict(&op, pc);
-                            let flashed = self.bp.update_taken(&op, pc, next_pc_predicted, next_pc);
-                            self.stat.cycle_count += if flashed { 2 } else { 0 };
+                            let flushed = self.bp.update_taken(&op, pc, next_pc_predicted, next_pc);
+                            self.stat.cycle_count += if flushed { 2 } else { 0 };
                         }
                         _ => {}
                     }
@@ -341,7 +335,7 @@ impl SimulatorV4 {
                 }
             }
         };
-        self.current.pc = next_pc_true;
+        self.pc = next_pc_true;
         self.prev_op = op;
         Ok(())
     }
