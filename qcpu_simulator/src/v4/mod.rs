@@ -72,11 +72,7 @@ impl SimulatorV4Builder {
             decoded,
             legacy_addressing: self.legacy_addressing,
             verbose: self.verbose,
-            current: Snapshot {
-                reg: [0; 64],
-                pc: 0,
-                busy: [false; 64],
-            },
+            current: Snapshot::default(),
             memory: MemoryV4::new(self.cache_line),
             cache_hit: false,
             stat: Statistics::default(),
@@ -90,7 +86,7 @@ impl SimulatorV4Builder {
 pub struct Snapshot {
     pub reg: [u32; 64],
     pub pc: usize,
-    pub busy: [bool; 64],
+    pub busy: u64,
 }
 
 impl Default for Snapshot {
@@ -98,7 +94,7 @@ impl Default for Snapshot {
         Self {
             reg: [0; 64],
             pc: 0,
-            busy: [false; 64],
+            busy: 0,
         }
     }
 }
@@ -134,8 +130,8 @@ pub enum SimulatorV4HaltKind {
 
 const NUM_OPNAMES: usize = 64;
 
-const DEFAULT_DELAY: u64 = 1;
-const DELAY_LOOKUP: [u64; NUM_OPNAMES] = {
+const DEFAULT_DELAY: u8 = 1;
+const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
     let mut delays = [DEFAULT_DELAY; NUM_OPNAMES];
     delays[OpName::Fadd as usize] = 3;
     delays[OpName::Fsub as usize] = 3;
@@ -145,10 +141,6 @@ const DELAY_LOOKUP: [u64; NUM_OPNAMES] = {
     delays[OpName::Fdiv as usize] = 9;
     delays
 };
-
-fn get_delay(op: &OpV4) -> u64 {
-    *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) }
-}
 
 const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
@@ -181,20 +173,28 @@ impl SimulatorV4 {
         }
     }
 
+    #[inline]
     pub fn get_reg(&self, reg: u8) -> u32 {
         *unsafe { self.current.reg.get_unchecked(reg as usize) }
     }
 
+    #[inline]
     pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
         unsafe { self.current.reg.get_unchecked_mut(reg as usize) }
     }
 
+    #[inline]
     pub fn get_busy(&self, reg: u8) -> bool {
-        *unsafe { self.current.busy.get_unchecked(reg as usize) }
+        self.current.busy & (1 << reg) != 0
     }
 
-    pub fn get_busy_mut(&mut self, reg: u8) -> &mut bool {
-        unsafe { self.current.busy.get_unchecked_mut(reg as usize) }
+    #[inline]
+    pub fn set_busy(&mut self, reg: u8, busy: bool) {
+        if busy {
+            self.current.busy |= 1 << reg;
+        } else {
+            self.current.busy &= !(1 << reg);
+        }
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
@@ -211,37 +211,30 @@ impl SimulatorV4 {
 
         if self.verbose {
             self.stat.instr_count += 1;
-            let delay = get_delay(&op);
-
-            match self.prev_op.opname {
+            let delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
+            self.stat.cycle_count += match self.prev_op.opname {
                 OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
-                    let busy = self.get_busy(op.rs1) || self.get_busy(op.rs2);
-                    let cache_hit = self.cache_hit;
-                    let busy_penalty = delay
-                        + if cache_hit {
-                            CACHE_HIT_PENALTY
-                        } else {
-                            self.cache_miss_penalty
-                        };
-
-                    let nonbusy_penalty = if cache_hit {
+                    let delay = if self.current.busy & ((1 << op.rs1) | (1 << op.rs2)) != 0 {
+                        self.stat.hazard_count += 1;
+                        delay
+                            + if self.cache_hit {
+                                CACHE_HIT_PENALTY
+                            } else {
+                                self.cache_miss_penalty
+                            }
+                    } else if self.cache_hit {
                         delay.max(CACHE_HIT_PENALTY)
                     } else {
                         self.cache_miss_penalty
                     };
 
-                    if busy {
-                        self.stat.hazard_count += 1;
-                    }
+                    self.cache_hit = true;
+                    self.current.busy = 0;
 
-                    let penalty = if busy { busy_penalty } else { nonbusy_penalty };
-
-                    self.stat.cycle_count += penalty;
+                    delay
                 }
-                _ => {
-                    self.stat.cycle_count += delay;
-                }
-            }
+                _ => delay,
+            };
         }
 
         let mut next_pc_true = pc + 4;
@@ -278,7 +271,7 @@ impl SimulatorV4 {
                     *self.get_reg_mut(op.rd) = val;
 
                     self.cache_hit = hit;
-                    *self.get_busy_mut(op.rd) = true;
+                    self.set_busy(op.rd, true);
                 }
             }
             OpName::Sw | OpName::Swi => {
@@ -320,7 +313,7 @@ impl SimulatorV4 {
                     self.input.read_exact(&mut buf).unwrap();
                     let rd_mut = self.get_reg_mut(op.rd);
                     *rd_mut = u32::from_le_bytes(buf);
-                    *self.get_busy_mut(op.rd) = true;
+                    self.set_busy(op.rd, true);
                 }
             }
             _ => {
