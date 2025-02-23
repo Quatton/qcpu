@@ -12,7 +12,7 @@ use std::{
 
 use bp::BranchPredictor;
 use decode::decode;
-use execute::{execute, ExecuteResult};
+use execute::execute;
 use memory::MemoryV4;
 use stat::Statistics;
 use syntax::{get_reg_name, OpName, OpV4};
@@ -327,7 +327,7 @@ impl SimulatorV4 {
                 let rs1u = self.get_reg(op.rs1);
                 let rs2u = self.get_reg(op.rs2);
 
-                let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, &op);
+                let (next_pc, wb) = execute(rs1u, rs2u, pc, &op);
 
                 if self.verbose {
                     match op.opname {

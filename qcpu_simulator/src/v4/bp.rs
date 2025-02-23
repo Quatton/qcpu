@@ -37,9 +37,8 @@ impl BranchPredictor {
     }
 
     pub fn predict(&self, op: &OpV4, pc: usize) -> usize {
-        let taken = pc.wrapping_add_signed(op.imm as isize);
-        let untaken = pc.wrapping_add(4);
         let pci = pc >> 2;
+        let untaken = pc.wrapping_add(4);
 
         match op.opname {
             OpName::Jalr => {
@@ -51,6 +50,7 @@ impl BranchPredictor {
                 }
             }
             OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
+                let taken = pc.wrapping_add_signed(op.imm as isize);
                 let xor = self.gh ^ pci;
                 let selector_idx = xor & SELECTOR_PHT_MASK;
                 let sel = unsafe { *self.selector_pht.get_unchecked(selector_idx) };

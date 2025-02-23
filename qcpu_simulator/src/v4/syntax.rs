@@ -199,13 +199,13 @@ pub enum OpName {
 pub struct OpV4 {
     #[cfg(feature = "debug")]
     pub mc: u32,
-    #[cfg(feature = "debug")]
-    pub opcode: OpCode,
     pub imm: u32,
     pub opname: OpName,
     pub rd: Reg,
     pub rs1: Reg,
     pub rs2: Reg,
+    #[cfg(feature = "debug")]
+    pub opcode: OpCode,
 }
 
 impl Debug for OpV4 {
