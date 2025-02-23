@@ -1,3 +1,4 @@
+pub mod bp;
 mod decode;
 pub mod execute;
 pub mod memory;
@@ -5,11 +6,11 @@ pub mod stat;
 mod syntax;
 
 use std::{
-    fmt::Display,
     fs::File,
     io::{BufReader, BufWriter, Read, Write as _},
 };
 
+use bp::BranchPredictor;
 use cfg_if::cfg_if;
 use decode::decode;
 use execute::{execute, ExecuteResult};
@@ -110,148 +111,6 @@ pub struct SimulatorV4Context {
     pub cache_hit: bool,
 }
 
-pub struct BranchPredictor {
-    pub taken_pht: [i8; TAKEN_PHT_SIZE],
-    pub untaken_pht: [i8; TAKEN_PHT_SIZE],
-    pub selector_pht: [i8; SELECTOR_PHT_SIZE],
-    pub jalr_addr: [usize; JALR_ADDR_SIZE],
-    pub flash_count: [usize; 2],
-    pub total_count: [usize; 2],
-    pub gh: usize,
-}
-
-const TAKEN_PHT_SIZE: usize = 1024;
-const TAKEN_PHT_MASK: usize = TAKEN_PHT_SIZE - 1;
-const SELECTOR_PHT_SIZE: usize = 256;
-const SELECTOR_PHT_MASK: usize = SELECTOR_PHT_SIZE - 1;
-const JALR_ADDR_SIZE: usize = 1024;
-const JALR_ADDR_MASK: usize = JALR_ADDR_SIZE - 1;
-const GH_SIZE: usize = 10;
-const GH_MASK: usize = GH_SIZE - 1;
-
-impl BranchPredictor {
-    pub fn new() -> Self {
-        Self {
-            taken_pht: [2; TAKEN_PHT_SIZE],
-            untaken_pht: [1; TAKEN_PHT_SIZE],
-            selector_pht: [2; SELECTOR_PHT_SIZE],
-            jalr_addr: [0; JALR_ADDR_SIZE],
-            flash_count: [0; 2],
-            total_count: [0; 2],
-            gh: 0,
-        }
-    }
-
-    #[inline(always)]
-    pub fn predict(&self, op: &OpV4, pc: usize) -> usize {
-        let taken = pc.wrapping_add_signed(op.imm as isize);
-        let untaken = pc.wrapping_add(4);
-        let pci = pc >> 2;
-
-        match op.opname {
-            OpName::Jal => taken,
-            OpName::Jalr => {
-                let addr = self.jalr_addr[pci & JALR_ADDR_MASK];
-                if addr > 0 {
-                    addr
-                } else {
-                    untaken
-                }
-            }
-            OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                let taken_idx = (self.gh ^ pci) & TAKEN_PHT_MASK;
-                let selector_idx = (self.gh ^ pci) & SELECTOR_PHT_MASK;
-
-                if self.selector_pht[selector_idx] >= 2 {
-                    if self.taken_pht[taken_idx] >= 2 {
-                        taken
-                    } else {
-                        untaken
-                    }
-                } else if self.untaken_pht[taken_idx] >= 2 {
-                    untaken
-                } else {
-                    taken
-                }
-            }
-            _ => untaken,
-        }
-    }
-
-    #[inline(always)]
-    pub fn update_taken(
-        &mut self,
-        op: &OpV4,
-        pc: usize,
-        predicted_pc: usize,
-        next_pc: usize,
-    ) -> bool {
-        let pci = pc >> 2;
-
-        match op.opname {
-            OpName::Jalr => {
-                self.jalr_addr[pci & JALR_ADDR_MASK] = next_pc;
-                if next_pc != predicted_pc {
-                    self.flash_count[0] += 1;
-                    true
-                } else {
-                    false
-                }
-            }
-            OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                self.gh = ((self.gh << 1) | (next_pc != pc + 4) as usize) & GH_MASK;
-                let taken_idx = (self.gh ^ pci) & TAKEN_PHT_MASK;
-                let selector_idx = (self.gh ^ pci) & SELECTOR_PHT_MASK;
-
-                let taken = &mut self.taken_pht[taken_idx];
-                let untaken = &mut self.untaken_pht[taken_idx];
-                let selector = &mut self.selector_pht[selector_idx];
-
-                if next_pc != predicted_pc {
-                    *taken = (*taken + 1).min(3);
-                    *untaken = (*untaken - 1).max(0);
-                    *selector = (*selector + 1).min(3);
-                } else {
-                    *taken = (*taken - 1).max(0);
-                    *untaken = (*untaken + 1).min(3);
-                    *selector = (*selector - 1).max(0);
-                }
-
-                if next_pc != predicted_pc {
-                    self.flash_count[1] += 1;
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
-    }
-}
-
-impl Display for BranchPredictor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "JALR Flash Count: {} ({:.02}%)",
-            self.flash_count[0],
-            self.flash_count[0] as f64 / self.total_count[0] as f64 * 100.0
-        )?;
-        write!(
-            f,
-            "Branch Flash Count: {} ({:.02}%)",
-            self.flash_count[1],
-            self.flash_count[1] as f64 / self.total_count[1] as f64 * 100.0
-        )
-    }
-}
-
-impl Default for BranchPredictor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub struct SimulatorV4 {
     pub program: Vec<u32>,
     pub decoded: Vec<OpV4>,
@@ -298,7 +157,7 @@ fn get_delay(op: &OpV4) -> u64 {
     DELAY_LOOKUP[op.opname as usize] as u64
 }
 
-const CACHE_MISS_PENALTY: u64 = 55;
+const CACHE_MISS_PENALTY: u64 = 45;
 const CACHE_HIT_PENALTY: u64 = 2;
 
 impl SimulatorV4 {
@@ -374,8 +233,7 @@ impl SimulatorV4 {
             self.stat.instr_count += 1;
         }
 
-        let next_pc_predicted = self.bp.predict(&op, pc);
-        let mut next_pc_true = next_pc_predicted;
+        let mut next_pc_true = pc + 4;
 
         let imm = op.imm;
 
@@ -509,9 +367,16 @@ impl SimulatorV4 {
 
                 let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, &op);
 
-                let flashed = self.bp.update_taken(&op, pc, next_pc_predicted, next_pc);
-
-                self.stat.cycle_count += if flashed { 2 } else { 0 };
+                if self.verbose {
+                    match op.opname {
+                        OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
+                            let next_pc_predicted = self.bp.predict(&op, pc);
+                            let flashed = self.bp.update_taken(&op, pc, next_pc_predicted, next_pc);
+                            self.stat.cycle_count += if flashed { 2 } else { 0 };
+                        }
+                        _ => {}
+                    }
+                }
 
                 next_pc_true = next_pc;
                 if op.rd != 0 {

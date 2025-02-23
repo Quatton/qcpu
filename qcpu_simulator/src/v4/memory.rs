@@ -32,11 +32,11 @@ impl CacheLine {
     #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
-        let miss = !self.valid || self.tag != tag;
+        let hit = self.valid && self.tag == tag;
         self.tag = tag;
         self.data = val;
         self.valid = true;
-        miss
+        hit
     }
 }
 
@@ -149,10 +149,10 @@ impl MemoryV4 {
     pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) -> bool {
         self.stat.write += 1;
         let idx = addr & self.cache_mask;
-        let miss = self.cache.get_unchecked_mut(idx).write(addr, val);
+        let hit = self.cache.get_unchecked_mut(idx).write(addr, val);
         *self.m.get_unchecked_mut(addr) = val;
-        self.stat.non_miss_write_back += !miss as u64;
-        miss
+        self.stat.non_miss_write_back += hit as u64;
+        hit
     }
 }
 
