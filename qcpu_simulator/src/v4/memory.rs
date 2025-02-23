@@ -30,31 +30,42 @@ impl CacheLine {
     }
 
     #[inline(always)]
-    pub fn write(&mut self, addr: usize, val: u32) {
+    pub fn write(&mut self, addr: usize, val: u32) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
+        let miss = !self.valid || self.tag != tag;
         self.tag = tag;
         self.data = val;
         self.valid = true;
+        miss
     }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CacheStat {
-    pub hit: usize,
-    pub read: usize,
+    pub hit: u64,
+    pub read: u64,
+    pub write: u64,
+    pub non_miss_write_back: u64,
 }
 
 impl Display for CacheStat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{} lines * {} ways", CACHE_LINE, CACHE_WAY)?;
-        write!(
+        writeln!(
             f,
-            "Total: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
+            "Read: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
             self.read,
             self.hit,
             self.hit as f64 / self.read as f64 * 100.0,
             self.read - self.hit,
             (self.read - self.hit) as f64 / self.read as f64 * 100.0
+        )?;
+        writeln!(
+            f,
+            "Write: {}, Non-miss write back: {} ({:.02}%)",
+            self.write,
+            self.non_miss_write_back,
+            self.non_miss_write_back as f64 / self.write as f64 * 100.0
         )
     }
 }
@@ -77,14 +88,14 @@ impl MemoryV4 {
         }
     }
 
-    pub fn read(&mut self, addr: usize) -> Result<u32, SimulatorV4HaltKind> {
+    pub fn read(&mut self, addr: usize) -> Result<(u32, bool), SimulatorV4HaltKind> {
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
 
         self.stat.read += 1;
         if let Some(val) = entry.read(addr) {
             self.stat.hit += 1;
-            return Ok(val);
+            return Ok((val, true));
         }
 
         let value = self
@@ -96,10 +107,11 @@ impl MemoryV4 {
                 index: addr,
             })?;
         entry.write(addr, value);
-        Ok(value)
+        Ok((value, false))
     }
 
-    pub fn write(&mut self, addr: usize, val: u32) -> Result<(), SimulatorV4HaltKind> {
+    pub fn write(&mut self, addr: usize, val: u32) -> Result<bool, SimulatorV4HaltKind> {
+        self.stat.write += 1;
         if addr >= MEMORY_SIZE {
             return Err(SimulatorV4HaltKind::MemoryAccess {
                 bound: MEMORY_SIZE,
@@ -108,36 +120,39 @@ impl MemoryV4 {
         }
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
-        entry.write(addr, val);
+        let miss = entry.write(addr, val);
         self.m[addr] = val;
-        Ok(())
+        Ok(!miss)
     }
 
     /// Read a 32-bit word from memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
-    pub unsafe fn read_unchecked(&mut self, addr: usize) -> u32 {
+    pub unsafe fn read_unchecked(&mut self, addr: usize) -> (u32, bool) {
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache.get_unchecked_mut(idx);
         self.stat.read += 1;
         if let Some(val) = entry.read(addr) {
             self.stat.hit += 1;
-            return val;
+            return (val, true);
         }
         let value = *self.m.get_unchecked(addr);
         entry.write(addr, value);
-        value
+        (value, false)
     }
 
     /// Write a 32-bit word to memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
     #[inline(always)]
-    pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) {
+    pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) -> bool {
+        self.stat.write += 1;
         let idx = addr & self.cache_mask;
-        self.cache.get_unchecked_mut(idx).write(addr, val);
+        let miss = self.cache.get_unchecked_mut(idx).write(addr, val);
         *self.m.get_unchecked_mut(addr) = val;
+        self.stat.non_miss_write_back += !miss as u64;
+        miss
     }
 }
 

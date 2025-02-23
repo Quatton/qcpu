@@ -158,6 +158,7 @@ const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
 fn get_delay(op: &OpV4) -> u64 {
     DELAY_LOOKUP[op.opname as usize] as u64
 }
+
 const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
 
@@ -235,24 +236,24 @@ impl SimulatorV4 {
         let next_pc_predicted = self.ctx.current.pc + 4;
         let mut next_pc_true = next_pc_predicted;
 
-        cfg_if! {
-            if #[cfg(not(feature = "unsafe"))] {
-                let rs1u = self.ctx.current.reg[op.rs1 as usize];
-                let rs2u = self.ctx.current.reg[op.rs2 as usize];
-                let rd_mut = &mut self.ctx.current.reg[op.rd as usize];
-                let busy_rd_mut = &mut self.ctx.current.busy[op.rd as usize];
-            } else {
-                let rs1u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs1 as usize) };
-                let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
-                let rd_mut = unsafe { self.ctx.current.reg.get_unchecked_mut(op.rd as usize) };
-                let busy_rd_mut = unsafe { self.ctx.current.busy.get_unchecked_mut(op.rd as usize) };
-            }
-        }
-
         let imm = op.imm;
 
         match op.opname {
             OpName::Lw | OpName::Lwr | OpName::Lwi => {
+                cfg_if! {
+                    if #[cfg(not(feature = "unsafe"))] {
+                        let rs1u = self.ctx.current.reg[op.rs1 as usize];
+                        let rs2u = self.ctx.current.reg[op.rs2 as usize];
+                        let rd_mut = &mut self.ctx.current.reg[op.rd as usize];
+                        let busy_rd_mut = &mut self.ctx.current.busy[op.rd as usize];
+                    } else {
+                        let rs1u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs1 as usize) };
+                        let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
+                        let rd_mut = unsafe { self.ctx.current.reg.get_unchecked_mut(op.rd as usize) };
+                        let busy_rd_mut = unsafe { self.ctx.current.busy.get_unchecked_mut(op.rd as usize) };
+                    }
+                }
+
                 let mut addr = match op.opname {
                     OpName::Lw => rs1u.wrapping_add(imm),
                     OpName::Lwr => rs1u.wrapping_add(rs2u),
@@ -267,7 +268,7 @@ impl SimulatorV4 {
                 if op.rd != 0 {
                     #[cfg(not(feature = "unsafe"))]
                     {
-                        *rd_mut =
+                        let (val, hit) =
                             self.ctx
                                 .memory
                                 .read(addr)
@@ -276,17 +277,32 @@ impl SimulatorV4 {
                                     line: pc >> 2,
                                     kind: e,
                                 })?;
+
+                        *rd_mut = val;
+                        self.ctx.cache_hit = hit;
                     }
 
                     #[cfg(feature = "unsafe")]
                     {
-                        *rd_mut = unsafe { self.ctx.memory.read_unchecked(addr) };
+                        let (val, hit) = unsafe { self.ctx.memory.read_unchecked(addr) };
+                        *rd_mut = val;
+                        self.ctx.cache_hit = hit;
                     }
 
                     *busy_rd_mut = true;
                 }
             }
             OpName::Sw | OpName::Swi => {
+                cfg_if! {
+                    if #[cfg(not(feature = "unsafe"))] {
+                        let rs1u = self.ctx.current.reg[op.rs1 as usize];
+                        let rs2u = self.ctx.current.reg[op.rs2 as usize];
+                    } else {
+                        let rs1u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs1 as usize) };
+                        let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
+                    }
+                }
+
                 let mut addr = match op.opname {
                     OpName::Sw => rs1u.wrapping_add(imm),
                     OpName::Swi => imm,
@@ -298,7 +314,8 @@ impl SimulatorV4 {
                 };
 
                 #[cfg(not(feature = "unsafe"))]
-                self.ctx
+                let hit = self
+                    .ctx
                     .memory
                     .write(addr, rs2u)
                     .map_err(|e| SimulatorV4HaltDetail {
@@ -308,15 +325,20 @@ impl SimulatorV4 {
                     })?;
 
                 #[cfg(feature = "unsafe")]
-                unsafe {
-                    self.ctx.memory.write_unchecked(addr, rs2u);
-                }
+                let hit = unsafe { self.ctx.memory.write_unchecked(addr, rs2u) };
 
                 self.ctx.current.busy = [false; 64];
-                self.ctx.cache_hit = true;
-                self.stat.cycle_count += self.cache_miss_penalty;
+                self.ctx.cache_hit = hit;
             }
             OpName::Outb => {
+                cfg_if! {
+                    if #[cfg(not(feature = "unsafe"))] {
+                        let rs2u = self.ctx.current.reg[op.rs2 as usize];
+                    } else {
+                        let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
+                    }
+                }
+
                 self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
                 self.ctx.current.busy = [false; 64];
                 self.ctx.cache_hit = true;
@@ -332,6 +354,18 @@ impl SimulatorV4 {
                 self.ctx.cache_hit = true;
             }
             _ => {
+                cfg_if! {
+                    if #[cfg(not(feature = "unsafe"))] {
+                        let rs1u = self.ctx.current.reg[op.rs1 as usize];
+                        let rs2u = self.ctx.current.reg[op.rs2 as usize];
+                        let rd_mut = &mut self.ctx.current.reg[op.rd as usize];
+                    } else {
+                        let rs1u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs1 as usize) };
+                        let rs2u = *unsafe { self.ctx.current.reg.get_unchecked(op.rs2 as usize) };
+                        let rd_mut = unsafe { self.ctx.current.reg.get_unchecked_mut(op.rd as usize) };
+                    }
+                }
+
                 let ExecuteResult { next_pc, wb } = execute(rs1u, rs2u, pc, &op);
                 next_pc_true = next_pc;
                 if op.rd != 0 {

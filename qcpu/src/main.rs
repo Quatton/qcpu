@@ -657,8 +657,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sim.log_stat();
 
                 println!(
-                    "Should complete in: {:.2} s",
-                    sim.stat.cycle_count as f64 / clock / 1_000_000.0
+                    "Should complete in: {:.2} s for a clock of {} MHz",
+                    sim.stat.cycle_count as f64 / clock / 1_000_000.0,
+                    clock
                 );
             }
             println!("Loaded in: {:?}", e);
