@@ -23,13 +23,11 @@ impl CacheLine {
         Self::default()
     }
 
-    #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
         (self.valid && self.tag == tag).then_some(self.data)
     }
 
-    #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
         let hit = self.valid && self.tag == tag;
@@ -76,7 +74,6 @@ pub const MEMORY_SIZE: usize = 1 << 21;
 pub const CACHE_WAY: usize = 1;
 
 impl MemoryV4 {
-    #[inline(always)]
     pub fn new(cache_line: Option<usize>) -> Self {
         let line = cache_line.unwrap_or(CACHE_LINE);
         Self {
@@ -129,7 +126,6 @@ impl MemoryV4 {
     /// Read a 32-bit word from memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
-    #[inline(always)]
     pub unsafe fn read_unchecked(&mut self, addr: usize) -> (u32, bool) {
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache.get_unchecked_mut(idx);
@@ -146,7 +142,6 @@ impl MemoryV4 {
     /// Write a 32-bit word to memory without bounds checking.
     /// # Safety
     /// This function is unsafe because it does not check if the address is within bounds.
-    #[inline(always)]
     pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) -> bool {
         self.stat.write += 1;
         let idx = addr & self.cache_mask;

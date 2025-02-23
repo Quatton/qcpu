@@ -11,4 +11,3 @@ strum_macros.workspace = true
 qcpu_assembler.workspace = true
 qcpu_simulator.workspace = true
 qcpu_syntax.workspace = true
-qcpu_tui.workspace = true

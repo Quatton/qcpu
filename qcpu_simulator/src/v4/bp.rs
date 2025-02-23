@@ -36,7 +36,6 @@ impl BranchPredictor {
         }
     }
 
-    #[inline(always)]
     pub fn predict(&self, op: &OpV4, pc: usize) -> usize {
         let taken = pc.wrapping_add_signed(op.imm as isize);
         let untaken = pc.wrapping_add(4);
@@ -77,7 +76,6 @@ impl BranchPredictor {
         }
     }
 
-    #[inline(always)]
     pub fn update_taken(
         &mut self,
         op: &OpV4,

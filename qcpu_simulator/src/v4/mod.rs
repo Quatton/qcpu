@@ -146,7 +146,6 @@ const DELAY_LOOKUP: [u64; NUM_OPNAMES] = {
     delays
 };
 
-#[inline(always)]
 fn get_delay(op: &OpV4) -> u64 {
     *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) }
 }
@@ -182,22 +181,18 @@ impl SimulatorV4 {
         }
     }
 
-    #[inline(always)]
     pub fn get_reg(&self, reg: u8) -> u32 {
         *unsafe { self.current.reg.get_unchecked(reg as usize) }
     }
 
-    #[inline(always)]
     pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
         unsafe { self.current.reg.get_unchecked_mut(reg as usize) }
     }
 
-    #[inline(always)]
     pub fn get_busy(&self, reg: u8) -> bool {
         *unsafe { self.current.busy.get_unchecked(reg as usize) }
     }
 
-    #[inline(always)]
     pub fn get_busy_mut(&mut self, reg: u8) -> &mut bool {
         unsafe { self.current.busy.get_unchecked_mut(reg as usize) }
     }
