@@ -120,9 +120,10 @@ impl MemoryV4 {
         }
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
-        let miss = entry.write(addr, val);
+        let hit = entry.write(addr, val);
+        self.stat.non_miss_write_back += hit as u64;
         self.m[addr] = val;
-        Ok(!miss)
+        Ok(hit)
     }
 
     /// Read a 32-bit word from memory without bounds checking.
