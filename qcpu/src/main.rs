@@ -310,6 +310,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             sim.log
                 .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))
                 .unwrap();
+
+            println!("Output written to: {:?}", sim.output_file);
+            println!("Log written to: {:?}", sim.log_file);
         }
     }
     Ok(())

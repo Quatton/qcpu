@@ -59,28 +59,30 @@ impl SimulatorV4Builder {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(output)
+            .open(&output)
             .expect("Output file not found");
 
         let log_target = File::options()
             .write(true)
             .create(true)
             .truncate(self.verbose)
-            .open(log)
+            .open(&log)
             .expect("Log file not found");
 
-        let input = BufReader::new(input_target);
-        let output = BufWriter::new(output_target);
-        let log = BufWriter::new(log_target);
+        let input_reader = BufReader::new(input_target);
+        let output_writer = BufWriter::new(output_target);
+        let log_writer = BufWriter::new(log_target);
 
         let decoded = program.iter().map(|&p| decode(p)).collect::<Vec<_>>();
 
         SimulatorV4 {
             prev_op: OpV4::default(),
             // program,
-            input,
-            output,
-            log,
+            input: input_reader,
+            output: output_writer,
+            output_file: output,
+            log_file: log,
+            log: log_writer,
             decoded_len: decoded.len(),
             decoded,
             verbose: self.verbose,
@@ -102,12 +104,15 @@ pub struct SimulatorV4 {
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
     pub log: BufWriter<File>,
+
     // Fixed-size array (256 bytes)
     pub reg: [u32; 64],
     // Memory and other larger structs
     pub memory: MemoryV4,
     pub bp: BranchPredictor,
     pub stat: Statistics,
+    pub output_file: PathBuf,
+    pub log_file: PathBuf,
     // usize (8 bytes)
     pub pc: usize,
     pub decoded_len: usize,
