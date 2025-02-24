@@ -29,27 +29,25 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::F
         | OpCode::J
         | OpCode::U
-        | OpCode::S
         | OpCode::I
         | OpCode::N
         | OpCode::L
         | OpCode::LR
         | OpCode::LU
         | OpCode::A => bits[4..10].load::<Reg>(),
-        OpCode::B | OpCode::O | OpCode::SU => 0,
+        OpCode::B | OpCode::O | OpCode::SU | OpCode::S => 0,
     };
 
     let rs1 = match opcode {
         OpCode::R
         | OpCode::F
-        | OpCode::U
         | OpCode::S
         | OpCode::I
         | OpCode::B
         | OpCode::L
         | OpCode::LR
         | OpCode::A => bits[13..19].load::<Reg>(),
-        OpCode::J | OpCode::N | OpCode::O | OpCode::SU | OpCode::LU => 0,
+        OpCode::J | OpCode::N | OpCode::O | OpCode::SU | OpCode::LU | OpCode::U => 0,
     };
 
     let rs2 = match opcode {
@@ -131,28 +129,36 @@ pub fn decode(mc: u32) -> OpV4 {
 
     match opcode {
         OpCode::I | OpCode::A | OpCode::L => {
-            let uimm = bits[19..31].load::<u32>();
-            let sgn = bits[30];
+            // let uimm = bits[19..31].load::<u32>();
+            // let sgn = bits[30];
 
-            imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            // imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            imm = bits[19..31].load::<i32>() as u32;
         }
         OpCode::S => {
-            let uimm = bits[4..10].load::<u32>() | bits[25..31].load::<u32>() << 6;
-            let sgn = bits[30];
+            // let uimm = bits[4..10].load::<u32>() | bits[25..31].load::<u32>() << 6;
+            // let sgn = bits[30];
 
-            imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            // imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            let mut bv = bits[4..10].to_bitvec();
+            bv.extend_from_bitslice(&bits[25..31]);
+            imm = bv.load::<i32>() as u32;
         }
         OpCode::B => {
-            let uimm = bits[4..10].load::<u32>() | bits[25..31].load::<u32>() << 6;
-            let sgn = bits[31];
+            // let uimm = bits[4..10].load::<u32>() | bits[25..=31].load::<u32>() << 6;
+            // let sgn = bits[31];
 
-            imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            // imm = if sgn { uimm | 0xfffff000 } else { uimm };
+            let mut bv = bits[4..10].to_bitvec();
+            bv.extend_from_bitslice(&bits[25..=31]);
+            imm = bv.load::<i32>() as u32;
         }
         OpCode::J => {
-            let uimm = bits[10..30].load::<u32>();
-            let sgn = bits[30];
+            // let uimm = bits[10..=31].load::<u32>();
+            // let sgn = bits[31];
 
-            imm = if sgn { uimm | 0xfff00000 } else { uimm };
+            // imm = if sgn { uimm | 0xffe00000 } else { uimm };
+            imm = bits[10..=31].load::<i32>() as u32;
         }
         OpCode::U => {
             imm = bits[10..30].load::<u32>() << 12;

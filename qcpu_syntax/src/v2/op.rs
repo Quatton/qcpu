@@ -172,11 +172,19 @@ impl Op {
                 vec[10..=29].store(imm);
             }
             OpType::B => {
-                vec[5..=9].store(imm >> 1);
+                vec[4..=9].store(imm);
                 vec[25..=31].store(imm >> 6);
+
+                if !(-(1 << 12)..(1 << 12)).contains(&imm) {
+                    println!("Warning: imm: {imm} too large for B type");
+                }
             }
             OpType::J => {
-                vec[11..=30].store(imm >> 1);
+                vec[10..=31].store(imm);
+
+                if !(-(1 << 21)..(1 << 21)).contains(&imm) {
+                    println!("Warning: imm: {imm} too large for J type");
+                }
             }
             OpType::Raw => {
                 vec.store(imm as u32);
@@ -212,19 +220,7 @@ impl Op {
 
         let opname = OpName::VARIANTS
             .iter()
-            .find(|it| {
-                OpInfo::match_code(&opinfo, it)
-                    && match it.optype {
-                        OpType::U => !bv[31] && !bv[30],
-                        OpType::J => !bv[31] && !bv[10],
-                        OpType::I => !bv[31],
-                        OpType::S => !bv[31],
-                        OpType::N => !bv[13..=31].any(),
-                        OpType::O => !bv[4..=9].any() && !bv[13..=18].any() && !bv[25..=31].any(),
-                        OpType::B => !bv[4],
-                        _ => true,
-                    }
-            })
+            .find(|it| OpInfo::match_code(&opinfo, it))
             .unwrap_or(&OpName::RAW);
 
         if opname == &OpName::RAW {
@@ -260,11 +256,10 @@ impl Op {
         };
 
         match opname.optype {
-            OpType::R | OpType::F | OpType::S | OpType::B | OpType::L => {
+            OpType::R | OpType::F | OpType::S | OpType::B | OpType::L | OpType::I => {
                 op.rs1 = Register::from_usize(rs1);
             }
             OpType::U
-            | OpType::I
             | OpType::Raw
             | OpType::J
             | OpType::LU
@@ -309,12 +304,12 @@ impl Op {
                 op.imm = Immediate::from_offset(of.load::<u32>() as i32);
             }
             OpType::B => {
-                let mut of = bv[5..=9].to_bitvec();
+                let mut of = bv[4..=9].to_bitvec();
                 of.extend_from_bitslice(&bv[25..=31]);
-                op.imm = Immediate::from_offset(of.load::<i32>() << 1);
+                op.imm = Immediate::from_offset(of.load::<i32>());
             }
             OpType::J => {
-                op.imm = Immediate::from_offset(bv[11..=30].load::<i32>() << 1);
+                op.imm = Immediate::from_offset(bv[10..=31].load::<i32>());
             }
             OpType::E => {
                 op.imm = Immediate::from_offset(bv[13..=30].load::<i32>());
@@ -350,7 +345,7 @@ impl Op {
             match label_map.get(label) {
                 Some(&target) => match self.o.optype {
                     OpType::U => {
-                        let tgt = target as u32 * 4;
+                        let tgt = target as u32;
                         let bv = tgt.view_bits::<Lsb0>();
 
                         imm.raw = Some(
@@ -365,7 +360,7 @@ impl Op {
                     }
                     _ => {
                         let target = target as i32;
-                        imm.raw = Some((target - offset) * 4);
+                        imm.raw = Some(target - offset);
                     }
                 },
                 None => {

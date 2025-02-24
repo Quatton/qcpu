@@ -22,7 +22,6 @@ pub struct SimulatorV4Builder {
     pub input: Option<String>,
     pub output: Option<String>,
     pub bin: String,
-    pub legacy_addressing: bool,
     pub verbose: bool,
 
     pub cache_miss_penalty: Option<u64>,
@@ -70,7 +69,6 @@ impl SimulatorV4Builder {
             output,
             decoded_len: decoded.len(),
             decoded,
-            legacy_addressing: self.legacy_addressing,
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
@@ -103,7 +101,6 @@ pub struct SimulatorV4 {
     pub prev_op: OpV4,
     // bool (1 byte each, will be packed)
     pub cache_hit: bool,
-    pub legacy_addressing: bool,
     pub verbose: bool,
 }
 
@@ -175,158 +172,14 @@ impl SimulatorV4 {
         *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
     }
 
-    pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
-        let pc = self.pc;
-        let index = pc >> 2;
-        if index >= self.decoded_len {
-            return Err(SimulatorV4HaltDetail {
-                op: self.prev_op,
-                line: (self.pc >> 2) - 1,
-                kind: SimulatorV4HaltKind::Complete,
-            });
-        }
-
-        let op = unsafe { *self.decoded.get_unchecked(index) };
-        if self.verbose {
-            self.stat.instr_count += 1;
-            let base_delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
-
-            self.stat.cycle_count += match self.prev_op.opname {
-                OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
-                    let has_hazard = (op.rs1 == self.prev_op.rd || op.rs2 == self.prev_op.rd)
-                        && self.prev_op.rd != 0;
-
-                    let cache_penalty = if self.cache_hit {
-                        CACHE_HIT_PENALTY
-                    } else {
-                        self.cache_miss_penalty
-                    };
-
-                    let delay = if has_hazard {
-                        self.stat.hazard_count += 1;
-                        base_delay + cache_penalty
-                    } else {
-                        base_delay.max(cache_penalty)
-                    };
-
-                    self.cache_hit = true;
-                    delay
-                }
-                _ => base_delay,
-            };
-        }
-
-        let mut next_pc_true = pc + 4;
-
-        let imm = op.imm;
-
-        match op.opname {
-            OpName::Lw | OpName::Lwr | OpName::Lwi => {
-                let rs1u = self.get_reg(op.rs1);
-                let rs2u = self.get_reg(op.rs2);
-
-                let mut addr = match op.opname {
-                    OpName::Lw => rs1u.wrapping_add(imm),
-                    OpName::Lwr => rs1u.wrapping_add(rs2u),
-                    OpName::Lwi => imm,
-                    _ => unreachable!(),
-                } as usize;
-
-                if self.legacy_addressing {
-                    addr >>= 2;
-                }
-
-                #[cfg(not(feature = "unsafe"))]
-                let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
-                    op,
-                    line: pc >> 2,
-                    kind: e,
-                })?;
-
-                #[cfg(feature = "unsafe")]
-                let (val, hit) = unsafe { self.memory.read_unchecked(addr) };
-
-                self.set_reg(op.rd, val);
-
-                self.cache_hit = hit;
-            }
-            OpName::Sw | OpName::Swi => {
-                let rs1u = self.get_reg(op.rs1);
-                let rs2u = self.get_reg(op.rs2);
-
-                let mut addr = match op.opname {
-                    OpName::Sw => rs1u.wrapping_add(imm),
-                    OpName::Swi => imm,
-                    _ => unreachable!(),
-                } as usize;
-
-                if self.legacy_addressing {
-                    addr >>= 2;
-                }
-
-                #[cfg(not(feature = "unsafe"))]
-                let hit = self
-                    .memory
-                    .write(addr, rs2u)
-                    .map_err(|e| SimulatorV4HaltDetail {
-                        op,
-                        line: pc >> 2,
-                        kind: e,
-                    })?;
-
-                #[cfg(feature = "unsafe")]
-                let hit = unsafe { self.memory.write_unchecked(addr, rs2u) };
-
-                self.cache_hit = hit;
-            }
-            OpName::Outb => {
-                let rs2u = self.get_reg(op.rs2);
-                self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
-            }
-            OpName::Inw => {
-                if op.rd != 0 {
-                    let mut buf = [0; 4];
-                    self.input.read_exact(&mut buf).unwrap();
-                    self.set_reg(op.rd, u32::from_le_bytes(buf));
-                }
-            }
-            _ => {
-                let rs1u = self.get_reg(op.rs1);
-                let rs2u = self.get_reg(op.rs2);
-
-                let (next_pc, wb) = execute(rs1u, rs2u, pc, &op);
-
-                if self.verbose {
-                    match op.opname {
-                        OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                            let flushed = self.bp.update_taken(&op, pc, next_pc);
-                            self.stat.cycle_count += if flushed { 2 } else { 0 };
-                        }
-                        _ => {}
-                    }
-                }
-
-                next_pc_true = next_pc;
-                if op.rd != 0 {
-                    if let Some(wb) = wb {
-                        self.set_reg(op.rd, wb);
-                    }
-                }
-            }
-        };
-        self.pc = next_pc_true;
-        self.prev_op = op;
-        Ok(())
-    }
-
     pub fn run(&mut self) -> Result<(), SimulatorV4HaltDetail> {
         loop {
             let pc = self.pc;
-            let index = pc >> 2;
+            let index = pc;
             if index >= self.decoded_len {
                 return Err(SimulatorV4HaltDetail {
                     op: self.prev_op,
-                    line: (self.pc >> 2) - 1,
+                    line: (self.pc) - 1,
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
@@ -361,7 +214,7 @@ impl SimulatorV4 {
                 };
             }
 
-            let mut next_pc_true = pc + 4;
+            let mut next_pc_true = pc + 1;
 
             let imm = op.imm;
 
@@ -370,20 +223,16 @@ impl SimulatorV4 {
                     let rs1u = self.get_reg(op.rs1);
                     let rs2u = self.get_reg(op.rs2);
 
-                    let mut addr = match op.opname {
+                    let addr = match op.opname {
                         OpName::Lw => rs1u.wrapping_add(imm),
                         OpName::Lwr => rs1u.wrapping_add(rs2u),
                         OpName::Lwi => imm,
                         _ => unreachable!(),
                     } as usize;
 
-                    if self.legacy_addressing {
-                        addr >>= 2;
-                    }
-
                     let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
                         op,
-                        line: pc >> 2,
+                        line: pc,
                         kind: e,
                     })?;
 
@@ -395,22 +244,18 @@ impl SimulatorV4 {
                     let rs1u = self.get_reg(op.rs1);
                     let rs2u = self.get_reg(op.rs2);
 
-                    let mut addr = match op.opname {
+                    let addr = match op.opname {
                         OpName::Sw => rs1u.wrapping_add(imm),
                         OpName::Swi => imm,
                         _ => unreachable!(),
                     } as usize;
-
-                    if self.legacy_addressing {
-                        addr >>= 2;
-                    }
 
                     let hit = self
                         .memory
                         .write(addr, rs2u)
                         .map_err(|e| SimulatorV4HaltDetail {
                             op,
-                            line: pc >> 2,
+                            line: pc,
                             kind: e,
                         })?;
 

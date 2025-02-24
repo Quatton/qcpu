@@ -42,13 +42,12 @@ impl BranchPredictor {
 
     #[inline(always)]
     pub fn update_taken(&mut self, op: &OpV4, pc: usize, next_pc: usize) -> bool {
-        let pci = pc >> 2;
-        let untaken = pc.wrapping_add(4);
+        let untaken = pc.wrapping_add(1);
 
         match op.opname {
             OpName::Jalr => {
                 self.total_count_jalr += 1;
-                let idx = pci & JALR_ADDR_MASK;
+                let idx = pc & JALR_ADDR_MASK;
                 let predicted_pc = if self.jalr_addr[idx] == 0 {
                     untaken
                 } else {
@@ -63,7 +62,7 @@ impl BranchPredictor {
             }
             OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
                 self.total_count_branch += 1;
-                let xor = self.gh ^ pci;
+                let xor = self.gh ^ pc;
                 let taken = pc.wrapping_add_signed(op.imm as isize);
                 let taken_idx = xor & TAKEN_PHT_MASK;
                 let selector_idx = xor & SELECTOR_PHT_MASK;
@@ -84,7 +83,7 @@ impl BranchPredictor {
                     untaken
                 };
 
-                let update = next_pc != pc.wrapping_add(4);
+                let update = next_pc != untaken;
                 self.gh = ((self.gh << 1) | update as usize) & GH_MASK;
 
                 if update {

@@ -57,10 +57,6 @@ enum Commands {
         #[clap(short, long)]
         input: Option<String>,
 
-        /// Word addressing
-        #[clap(long, default_value = "false")]
-        legacy_addressing: bool,
-
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
         verbose: bool,
@@ -207,7 +203,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             source,
             input,
             output,
-            legacy_addressing,
             verbose,
             clock,
             cache_line,
@@ -252,7 +247,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bin: bin.unwrap(),
                 input,
                 output,
-                legacy_addressing,
                 verbose,
                 cache_line,
                 cache_miss_penalty,
