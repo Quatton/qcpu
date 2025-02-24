@@ -13,9 +13,10 @@ impl Display for Statistics {
         writeln!(f, "Cycles: {}", self.cycle_count)?;
         writeln!(
             f,
-            "Hazards: {} ({:.02}%)",
+            "Hazard count: {} ({:.02}%)",
             self.hazard_count,
             self.hazard_count as f64 / self.instr_count as f64 * 100.0
-        )
+        )?;
+        Ok(())
     }
 }

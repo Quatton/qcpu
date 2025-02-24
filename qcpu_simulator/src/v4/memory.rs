@@ -66,7 +66,9 @@ impl Display for CacheStat {
             self.write,
             self.non_miss_write_back,
             self.non_miss_write_back as f64 / self.write as f64 * 100.0
-        )
+        )?;
+
+        Ok(())
     }
 }
 

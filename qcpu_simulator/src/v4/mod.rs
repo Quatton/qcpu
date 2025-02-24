@@ -131,6 +131,7 @@ const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
     delays
 };
 
+pub const CLOCK_MHZ: u64 = 120;
 const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
 

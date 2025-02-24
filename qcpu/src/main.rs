@@ -2,6 +2,7 @@ use std::{
     fs::OpenOptions,
     io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write},
     path::PathBuf,
+    time::Duration,
 };
 
 use clap::{Parser, Subcommand};
@@ -264,14 +265,65 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if verbose {
                 sim.log_stat();
 
+                let total_time_us = sim.stat.cycle_count as f64 / clock;
+
+                let cache_miss = sim.memory.stat.read - sim.memory.stat.hit;
+
+                let hazard_time_with_cache_hit = sim.stat.hazard_count as f64 * cache_miss as f64
+                    / sim.memory.stat.read as f64
+                    * 2.0
+                    / clock;
+
+                let cache_miss_time_us =
+                    cache_miss as f64 * cache_miss_penalty.unwrap_or(55) as f64 / clock;
+
+                let cache_write_miss = sim.memory.stat.write - sim.memory.stat.non_miss_write_back;
+
+                let cache_write_miss_time_us =
+                    cache_write_miss as f64 * cache_miss_penalty.unwrap_or(55) as f64 / clock;
+
+                let jalr_flush_time_us = sim.bp.flush_count_jalr as f64 * 2.0 / clock;
+
+                let branch_flush_time_us = sim.bp.flush_count_branch as f64 * 2.0 / clock;
+
+                let total_time = Duration::from_micros(total_time_us as u64);
+                let hazard_time = Duration::from_micros(hazard_time_with_cache_hit as u64);
+                let cache_miss_time = Duration::from_micros(cache_miss_time_us as u64);
+                let cache_write_miss_time = Duration::from_micros(cache_write_miss_time_us as u64);
+                let jalr_flush_time = Duration::from_micros(jalr_flush_time_us as u64);
+                let branch_flush_time = Duration::from_micros(branch_flush_time_us as u64);
+
+                println!();
+                println!("Time optimization info:");
                 println!(
-                    "Should complete in: {:.2} s for a clock of {} MHz",
-                    sim.stat.cycle_count as f64 / clock / 1_000_000.0,
-                    clock
+                    "Should complete in: {:?} for a clock of {} MHz",
+                    total_time, clock
+                );
+                println!(
+                    "Hazard time with cache hit: {:?} ({:.02}%)",
+                    hazard_time,
+                    hazard_time_with_cache_hit / total_time_us * 100.0
+                );
+                println!(
+                    "Cache miss time: read: {:?} ({:.02}%), write: {:?} ({:.02}%)",
+                    cache_miss_time,
+                    cache_miss_time_us / total_time_us * 100.0,
+                    cache_write_miss_time,
+                    cache_write_miss_time_us / total_time_us * 100.0
+                );
+                println!(
+                    "JALR flush time: {:?} ({:.02}%)",
+                    jalr_flush_time,
+                    jalr_flush_time_us / total_time_us * 100.0
+                );
+                println!(
+                    "Branch flush time: {:?} ({:.02}%)",
+                    branch_flush_time,
+                    branch_flush_time_us / total_time_us * 100.0
                 );
             }
             println!("Loaded in: {:?}", e);
-            println!("Ran in: {:?}", e2);
+            println!("Simulated in: {:?}", e2);
         }
     }
     Ok(())
