@@ -14,5 +14,5 @@ Hazard time with cache hit: 1.566679s (0.96%)
 Cache miss time: read: 75.053538s (46.09%), write: 1.641937s (1.01%)
 JALR flush time: 164.379ms (0.10%)
 Branch flush time: 1.50367s (0.92%)
-Loaded in: 11.712084ms
-Simulated in: 20.093222542s
+Loaded in: 10.551209ms
+Simulated in: 20.261880125s

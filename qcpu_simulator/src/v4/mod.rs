@@ -45,7 +45,11 @@ impl SimulatorV4Builder {
             .output
             .unwrap_or_else(|| self.bin.with_extension("ppm"));
 
-        let log = output.with_extension("log");
+        let log = output.parent().unwrap().join(format!(
+            "{}-{}.log",
+            self.bin.file_stem().unwrap().to_string_lossy(),
+            chrono::Local::now().format("%Y-%m-%d_%H-%M-%S")
+        ));
 
         let input_target = File::options()
             .read(true)

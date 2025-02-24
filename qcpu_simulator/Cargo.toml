@@ -11,6 +11,7 @@ qcpu_assembler.workspace = true
 bitvec.workspace = true
 tracing.workspace = true
 cfg-if.workspace = true
+chrono.workspace = true
 
 [features]
 unsafe = []
