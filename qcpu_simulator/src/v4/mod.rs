@@ -204,11 +204,11 @@ impl SimulatorV4 {
     pub fn run(&mut self) -> Result<(), SimulatorV4HaltDetail> {
         loop {
             let pc = self.pc;
-            let index = pc;
+            let index = pc >> 2;
             if index >= self.decoded_len {
                 return Err(SimulatorV4HaltDetail {
                     op: self.prev_op,
-                    line: (self.pc) - 1,
+                    line: index - 1,
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
@@ -243,7 +243,11 @@ impl SimulatorV4 {
                 };
             }
 
-            let mut next_pc_true = pc + 1;
+            let mut next_pc_true = pc + 4;
+
+            // self.log
+            //     .write_all(format!("{:08x}: {:?}\n", pc, op).as_bytes())
+            //     .unwrap();
 
             let imm = op.imm;
 
@@ -314,7 +318,7 @@ impl SimulatorV4 {
                             | OpName::Bne
                             | OpName::Blt
                             | OpName::Bge => {
-                                let flushed = self.bp.update_taken(&op, pc, next_pc);
+                                let flushed = self.bp.update_taken(&op, pc >> 2, next_pc >> 2);
                                 self.stat.cycle_count += if flushed { 2 } else { 0 };
                             }
                             _ => {}
