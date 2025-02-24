@@ -8,6 +8,7 @@ mod syntax;
 use std::{
     fs::File,
     io::{BufReader, BufWriter, Read, Write as _},
+    path::PathBuf,
 };
 
 use bp::BranchPredictor;
@@ -19,9 +20,9 @@ use syntax::{get_reg_name, OpName, OpV4};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
-    pub input: Option<String>,
-    pub output: Option<String>,
-    pub bin: String,
+    pub input: Option<PathBuf>,
+    pub output: Option<PathBuf>,
+    pub bin: PathBuf,
     pub verbose: bool,
 
     pub cache_miss_penalty: Option<u64>,
@@ -31,7 +32,7 @@ pub struct SimulatorV4Builder {
 impl SimulatorV4Builder {
     pub fn build(self) -> SimulatorV4 {
         let mut program_unchunked = Vec::<u8>::with_capacity(131072);
-        File::open(self.bin)
+        File::open(&self.bin)
             .unwrap()
             .read_to_end(&mut program_unchunked)
             .unwrap();
@@ -43,22 +44,31 @@ impl SimulatorV4Builder {
         let input_target = File::options()
             .read(true)
             .open(self.input.unwrap_or_else(|| {
-                let tmp_file_path = std::env::temp_dir().join("in.txt");
-                if !tmp_file_path.exists() {
-                    File::create(&tmp_file_path).unwrap();
-                }
-                tmp_file_path.to_str().unwrap().to_string()
+                let parent = self.bin.parent().unwrap();
+                parent.join("contest")
             }))
-            .unwrap();
+            .expect("Input file not found");
+
         let output_target = File::options()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(self.output.unwrap_or_else(|| String::from("result.txt")))
-            .unwrap();
+            .open(
+                self.output
+                    .unwrap_or_else(|| self.bin.with_extension("ppm")),
+            )
+            .expect("Output file not found");
+
+        let log_target = File::options()
+            .write(true)
+            .create(true)
+            .truncate(self.verbose)
+            .open(self.bin.with_extension("log"))
+            .expect("Log file not found");
 
         let input = BufReader::new(input_target);
         let output = BufWriter::new(output_target);
+        let log = BufWriter::new(log_target);
 
         let decoded = program.iter().map(|&p| decode(p)).collect::<Vec<_>>();
 
@@ -67,6 +77,7 @@ impl SimulatorV4Builder {
             // program,
             input,
             output,
+            log,
             decoded_len: decoded.len(),
             decoded,
             verbose: self.verbose,
@@ -87,6 +98,7 @@ pub struct SimulatorV4 {
     pub decoded: Vec<OpV4>,
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
+    pub log: BufWriter<File>,
     // Fixed-size array (256 bytes)
     pub reg: [u32; 64],
     // Memory and other larger structs
@@ -136,10 +148,13 @@ const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
 
 impl SimulatorV4 {
-    pub fn log_stat(&self) {
-        println!("{}", self.stat);
-        println!("{}", self.memory.stat);
-        println!("{}", self.bp);
+    pub fn log_stat(&mut self) {
+        // println!("{}", self.stat);
+        // println!("{}", self.memory.stat);
+        // println!("{}", self.bp);
+        self.log
+            .write_all(format!("{}\n{}\n{}\n", self.stat, self.memory.stat, self.bp).as_bytes())
+            .unwrap();
     }
 
     pub fn log_registers(&self) {

@@ -46,17 +46,17 @@ enum Commands {
     Sim {
         /// The input file in machine code
         #[arg(short, long)]
-        bin: Option<String>,
+        bin: Option<PathBuf>,
 
         /// The input file in assembly (This will override the bin)
         #[arg(short, long)]
-        source: Option<String>,
+        source: Option<PathBuf>,
 
         #[clap(short, long)]
-        output: Option<String>,
+        output: Option<PathBuf>,
 
         #[clap(short, long)]
-        input: Option<String>,
+        input: Option<PathBuf>,
 
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
@@ -212,16 +212,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let s = std::time::Instant::now();
 
             if let Some(source) = source {
-                let asm = std::fs::read_to_string(source).unwrap();
+                let asm = std::fs::read_to_string(&source).unwrap();
 
                 let (mc, _) = qcpu_assembler::v2::assemble(&asm, false).unwrap();
-                let tmp_dir = std::env::temp_dir().join("qcpu");
 
-                if !tmp_dir.exists() {
-                    std::fs::create_dir(&tmp_dir).unwrap();
-                }
-
-                let path = tmp_dir.join("tmp.bin");
+                let path = source.with_extension("bin");
 
                 let mut output_file = std::fs::File::options()
                     .create(true)
@@ -236,7 +231,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     writer.write_all(&mc.to_le_bytes()).unwrap();
                 }
 
-                bin = Some(path.to_str().unwrap().to_string());
+                bin = Some(path);
             }
 
             if bin.is_none() {
@@ -293,37 +288,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let jalr_flush_time = Duration::from_micros(jalr_flush_time_us as u64);
                 let branch_flush_time = Duration::from_micros(branch_flush_time_us as u64);
 
-                println!();
-                println!("Time optimization info:");
-                println!(
-                    "Should complete in: {:?} for a clock of {} MHz",
-                    total_time, clock
-                );
-                println!(
-                    "Hazard time with cache hit: {:?} ({:.02}%)",
-                    hazard_time,
-                    hazard_time_with_cache_hit / total_time_us * 100.0
-                );
-                println!(
-                    "Cache miss time: read: {:?} ({:.02}%), write: {:?} ({:.02}%)",
-                    cache_miss_time,
-                    cache_miss_time_us / total_time_us * 100.0,
-                    cache_write_miss_time,
-                    cache_write_miss_time_us / total_time_us * 100.0
-                );
-                println!(
-                    "JALR flush time: {:?} ({:.02}%)",
-                    jalr_flush_time,
-                    jalr_flush_time_us / total_time_us * 100.0
-                );
-                println!(
-                    "Branch flush time: {:?} ({:.02}%)",
-                    branch_flush_time,
-                    branch_flush_time_us / total_time_us * 100.0
-                );
+                sim.log.write_fmt(
+                    format_args!(
+                        "Time optimization info:\nShould complete in: {:?} for a clock of {} MHz\nHazard time with cache hit: {:?} ({:.02}%)\nCache miss time: read: {:?} ({:.02}%), write: {:?} ({:.02}%)\nJALR flush time: {:?} ({:.02}%)\nBranch flush time: {:?} ({:.02}%)\n",
+                        total_time,
+                        clock,
+                        hazard_time,
+                        hazard_time_with_cache_hit / total_time_us * 100.0,
+                        cache_miss_time,
+                        cache_miss_time_us / total_time_us * 100.0,
+                        cache_write_miss_time,
+                        cache_write_miss_time_us / total_time_us * 100.0,
+                        jalr_flush_time,
+                        jalr_flush_time_us / total_time_us * 100.0,
+                        branch_flush_time,
+                        branch_flush_time_us / total_time_us * 100.0,
+                    )
+                ).unwrap();
             }
-            println!("Loaded in: {:?}", e);
-            println!("Simulated in: {:?}", e2);
+
+            sim.log
+                .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))
+                .unwrap();
         }
     }
     Ok(())
