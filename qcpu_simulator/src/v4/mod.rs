@@ -41,6 +41,12 @@ impl SimulatorV4Builder {
             .map(|c| u32::from_le_bytes(unsafe { *(c.as_ptr() as *const [_; 4]) }))
             .collect();
 
+        let output = self
+            .output
+            .unwrap_or_else(|| self.bin.with_extension("ppm"));
+
+        let log = output.with_extension("log");
+
         let input_target = File::options()
             .read(true)
             .open(self.input.unwrap_or_else(|| {
@@ -53,17 +59,14 @@ impl SimulatorV4Builder {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(
-                self.output
-                    .unwrap_or_else(|| self.bin.with_extension("ppm")),
-            )
+            .open(output)
             .expect("Output file not found");
 
         let log_target = File::options()
             .write(true)
             .create(true)
             .truncate(self.verbose)
-            .open(self.bin.with_extension("log"))
+            .open(log)
             .expect("Log file not found");
 
         let input = BufReader::new(input_target);
