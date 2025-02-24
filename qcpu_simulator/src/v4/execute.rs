@@ -73,7 +73,7 @@ fn exec_srli(rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>)
 #[inline(always)]
 fn exec_beq(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
     if rs1u == rs2u {
-        (pc.wrapping_add_signed(imm as isize), None)
+        (pc.wrapping_add_signed(imm as isize >> 2), None)
     } else {
         (pc + 1, None)
     }
@@ -83,7 +83,7 @@ fn exec_beq(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
 #[inline(always)]
 fn exec_bge(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
     if (rs1u as i32) >= (rs2u as i32) {
-        (pc.wrapping_add_signed(imm as isize), None)
+        (pc.wrapping_add_signed(imm as isize >> 2), None)
     } else {
         (pc + 1, None)
     }
@@ -93,7 +93,7 @@ fn exec_bge(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
 #[inline(always)]
 fn exec_blt(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
     if (rs1u as i32) < (rs2u as i32) {
-        (pc.wrapping_add_signed(imm as isize), None)
+        (pc.wrapping_add_signed(imm as isize >> 2), None)
     } else {
         (pc + 1, None)
     }
@@ -103,7 +103,7 @@ fn exec_blt(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
 #[inline(always)]
 fn exec_bne(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
     if rs1u != rs2u {
-        (pc.wrapping_add_signed(imm as isize), None)
+        (pc.wrapping_add_signed(imm as isize >> 2), None)
     } else {
         (pc + 1, None)
     }
@@ -114,7 +114,7 @@ fn exec_bne(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
 fn exec_jal(_rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
     (
         // must use i32 as isize to cast u32 to negative value
-        pc.wrapping_add_signed(imm as i32 as isize),
+        pc.wrapping_add_signed(imm as i32 as isize >> 2),
         Some((pc + 1) as u32),
     )
 }

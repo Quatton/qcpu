@@ -345,7 +345,7 @@ impl Op {
             match label_map.get(label) {
                 Some(&target) => match self.o.optype {
                     OpType::U => {
-                        let tgt = target as u32;
+                        let tgt = (target as u32) * 4;
                         let bv = tgt.view_bits::<Lsb0>();
 
                         imm.raw = Some(
@@ -360,7 +360,7 @@ impl Op {
                     }
                     _ => {
                         let target = target as i32;
-                        imm.raw = Some(target - offset);
+                        imm.raw = Some((target - offset) * 4);
                     }
                 },
                 None => {
