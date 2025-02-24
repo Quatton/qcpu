@@ -1,0 +1,18 @@
+Instructions: 5538718415
+Cycles: 19711641316
+Hazard count: 1207997229 (21.81%)
+
+16384 lines * 1 ways
+Read: 2081047185, Hit: 1918248383 (92.18%), Miss: 162798802 (7.82%)
+Write: 471327850, Non-miss write back: 468184070 (99.33%)
+
+JALR Flush Count: 11861520 (19.66%)
+Branch Flush Count: 349885981 (52.52%)
+Time optimization info:
+Should complete in: 164.263677s for a clock of 120 MHz
+Hazard time with cache hit: 1.575012s (0.96%)
+Cache miss time: read: 74.616117s (45.42%), write: 1.440899s (0.88%)
+JALR flush time: 197.692ms (0.12%)
+Branch flush time: 5.831433s (3.55%)
+Loaded in: 1.203125ms
+Simulated in: 20.155008125s

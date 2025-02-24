@@ -46,9 +46,10 @@ impl SimulatorV4Builder {
             .unwrap_or_else(|| self.bin.with_extension("ppm"));
 
         let log = output.parent().unwrap().join(format!(
-            "{}-{}.log",
+            "{}-{}{}.log",
             self.bin.file_stem().unwrap().to_string_lossy(),
-            chrono::Local::now().format("%Y-%m-%d_%H-%M-%S")
+            chrono::Local::now().format("%Y-%m-%d_%H-%M-%S"),
+            if self.verbose { "-verbose" } else { "" }
         ));
 
         let input_target = File::options()
@@ -69,7 +70,7 @@ impl SimulatorV4Builder {
         let log_target = File::options()
             .write(true)
             .create(true)
-            .truncate(self.verbose)
+            .truncate(true)
             .open(&log)
             .expect("Log file not found");
 
@@ -92,7 +93,7 @@ impl SimulatorV4Builder {
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
-            memory: MemoryV4::new(self.cache_line),
+            memory: MemoryV4::new(self.cache_line, self.verbose),
             cache_hit: false,
             stat: Statistics::default(),
             cache_miss_penalty: self.cache_miss_penalty.unwrap_or(CACHE_MISS_PENALTY),
