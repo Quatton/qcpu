@@ -4,9 +4,9 @@ use super::syntax::{OpName, OpV4};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BranchPredictor {
-    pub taken_pht: [i8; TAKEN_PHT_SIZE],
-    pub untaken_pht: [i8; TAKEN_PHT_SIZE],
-    pub selector_pht: [i8; SELECTOR_PHT_SIZE],
+    pub taken_pht: [u8; TAKEN_PHT_SIZE],
+    pub untaken_pht: [u8; TAKEN_PHT_SIZE],
+    pub selector_pht: [u8; SELECTOR_PHT_SIZE],
     pub jalr_addr: [usize; JALR_ADDR_SIZE],
     pub gh: usize,
 
@@ -40,99 +40,69 @@ impl BranchPredictor {
         }
     }
 
-    pub fn predict(&self, op: &OpV4, pc: usize) -> usize {
+    #[inline(always)]
+    pub fn update_taken(&mut self, op: &OpV4, pc: usize, next_pc: usize) -> bool {
         let pci = pc >> 2;
         let untaken = pc.wrapping_add(4);
 
         match op.opname {
             OpName::Jalr => {
-                let addr = unsafe { *self.jalr_addr.get_unchecked(pci & JALR_ADDR_MASK) };
-                if addr > 0 {
-                    addr
-                } else {
+                self.total_count_jalr += 1;
+                let idx = pci & JALR_ADDR_MASK;
+                let predicted_pc = if self.jalr_addr[idx] == 0 {
                     untaken
+                } else {
+                    self.jalr_addr[idx]
+                };
+                let update = next_pc != predicted_pc;
+                if update {
+                    self.flush_count_jalr += 1;
+                    self.jalr_addr[idx] = next_pc;
                 }
+                update
             }
             OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                let taken = pc.wrapping_add_signed(op.imm as isize);
+                self.total_count_branch += 1;
                 let xor = self.gh ^ pci;
+                let taken = pc.wrapping_add_signed(op.imm as isize);
+                let taken_idx = xor & TAKEN_PHT_MASK;
                 let selector_idx = xor & SELECTOR_PHT_MASK;
-                let sel = unsafe { *self.selector_pht.get_unchecked(selector_idx) };
-                if sel >= 2 {
-                    let taken_idx = xor & TAKEN_PHT_MASK;
-                    let taken_val = unsafe { *self.taken_pht.get_unchecked(taken_idx) };
+
+                let taken_val = self.taken_pht[taken_idx];
+                let untaken_val = self.untaken_pht[taken_idx];
+                let selector_val = self.selector_pht[selector_idx];
+
+                let predicted_pc = if selector_val >= 2 {
                     if taken_val >= 2 {
                         taken
                     } else {
                         untaken
                     }
+                } else if untaken_val >= 2 {
+                    taken
                 } else {
-                    let untaken_idx = xor & TAKEN_PHT_MASK;
-                    let untaken_val = unsafe { *self.untaken_pht.get_unchecked(untaken_idx) };
-                    if untaken_val >= 2 {
-                        taken
-                    } else {
-                        untaken
-                    }
-                }
-            }
-            _ => untaken,
-        }
-    }
+                    untaken
+                };
 
-    pub fn update_taken(
-        &mut self,
-        op: &OpV4,
-        pc: usize,
-        predicted_pc: usize,
-        next_pc: usize,
-    ) -> bool {
-        let pci = pc >> 2;
+                let update = next_pc != pc.wrapping_add(4);
+                self.gh = ((self.gh << 1) | update as usize) & GH_MASK;
 
-        match op.opname {
-            OpName::Jalr => {
-                self.total_count_jalr += 1;
-                let flushed = next_pc != predicted_pc;
-                if flushed {
-                    self.flush_count_jalr += 1;
-
-                    unsafe {
-                        *self.jalr_addr.get_unchecked_mut(pci & JALR_ADDR_MASK) = next_pc;
-                    }
-                }
-                flushed
-            }
-            OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                self.total_count_branch += 1;
-                let xor = self.gh ^ pci;
-
-                self.gh = ((self.gh << 1) | (next_pc != pc + 4) as usize) & GH_MASK;
-
-                let flushed = next_pc != predicted_pc;
-
-                let taken_idx = xor & TAKEN_PHT_MASK;
-                // let untaken_idx = xor & TAKEN_PHT_MASK;
-                let selector_idx = xor & SELECTOR_PHT_MASK;
-
-                let taken = unsafe { self.taken_pht.get_unchecked_mut(taken_idx) };
-                let untaken = unsafe { self.untaken_pht.get_unchecked_mut(taken_idx) };
-                let selector = unsafe { self.selector_pht.get_unchecked_mut(selector_idx) };
-
-                if next_pc != pc.wrapping_add(4) {
-                    *taken = (*taken + 1).min(3);
-                    *untaken = (*untaken + 1).min(3);
-                    *selector = (*selector + 1).min(3);
+                if update {
+                    self.taken_pht[taken_idx] = (taken_val + 1).min(3);
+                    self.untaken_pht[taken_idx] = (untaken_val + 1).min(3);
+                    self.selector_pht[selector_idx] = (selector_val + 1).min(3);
                 } else {
-                    *untaken = (*untaken - 1).max(0);
-                    *taken = (*taken - 1).max(0);
-                    *selector = (*selector - 1).max(0);
+                    self.taken_pht[taken_idx] = taken_val.saturating_sub(1);
+                    self.untaken_pht[taken_idx] = untaken_val.saturating_sub(1);
+                    self.selector_pht[selector_idx] = selector_val.saturating_sub(1);
                 }
 
-                if flushed {
+                if next_pc != predicted_pc {
                     self.flush_count_branch += 1;
+                    true
+                } else {
+                    false
                 }
-
-                flushed
             }
             _ => false,
         }

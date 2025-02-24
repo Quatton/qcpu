@@ -23,11 +23,13 @@ impl CacheLine {
         Self::default()
     }
 
+    #[inline(always)]
     pub fn read(&self, addr: usize) -> Option<u32> {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
         (self.valid && self.tag == tag).then_some(self.data)
     }
 
+    #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u32;
         let hit = self.valid && self.tag == tag;
@@ -85,6 +87,7 @@ impl MemoryV4 {
         }
     }
 
+    #[inline(always)]
     pub fn read(&mut self, addr: usize) -> Result<(u32, bool), SimulatorV4HaltKind> {
         let idx = addr & self.cache_mask;
         let entry = &mut self.cache[idx];
@@ -107,6 +110,7 @@ impl MemoryV4 {
         Ok((value, false))
     }
 
+    #[inline(always)]
     pub fn write(&mut self, addr: usize, val: u32) -> Result<bool, SimulatorV4HaltKind> {
         self.stat.write += 1;
         if addr >= MEMORY_SIZE {

@@ -65,7 +65,7 @@ impl SimulatorV4Builder {
 
         SimulatorV4 {
             prev_op: OpV4::default(),
-            program,
+            // program,
             input,
             output,
             decoded_len: decoded.len(),
@@ -74,7 +74,6 @@ impl SimulatorV4Builder {
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
-            busy: 0,
             memory: MemoryV4::new(self.cache_line),
             cache_hit: false,
             stat: Statistics::default(),
@@ -86,7 +85,7 @@ impl SimulatorV4Builder {
 
 pub struct SimulatorV4 {
     // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
-    pub program: Vec<u32>,
+    // pub program: Vec<u32>,
     pub decoded: Vec<OpV4>,
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
@@ -102,7 +101,6 @@ pub struct SimulatorV4 {
     pub cache_miss_penalty: u64,
     // OpV4 (likely 8 or 16 bytes)
     pub prev_op: OpV4,
-    pub busy: u8,
     // bool (1 byte each, will be packed)
     pub cache_hit: bool,
     pub legacy_addressing: bool,
@@ -167,28 +165,14 @@ impl SimulatorV4 {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_reg(&self, reg: u8) -> u32 {
         *unsafe { self.reg.get_unchecked(reg as usize) }
     }
 
-    #[inline]
-    pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
-        unsafe { self.reg.get_unchecked_mut(reg as usize) }
-    }
-
-    #[inline]
-    pub fn get_busy(&self, reg: u8) -> bool {
-        self.busy & (1 << reg) != 0
-    }
-
-    #[inline]
-    pub fn set_busy(&mut self, reg: u8, busy: bool) {
-        if busy {
-            self.busy |= 1 << reg;
-        } else {
-            self.busy &= !(1 << reg);
-        }
+    #[inline(always)]
+    pub fn set_reg(&mut self, reg: u8, val: u32) {
+        *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
     }
 
     pub fn run_once(&mut self) -> Result<(), SimulatorV4HaltDetail> {
@@ -201,33 +185,34 @@ impl SimulatorV4 {
                 kind: SimulatorV4HaltKind::Complete,
             });
         }
-        let op = unsafe { *self.decoded.get_unchecked(index) };
 
+        let op = unsafe { *self.decoded.get_unchecked(index) };
         if self.verbose {
             self.stat.instr_count += 1;
-            let delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
+            let base_delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
+
             self.stat.cycle_count += match self.prev_op.opname {
                 OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
-                    let delay = if self.busy & ((1 << op.rs1) | (1 << op.rs2)) != 0 {
-                        self.stat.hazard_count += 1;
-                        delay
-                            + if self.cache_hit {
-                                CACHE_HIT_PENALTY
-                            } else {
-                                self.cache_miss_penalty
-                            }
-                    } else if self.cache_hit {
-                        delay.max(CACHE_HIT_PENALTY)
+                    let has_hazard = (op.rs1 == self.prev_op.rd || op.rs2 == self.prev_op.rd)
+                        && self.prev_op.rd != 0;
+
+                    let cache_penalty = if self.cache_hit {
+                        CACHE_HIT_PENALTY
                     } else {
                         self.cache_miss_penalty
                     };
 
-                    self.cache_hit = true;
-                    self.busy = 0;
+                    let delay = if has_hazard {
+                        self.stat.hazard_count += 1;
+                        base_delay + cache_penalty
+                    } else {
+                        base_delay.max(cache_penalty)
+                    };
 
+                    self.cache_hit = true;
                     delay
                 }
-                _ => delay,
+                _ => base_delay,
             };
         }
 
@@ -251,22 +236,19 @@ impl SimulatorV4 {
                     addr >>= 2;
                 }
 
-                if op.rd != 0 {
-                    #[cfg(not(feature = "unsafe"))]
-                    let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
-                        op,
-                        line: pc >> 2,
-                        kind: e,
-                    })?;
+                #[cfg(not(feature = "unsafe"))]
+                let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
+                    op,
+                    line: pc >> 2,
+                    kind: e,
+                })?;
 
-                    #[cfg(feature = "unsafe")]
-                    let (val, hit) = unsafe { self.memory.read_unchecked(addr) };
+                #[cfg(feature = "unsafe")]
+                let (val, hit) = unsafe { self.memory.read_unchecked(addr) };
 
-                    *self.get_reg_mut(op.rd) = val;
+                self.set_reg(op.rd, val);
 
-                    self.cache_hit = hit;
-                    self.set_busy(op.rd, true);
-                }
+                self.cache_hit = hit;
             }
             OpName::Sw | OpName::Swi => {
                 let rs1u = self.get_reg(op.rs1);
@@ -305,9 +287,7 @@ impl SimulatorV4 {
                 if op.rd != 0 {
                     let mut buf = [0; 4];
                     self.input.read_exact(&mut buf).unwrap();
-                    let rd_mut = self.get_reg_mut(op.rd);
-                    *rd_mut = u32::from_le_bytes(buf);
-                    self.set_busy(op.rd, true);
+                    self.set_reg(op.rd, u32::from_le_bytes(buf));
                 }
             }
             _ => {
@@ -319,8 +299,7 @@ impl SimulatorV4 {
                 if self.verbose {
                     match op.opname {
                         OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                            let next_pc_predicted = self.bp.predict(&op, pc);
-                            let flushed = self.bp.update_taken(&op, pc, next_pc_predicted, next_pc);
+                            let flushed = self.bp.update_taken(&op, pc, next_pc);
                             self.stat.cycle_count += if flushed { 2 } else { 0 };
                         }
                         _ => {}
@@ -330,7 +309,7 @@ impl SimulatorV4 {
                 next_pc_true = next_pc;
                 if op.rd != 0 {
                     if let Some(wb) = wb {
-                        *self.get_reg_mut(op.rd) = wb;
+                        self.set_reg(op.rd, wb);
                     }
                 }
             }
@@ -342,9 +321,142 @@ impl SimulatorV4 {
 
     pub fn run(&mut self) -> Result<(), SimulatorV4HaltDetail> {
         loop {
-            let result = self.run_once();
+            let pc = self.pc;
+            let index = pc >> 2;
+            if index >= self.decoded_len {
+                return Err(SimulatorV4HaltDetail {
+                    op: self.prev_op,
+                    line: (self.pc >> 2) - 1,
+                    kind: SimulatorV4HaltKind::Complete,
+                });
+            }
 
-            result?;
+            let op = unsafe { *self.decoded.get_unchecked(index) };
+            if self.verbose {
+                self.stat.instr_count += 1;
+                let base_delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
+
+                self.stat.cycle_count += match self.prev_op.opname {
+                    OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
+                        let has_hazard = (op.rs1 == self.prev_op.rd || op.rs2 == self.prev_op.rd)
+                            && self.prev_op.rd != 0;
+
+                        let cache_penalty = if self.cache_hit {
+                            CACHE_HIT_PENALTY
+                        } else {
+                            self.cache_miss_penalty
+                        };
+
+                        let delay = if has_hazard {
+                            self.stat.hazard_count += 1;
+                            base_delay + cache_penalty
+                        } else {
+                            base_delay.max(cache_penalty)
+                        };
+
+                        self.cache_hit = true;
+                        delay
+                    }
+                    _ => base_delay,
+                };
+            }
+
+            let mut next_pc_true = pc + 4;
+
+            let imm = op.imm;
+
+            match op.opname {
+                OpName::Lw | OpName::Lwr | OpName::Lwi => {
+                    let rs1u = self.get_reg(op.rs1);
+                    let rs2u = self.get_reg(op.rs2);
+
+                    let mut addr = match op.opname {
+                        OpName::Lw => rs1u.wrapping_add(imm),
+                        OpName::Lwr => rs1u.wrapping_add(rs2u),
+                        OpName::Lwi => imm,
+                        _ => unreachable!(),
+                    } as usize;
+
+                    if self.legacy_addressing {
+                        addr >>= 2;
+                    }
+
+                    let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
+                        op,
+                        line: pc >> 2,
+                        kind: e,
+                    })?;
+
+                    self.set_reg(op.rd, val);
+
+                    self.cache_hit = hit;
+                }
+                OpName::Sw | OpName::Swi => {
+                    let rs1u = self.get_reg(op.rs1);
+                    let rs2u = self.get_reg(op.rs2);
+
+                    let mut addr = match op.opname {
+                        OpName::Sw => rs1u.wrapping_add(imm),
+                        OpName::Swi => imm,
+                        _ => unreachable!(),
+                    } as usize;
+
+                    if self.legacy_addressing {
+                        addr >>= 2;
+                    }
+
+                    let hit = self
+                        .memory
+                        .write(addr, rs2u)
+                        .map_err(|e| SimulatorV4HaltDetail {
+                            op,
+                            line: pc >> 2,
+                            kind: e,
+                        })?;
+
+                    self.cache_hit = hit;
+                }
+                OpName::Outb => {
+                    let rs2u = self.get_reg(op.rs2);
+                    self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
+                }
+                OpName::Inw => {
+                    if op.rd != 0 {
+                        let mut buf = [0; 4];
+                        self.input.read_exact(&mut buf).unwrap();
+                        self.set_reg(op.rd, u32::from_le_bytes(buf));
+                    }
+                }
+                _ => {
+                    let rs1u = self.get_reg(op.rs1);
+                    let rs2u = self.get_reg(op.rs2);
+
+                    let (next_pc, wb) = execute(rs1u, rs2u, pc, &op);
+
+                    if self.verbose {
+                        match op.opname {
+                            OpName::Jalr
+                            | OpName::Beq
+                            | OpName::Bne
+                            | OpName::Blt
+                            | OpName::Bge => {
+                                let flushed = self.bp.update_taken(&op, pc, next_pc);
+                                self.stat.cycle_count += if flushed { 2 } else { 0 };
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    next_pc_true = next_pc;
+                    if op.rd != 0 {
+                        if let Some(wb) = wb {
+                            self.set_reg(op.rd, wb);
+                        }
+                    }
+                }
+            };
+            self.pc = next_pc_true;
+            self.prev_op = op;
         }
     }
 }
