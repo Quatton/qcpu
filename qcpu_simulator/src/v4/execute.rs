@@ -2,6 +2,22 @@ use super::syntax::{OpName, OpV4};
 
 pub type ExecuteResult = (usize, Option<u32>);
 
+// type F32 = softfloat::F32;
+type F32 = f32;
+
+fn f32_from(x: u32) -> F32 {
+    F32::from_bits(x)
+}
+
+fn f32_to(x: F32) -> u32 {
+    F32::to_bits(x)
+}
+
+fn f32_round_to_u32(x: F32) -> u32 {
+    // x.round().to_u32()
+    x.round_ties_even() as i32 as u32
+}
+
 #[allow(unused_variables)]
 #[inline(always)]
 #[allow(unused)]
@@ -137,33 +153,33 @@ fn exec_lui(_rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>)
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fadd(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
-    (pc + 4, Some(f32::to_bits(rs1f + rs2f)))
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
+    (pc + 4, Some(f32_to(rs1f + rs2f)))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fsub(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
-    (pc + 4, Some(f32::to_bits(rs1f - rs2f)))
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
+    (pc + 4, Some(f32_to(rs1f - rs2f)))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fmul(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
-    (pc + 4, Some(f32::to_bits(rs1f * rs2f)))
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
+    (pc + 4, Some(f32_to(rs1f * rs2f)))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fdiv(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
-    (pc + 4, Some(f32::to_bits(rs1f / rs2f)))
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
+    (pc + 4, Some(f32_to(rs1f / rs2f)))
 }
 
 #[allow(unused_variables)]
@@ -187,8 +203,8 @@ fn exec_fsgnjx(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_ftoi(rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    (pc + 4, Some(rs1f.round_ties_even() as i32 as u32))
+    let rs1f = f32_from(rs1u);
+    (pc + 4, Some(f32_round_to_u32(rs1f)))
 }
 
 #[allow(unused_variables)]
@@ -200,32 +216,86 @@ fn exec_fitof(rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_feq(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
     (pc + 4, Some(if rs1f == rs2f { 1 } else { 0 }))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_flt(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
     (pc + 4, Some(if rs1f < rs2f { 1 } else { 0 }))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fle(rs1u: u32, rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    let rs2f = f32::from_bits(rs2u);
+    let rs1f = f32_from(rs1u);
+    let rs2f = f32_from(rs2u);
     (pc + 4, Some(if rs1f <= rs2f { 1 } else { 0 }))
 }
 
 #[allow(unused_variables)]
 #[inline(always)]
 fn exec_fsqrt(rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>) {
-    let rs1f = f32::from_bits(rs1u);
-    (pc + 4, Some(f32::to_bits(rs1f.sqrt())))
+    (pc + 4, Some(custom_sqrt(rs1u)))
+}
+
+#[allow(unused_variables)]
+#[inline(always)]
+fn custom_sqrt(x: u32) -> u32 {
+    // let x = f32_from(x);
+    // let y = x.sqrt();
+    // y.to_bits()
+
+    let s_st1 = (x >> 31) & 1;
+    let e_st1 = (x >> 23) & 0xFF;
+    let m_st1 = x & 0x7FFFFF;
+
+    let ey1_st1 = ((e_st1 as i16 >> 1) + 63) as u8;
+    let ey2_st1 = ey1_st1.wrapping_add(1);
+
+    let in24_st1 = (e_st1 & 1) == 0;
+
+    let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
+
+    let index = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) >> 13;
+    let d_st1 = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) & ((1 << 13) - 1);
+
+    let ab_st2 = super::fsqrt_table::FSQRT_TABLE[(index & 1023) as usize];
+    let a_st2 = (ab_st2 >> 23) & ((1 << 14) - 1);
+    let b_st2 = ab_st2 & ((1 << 23) - 1);
+
+    let ad1_st2 = a_st2 * d_st1 as u64;
+
+    let ad2_st2 = if in24_st1 {
+        (ad1_st2 >> 14) & ((1 << 23) - 1)
+    } else {
+        (ad1_st2 >> 15) & ((1 << 23) - 1)
+    };
+
+    let my1_st2 = b_st2 + ad2_st2;
+
+    let is_zero = e_st1 == 0;
+    let is_inf = e_st1 == 255;
+
+    let sy = s_st1;
+    let ey = if is_zero {
+        0
+    } else if is_inf {
+        255
+    } else {
+        ey3_st1
+    };
+    let my = if is_zero || is_inf {
+        0
+    } else {
+        my1_st2 & ((1 << 23) - 1)
+    };
+
+    (sy << 31) | ((ey as u32) << 23) | (my as u32 & ((1 << 23) - 1))
 }
 
 #[allow(unused_variables)]
@@ -265,5 +335,46 @@ pub fn execute(rs1u: u32, rs2u: u32, pc: usize, op: &OpV4) -> ExecuteResult {
         OpName::Fle => exec_fle(rs1u, rs2u, imm, pc),
         OpName::Fsqrt => exec_fsqrt(rs1u, rs2u, imm, pc),
         _ => unimplemented!(),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::time;
+
+    use rayon::prelude::*;
+
+    #[test]
+    fn test_fsqrt() {
+        let start = time::Instant::now();
+
+        let time_gain = (0..(1 << 20))
+            .into_par_iter()
+            .fold(
+                || 0,
+                |acc, x| {
+                    let y = super::custom_sqrt(x);
+                    let start = time::Instant::now();
+                    let yf = f32::from_bits(y);
+                    let elapsed = start.elapsed();
+                    let start = time::Instant::now();
+                    let xf = f32::from_bits(x);
+                    let elapsed2 = start.elapsed();
+                    let yf2 = xf.sqrt();
+                    assert!(
+                        (yf - yf2).abs() < 0.0001,
+                        "x: {}, y: {}, yf: {}, yf2: {}",
+                        x,
+                        y,
+                        yf,
+                        yf2
+                    );
+                    acc + ((elapsed).as_nanos() as i64 - (elapsed2).as_nanos() as i64) / 1000
+                },
+            )
+            .sum::<i64>();
+
+        println!("elapsed: {:?}", start.elapsed());
+        println!("time gain: {:?}", time_gain);
     }
 }

@@ -12,6 +12,8 @@ bitvec.workspace = true
 tracing.workspace = true
 cfg-if.workspace = true
 chrono.workspace = true
+softfloat = "1.0.0"
+rayon = "1.10.0"
 
 [features]
 unsafe = []

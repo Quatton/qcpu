@@ -1,3 +1,5 @@
+mod ppm;
+
 use std::{
     fs::OpenOptions,
     io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write},
@@ -74,6 +76,20 @@ enum Commands {
         #[clap(long)]
         cache_miss_penalty: Option<u64>,
     },
+
+    Diff {
+        /// The first input file
+        #[clap(short = 's', long)]
+        file1: PathBuf,
+
+        /// The second input file
+        #[clap(short = 't', long)]
+        file2: PathBuf,
+
+        /// The output file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 fn create_writer(path: &Option<String>) -> BufWriter<Box<dyn Write>> {
@@ -103,6 +119,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cmd::parse();
 
     match args.command {
+        Commands::Diff {
+            file1,
+            file2,
+            output,
+        } => {
+            let ppm1 = ppm::PPMImage::from_base_on_extension(&file1);
+            let ppm2 = ppm::PPMImage::from_base_on_extension(&file2);
+
+            let diff = ppm1.diff(&ppm2);
+            // .contrast(0, 0xff)
+
+            diff.export(&output.unwrap_or_else(|| file1.with_file_name("diff.ppm")));
+
+            let file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(file1.with_file_name("diff.txt"))
+                .unwrap();
+
+            let mut writer = BufWriter::new(file);
+
+            for (i, (p1, p2)) in ppm1
+                .image
+                .chunks_exact(3)
+                .zip(ppm2.image.chunks_exact(3))
+                .enumerate()
+            {
+                if p1 != p2 {
+                    writer.write_fmt(format_args!("Pixel {}: {:?} != {:?}\n", i, p1, p2))?;
+                }
+            }
+        }
         Commands::Conv { input, output } => {
             let mut reader = create_reader(&input);
             let mut writer = create_writer(&output);
