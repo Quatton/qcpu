@@ -25,6 +25,7 @@ pub struct SimulatorV4Builder {
     pub output: Option<PathBuf>,
     pub bin: PathBuf,
     pub verbose: bool,
+    pub log: Option<PathBuf>,
 
     pub cache_miss_penalty: Option<u64>,
     pub cache_line: Option<usize>,
@@ -46,12 +47,14 @@ impl SimulatorV4Builder {
             .output
             .unwrap_or_else(|| self.bin.with_extension("ppm"));
 
-        let log = output.parent().unwrap().join(format!(
-            "{}-{}{}.log",
-            self.bin.file_stem().unwrap().to_string_lossy(),
-            chrono::Local::now().format("%Y-%m-%d_%H-%M-%S"),
-            if self.verbose { "-verbose" } else { "" }
-        ));
+        let log = self.log.unwrap_or_else(|| {
+            self.bin.parent().unwrap().join(format!(
+                "{}-{}{}.log",
+                self.bin.file_stem().unwrap().to_string_lossy(),
+                chrono::Local::now().format("%Y-%m-%d_%H-%M-%S"),
+                if self.verbose { "-verbose" } else { "" }
+            ))
+        });
 
         let input_target = File::options()
             .read(true)

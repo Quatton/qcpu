@@ -60,6 +60,9 @@ enum Commands {
         #[clap(short, long)]
         input: Option<PathBuf>,
 
+        #[clap(short, long)]
+        log: Option<PathBuf>,
+
         /// Verbose mode
         #[clap(short, long, default_value = "false")]
         verbose: bool,
@@ -257,6 +260,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             clock,
             cache_line,
             cache_miss_penalty,
+            log,
         } => {
             let s = std::time::Instant::now();
 
@@ -295,6 +299,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 verbose,
                 cache_line,
                 cache_miss_penalty,
+                log,
             })
             .build();
             let e = s.elapsed();
