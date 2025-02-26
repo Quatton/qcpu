@@ -14,7 +14,6 @@ use std::{
 
 use bp::BranchPredictor;
 use decode::decode;
-use execute::execute;
 use memory::MemoryV4;
 use stat::Statistics;
 use syntax::{get_reg_name, OpName, OpV4};
@@ -202,7 +201,15 @@ impl SimulatorV4 {
 
     #[inline(always)]
     pub fn set_reg(&mut self, reg: u8, val: u32) {
+        if reg == 0 {
+            return;
+        }
         *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
+    }
+
+    #[inline(always)]
+    pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
+        unsafe { self.reg.get_unchecked_mut(reg as usize) }
     }
 
     pub fn run(&mut self) -> Result<(), SimulatorV4HaltDetail> {
@@ -218,12 +225,6 @@ impl SimulatorV4 {
             }
 
             let op = unsafe { *self.decoded.get_unchecked(index) };
-
-            // self.log
-            //     .write_all(
-            //         format!("{:x}: {} {} {} {}\n", pc, op.rd, op.rs1, op.rs2, op.imm).as_bytes(),
-            //     )
-            //     .unwrap();
 
             if self.verbose {
                 self.stat.instr_count += 1;
@@ -254,97 +255,23 @@ impl SimulatorV4 {
                 };
             }
 
-            let mut next_pc_true = pc + 4;
+            let next_pc = self.execute(&op).map_err(|kind| SimulatorV4HaltDetail {
+                op,
+                line: index,
+                kind,
+            })?;
 
-            // self.log
-            //     .write_all(format!("{:08x}: {:?}\n", pc, op).as_bytes())
-            //     .unwrap();
-
-            let imm = op.imm;
-
-            match op.opname {
-                OpName::Lw | OpName::Lwr | OpName::Lwi => {
-                    let rs1u = self.get_reg(op.rs1);
-                    let rs2u = self.get_reg(op.rs2);
-
-                    let addr = match op.opname {
-                        OpName::Lw => rs1u.wrapping_add(imm),
-                        OpName::Lwr => rs1u.wrapping_add(rs2u),
-                        OpName::Lwi => imm,
-                        _ => unreachable!(),
-                    } as usize;
-
-                    let (val, hit) = self.memory.read(addr).map_err(|e| SimulatorV4HaltDetail {
-                        op,
-                        line: pc,
-                        kind: e,
-                    })?;
-
-                    self.set_reg(op.rd, val);
-
-                    self.cache_hit = hit;
-                }
-                OpName::Sw | OpName::Swi => {
-                    let rs1u = self.get_reg(op.rs1);
-                    let rs2u = self.get_reg(op.rs2);
-
-                    let addr = match op.opname {
-                        OpName::Sw => rs1u.wrapping_add(imm),
-                        OpName::Swi => imm,
-                        _ => unreachable!(),
-                    } as usize;
-
-                    let hit = self
-                        .memory
-                        .write(addr, rs2u)
-                        .map_err(|e| SimulatorV4HaltDetail {
-                            op,
-                            line: pc,
-                            kind: e,
-                        })?;
-
-                    self.cache_hit = hit;
-                }
-                OpName::Outb => {
-                    let rs2u = self.get_reg(op.rs2);
-                    self.output.write_all(&[(rs2u & 0xff) as u8]).unwrap();
-                }
-                OpName::Inw => {
-                    if op.rd != 0 {
-                        let mut buf = [0; 4];
-                        self.input.read_exact(&mut buf).unwrap();
-                        self.set_reg(op.rd, u32::from_le_bytes(buf));
+            if self.verbose {
+                match op.opname {
+                    OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
+                        let flushed = self.bp.update_taken(&op, pc >> 2, next_pc >> 2);
+                        self.stat.cycle_count += if flushed { 2 } else { 0 };
                     }
+                    _ => {}
                 }
-                _ => {
-                    let rs1u = self.get_reg(op.rs1);
-                    let rs2u = self.get_reg(op.rs2);
+            }
 
-                    let (next_pc, wb) = execute(rs1u, rs2u, pc, &op);
-
-                    if self.verbose {
-                        match op.opname {
-                            OpName::Jalr
-                            | OpName::Beq
-                            | OpName::Bne
-                            | OpName::Blt
-                            | OpName::Bge => {
-                                let flushed = self.bp.update_taken(&op, pc >> 2, next_pc >> 2);
-                                self.stat.cycle_count += if flushed { 2 } else { 0 };
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    next_pc_true = next_pc;
-                    if op.rd != 0 {
-                        if let Some(wb) = wb {
-                            self.set_reg(op.rd, wb);
-                        }
-                    }
-                }
-            };
-            self.pc = next_pc_true;
+            self.pc = next_pc;
             self.prev_op = op;
         }
     }
