@@ -51,15 +51,10 @@ pub fn decode(mc: u32) -> OpV4 {
     };
 
     let rs2 = match opcode {
-        OpCode::R
-        | OpCode::F
-        | OpCode::S
-        | OpCode::B
-        | OpCode::O
-        | OpCode::A
-        | OpCode::LR
-        | OpCode::SU => bits[19..25].load::<Reg>(),
-        OpCode::I | OpCode::U | OpCode::J | OpCode::N | OpCode::L | OpCode::LU => 0,
+        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O | OpCode::LR | OpCode::SU => {
+            bits[19..25].load::<Reg>()
+        }
+        OpCode::I | OpCode::A | OpCode::U | OpCode::J | OpCode::N | OpCode::L | OpCode::LU => 0,
     };
 
     let funct3 = bits[10..13].load::<u32>();

@@ -215,6 +215,13 @@ impl SimulatorV4 {
             }
 
             let op = unsafe { *self.decoded.get_unchecked(index) };
+
+            // self.log
+            //     .write_all(
+            //         format!("{:x}: {} {} {} {}\n", pc, op.rd, op.rs1, op.rs2, op.imm).as_bytes(),
+            //     )
+            //     .unwrap();
+
             if self.verbose {
                 self.stat.instr_count += 1;
                 let base_delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;

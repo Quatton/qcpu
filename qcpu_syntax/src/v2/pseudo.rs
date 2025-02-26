@@ -1,4 +1,3 @@
-use bitvec::{field::BitField as _, order::Lsb0, view::BitView as _};
 use nom::{
     branch::alt, bytes::complete::tag, character::complete::multispace1, combinator::opt, IResult,
 };
@@ -18,8 +17,7 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
     let (i, _) = multispace1(i)?;
     let (i, imm) = Immediate::parse(i)?;
 
-    // li reg, label
-
+    // Handle labels as before.
     if imm.raw().is_none() {
         return Ok((
             i,
@@ -42,31 +40,34 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
         ));
     }
 
-    // li reg, i32
+    let imm_val = imm.raw().unwrap();
+    if (-2048..2048).contains(&imm_val) {
+        return Ok((
+            i,
+            vec![Op {
+                imm: Immediate::from_offset(imm_val),
+                o: OpName::ADDI,
+                rd: reg,
+                rs1: Register::Zero,
+                ..Default::default()
+            }],
+        ));
+    }
 
-    let imm = imm.raw().unwrap() as u32;
-
-    let bv = imm.view_bits::<Lsb0>();
+    let upper = (imm_val + 0x800) >> 12;
+    let lower = imm_val - (upper << 12);
 
     let mut ops = Vec::new();
-
-    let lui = (bv[12..=31]
-        .load::<u32>()
-        .wrapping_add(bv[11..=11].load::<u32>())
-        << 12
-        >> 12) as i32;
-
-    if lui != 0 {
+    if upper != 0 {
         ops.push(Op {
-            imm: Immediate::from_offset(lui),
+            imm: Immediate::from_offset(upper),
             o: OpName::LUI,
             rd: reg,
             rs1: Register::Zero,
             ..Default::default()
         });
-
         ops.push(Op {
-            imm: Immediate::from_offset(bv[0..=11].load::<i32>()),
+            imm: Immediate::from_offset(lower),
             o: OpName::ADDI,
             rd: reg,
             rs1: reg,
@@ -74,7 +75,7 @@ pub fn li(input: &str) -> IResult<&str, Vec<Op>> {
         });
     } else {
         ops.push(Op {
-            imm: Immediate::from_offset(bv.load::<i32>()),
+            imm: Immediate::from_offset(lower),
             o: OpName::ADDI,
             rd: reg,
             rs1: Register::Zero,

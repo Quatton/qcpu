@@ -7,7 +7,7 @@
       "request": "launch",
       "args": [],
       "cwd": "/Users/quatton/Documents/GitHub/qcpu/qcpu/cpp",
-      "program": "/Users/quatton/Documents/GitHub/qcpu/qcpu/cpp/build/Debug/outDebug"
+      "program": "/Users/quatton/Documents/GitHub/qcpu/qcpu/cpp/sim"
     }
   ]
 }

@@ -77,6 +77,7 @@ pub fn parse_tree(input: &str, ctx: &mut ParsingContext) -> Result<Vec<Op>, Pars
                 if !ctx.debug && op.o.optype == OpType::E {
                     return None;
                 }
+
                 len += 1;
                 Some(op)
             }
