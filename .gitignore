@@ -1,5 +1,5 @@
 /target
-/test_data/*.bin
 /test_data/*.txt
+/test_data/*.log
 .DS_Store
 profile.json
