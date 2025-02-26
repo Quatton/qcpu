@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/quatton/Documents/GitHub/qcpu/qcpu/cpp",
+      "program": "/Users/quatton/Documents/GitHub/qcpu/qcpu/cpp/build/Debug/outDebug"
+    }
+  ]
+}
