@@ -15,7 +15,7 @@ fn f32_to(x: F32) -> u32 {
 
 fn f32_round_to_u32(x: F32) -> u32 {
     // x.round().to_u32()
-    x.round_ties_even() as i32 as u32
+    x.round() as i32 as u32
 }
 
 #[allow(unused_variables)]
@@ -246,56 +246,56 @@ fn exec_fsqrt(rs1u: u32, _rs2u: u32, imm: u32, pc: usize) -> (usize, Option<u32>
 #[allow(unused_variables)]
 #[inline(always)]
 fn custom_sqrt(x: u32) -> u32 {
-    // let x = f32_from(x);
-    // let y = x.sqrt();
-    // y.to_bits()
+    f32_to(f32_from(x).sqrt())
 
-    let s_st1 = (x >> 31) & 1;
-    let e_st1 = (x >> 23) & 0xFF;
-    let m_st1 = x & 0x7FFFFF;
+    // let s_st1 = (x >> 31) & 1;
+    // let e_st1 = (x >> 23) & 0xFF;
+    // let m_st1 = x & 0x7FFFFF;
 
-    let ey1_st1 = ((e_st1 as i16 >> 1) + 63) as u8;
-    let ey2_st1 = ey1_st1.wrapping_add(1);
+    // let ey1_st1 = ((e_st1 as i16 >> 1) + 63) as u8;
+    // let ey2_st1 = ey1_st1.wrapping_add(1);
 
-    let in24_st1 = (e_st1 & 1) == 0;
+    // let in24_st1 = (e_st1 & 1) == 0;
 
-    let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
+    // let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
 
-    let index = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) >> 13;
-    let d_st1 = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) & ((1 << 13) - 1);
+    // let index = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) >> 13;
+    // let d_st1 = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) & ((1 << 13) - 1);
 
-    let ab_st2 = super::fsqrt_table::FSQRT_TABLE[(index & 1023) as usize];
-    let a_st2 = (ab_st2 >> 23) & ((1 << 14) - 1);
-    let b_st2 = ab_st2 & ((1 << 23) - 1);
+    // let ab_st2_table = super::fsqrt_table::FSQRT_TABLE[(index & 1023) as usize];
+    // let ab_st2 = (1u64 << 36) | ab_st2_table;
 
-    let ad1_st2 = a_st2 * d_st1 as u64;
+    // let a_st2 = ((ab_st2 >> 23) & ((1 << 14) - 1)) as u32;
+    // let b_st2 = (ab_st2 & ((1 << 23) - 1)) as u32;
 
-    let ad2_st2 = if in24_st1 {
-        (ad1_st2 >> 14) & ((1 << 23) - 1)
-    } else {
-        (ad1_st2 >> 15) & ((1 << 23) - 1)
-    };
+    // let ad1_st2 = a_st2 * d_st1;
 
-    let my1_st2 = b_st2 + ad2_st2;
+    // let ad2_st2 = if in24_st1 {
+    //     (ad1_st2 >> 14) & ((1 << 23) - 1)
+    // } else {
+    //     (ad1_st2 >> 15) & ((1 << 23) - 1)
+    // };
 
-    let is_zero = e_st1 == 0;
-    let is_inf = e_st1 == 255;
+    // let my1_st2 = b_st2 + ad2_st2;
 
-    let sy = s_st1;
-    let ey = if is_zero {
-        0
-    } else if is_inf {
-        255
-    } else {
-        ey3_st1
-    };
-    let my = if is_zero || is_inf {
-        0
-    } else {
-        my1_st2 & ((1 << 23) - 1)
-    };
+    // let is_zero = e_st1 == 0;
+    // let is_inf = e_st1 == 255;
 
-    (sy << 31) | ((ey as u32) << 23) | (my as u32 & ((1 << 23) - 1))
+    // let sy = s_st1;
+    // let ey = if is_zero {
+    //     0
+    // } else if is_inf {
+    //     255
+    // } else {
+    //     ey3_st1
+    // };
+    // let my = if is_zero || is_inf {
+    //     0
+    // } else {
+    //     my1_st2 & ((1 << 23) - 1)
+    // };
+
+    // (sy << 31) | ((ey as u32) << 23) | (my & ((1 << 23) - 1))
 }
 
 #[allow(unused_variables)]
