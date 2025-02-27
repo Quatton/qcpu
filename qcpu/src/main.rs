@@ -124,13 +124,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let diff = ppm1.diff(&ppm2).contrast(0, 0xff);
 
-            diff.export(&output.unwrap_or_else(|| file1.with_file_name("diff.ppm")));
+            diff.export(&output.unwrap_or_else(|| {
+                file1.with_file_name(format!(
+                    "{}.diff.ppm",
+                    file1.file_stem().unwrap().to_string_lossy()
+                ))
+            }));
 
             let file = OpenOptions::new()
                 .create(true)
                 .write(true)
                 .truncate(true)
-                .open(file1.with_file_name("diff.txt"))
+                .open(file1.with_extension("diff"))
                 .unwrap();
 
             let mut writer = BufWriter::new(file);

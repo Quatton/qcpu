@@ -14,9 +14,9 @@ fn f32_from(x: u32) -> F32 {
     F32::from_bits(x)
 }
 
-fn f32_to(x: F32) -> u32 {
-    F32::to_bits(x)
-}
+// fn f32_to(x: F32) -> u32 {
+//     F32::to_bits(x)
+// }
 
 fn finv(x: u32) -> u32 {
     // Stage 1
@@ -262,6 +262,8 @@ fn fadd(x1: u32, x2: u32) -> u32 {
     };
 
     (sy << 31) | (ey << 23) | my
+
+    // f32_to(f32_from(x1) + f32_from(x2))
 }
 
 fn fsub(x1: u32, x2: u32) -> u32 {
@@ -275,20 +277,20 @@ fn ftoi(x: u32) -> u32 {
     let e_st1 = ((x >> 23) & 0xFF) as u8;
     let m_st1 = x & 0x007FFFFF;
     let my_st1 = (1 << 23) | m_st1;
-    let y1_st1 = if e_st1 < 149 {
+    let y1_st1: u64 = if e_st1 < 149 {
         let shift = (149 - e_st1) as u32;
-        (my_st1).checked_shr(shift).unwrap_or(0)
+        (my_st1 as u64).checked_shr(shift).unwrap_or(0)
     } else {
         let shift = (e_st1 - 149) as u32;
-        (my_st1).checked_shl(shift).unwrap_or(0)
-    };
+        (my_st1 as u64).checked_shl(shift).unwrap_or(0)
+    } & 0x1FFFFFFFF;
 
     let y2_st1 = y1_st1.wrapping_add(1);
 
     // Stage 2
     let s_st2 = s_st1;
     let y2_st2 = y2_st1;
-    let y3 = y2_st2 >> 1;
+    let y3 = (y2_st2 >> 1) as u32;
 
     if s_st2 == 1 {
         (!y3).wrapping_add(1)
@@ -296,7 +298,7 @@ fn ftoi(x: u32) -> u32 {
         y3
     }
 
-    // f32_from(x).round_ties_even() as i32 as u32
+    // f32_from(x).round() as i32 as u32
 }
 
 fn itof(x: u32) -> u32 {
@@ -304,71 +306,10 @@ fn itof(x: u32) -> u32 {
     let is_zero = x == 0;
     let s = (x & 0x80000000) != 0;
     let m1 = if s { (!x).wrapping_add(1) } else { x };
-
-    let shifts: u8 = if m1 & 0x80000000 != 0 {
-        0
-    } else if m1 & 0x40000000 != 0 {
-        1
-    } else if m1 & 0x20000000 != 0 {
-        2
-    } else if m1 & 0x10000000 != 0 {
-        3
-    } else if m1 & 0x08000000 != 0 {
-        4
-    } else if m1 & 0x04000000 != 0 {
-        5
-    } else if m1 & 0x02000000 != 0 {
-        6
-    } else if m1 & 0x01000000 != 0 {
-        7
-    } else if m1 & 0x00800000 != 0 {
-        8
-    } else if m1 & 0x00400000 != 0 {
-        9
-    } else if m1 & 0x00200000 != 0 {
-        10
-    } else if m1 & 0x00100000 != 0 {
-        11
-    } else if m1 & 0x00080000 != 0 {
-        12
-    } else if m1 & 0x00040000 != 0 {
-        13
-    } else if m1 & 0x00020000 != 0 {
-        14
-    } else if m1 & 0x00010000 != 0 {
-        15
-    } else if m1 & 0x00008000 != 0 {
-        16
-    } else if m1 & 0x00004000 != 0 {
-        17
-    } else if m1 & 0x00002000 != 0 {
-        18
-    } else if m1 & 0x00001000 != 0 {
-        19
-    } else if m1 & 0x00000800 != 0 {
-        20
-    } else if m1 & 0x00000400 != 0 {
-        21
-    } else if m1 & 0x00000200 != 0 {
-        22
-    } else if m1 & 0x00000100 != 0 {
-        23
-    } else if m1 & 0x00000080 != 0 {
-        24
-    } else if m1 & 0x00000040 != 0 {
-        25
-    } else if m1 & 0x00000020 != 0 {
-        26
-    } else if m1 & 0x00000010 != 0 {
-        27
-    } else if m1 & 0x00000008 != 0 {
-        28
-    } else if m1 & 0x00000004 != 0 {
-        29
-    } else if m1 & 0x00000002 != 0 {
-        30
-    } else {
+    let shifts = if is_zero {
         31
+    } else {
+        m1.leading_zeros() as u8
     };
 
     // stage2
@@ -385,8 +326,6 @@ fn itof(x: u32) -> u32 {
 
     // stage3
     (s as u32) << 31 | (e as u32) << 23 | m
-
-    // f32_to(x as i32 as F32)
 }
 
 fn fmul(x1: u32, x2: u32) -> u32 {
@@ -437,6 +376,8 @@ fn fmul(x1: u32, x2: u32) -> u32 {
 
     // Pack result
     ((sy as u32) << 31) | ((ey as u32) << 23) | (my & 0x7FFFFF)
+
+    // f32_to(f32_from(x1) * f32_from(x2))
 }
 
 impl SimulatorV4 {
