@@ -26,7 +26,7 @@ impl CacheLine {
         Self::default()
     }
 
-    // 
+    //
     // pub fn read(&mut self, addr: usize) -> Option<u32> {
     //     let tag = (addr >> CACHE_LINE_BITS) as u8;
     //     if self.valid && self.tag == tag {
@@ -36,8 +36,7 @@ impl CacheLine {
     //     }
     // }
 
-    
-    pub fn write(&mut self, addr: usize) -> bool {
+    pub fn replace(&mut self, addr: usize) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u8;
         let hit = self.tag == tag;
         self.tag = tag;
@@ -52,7 +51,7 @@ pub struct CacheStat {
     pub hit: u64,
     pub read: u64,
     pub write: u64,
-    pub non_miss_write_back: u64,
+    pub write_hit: u64,
 }
 
 impl Display for CacheStat {
@@ -69,10 +68,12 @@ impl Display for CacheStat {
         )?;
         writeln!(
             f,
-            "Write: {}, Non-miss write back: {} ({:.02}%)",
+            "Write: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
             self.write,
-            self.non_miss_write_back,
-            self.non_miss_write_back as f64 / self.write as f64 * 100.0
+            self.write_hit,
+            self.write_hit as f64 / self.write as f64 * 100.0,
+            self.write - self.write_hit,
+            (self.write - self.write_hit) as f64 / self.write as f64 * 100.0
         )?;
 
         Ok(())
@@ -94,7 +95,6 @@ impl MemoryV4 {
         }
     }
 
-    
     pub fn read(&mut self, addr: usize) -> Result<(u32, bool), SimulatorV4HaltKind> {
         if addr >= MEMORY_SIZE {
             return Err(SimulatorV4HaltKind::MemoryAccess {
@@ -109,15 +109,14 @@ impl MemoryV4 {
             return Ok((value, false));
         }
 
-        self.stat.read += 1;
+        // self.stat.read += 1;
         let idx = addr & CACHE_MASK;
         let entry = &mut self.cache[idx];
-        let hit = entry.write(addr);
-        self.stat.hit += hit as u64;
+        let hit = entry.replace(addr);
+        // self.stat.hit += hit as u64;
         Ok((value, hit))
     }
 
-    
     pub fn write(&mut self, addr: usize, val: u32) -> Result<bool, SimulatorV4HaltKind> {
         if addr >= MEMORY_SIZE {
             return Err(SimulatorV4HaltKind::MemoryAccess {
@@ -134,11 +133,11 @@ impl MemoryV4 {
             return Ok(true);
         }
 
-        self.stat.write += 1;
+        // self.stat.write += 1;
         let idx = addr & CACHE_MASK;
         let entry = &mut self.cache[idx];
-        let hit = entry.write(addr);
-        self.stat.non_miss_write_back += hit as u64;
+        let hit = entry.replace(addr);
+        // self.stat.non_miss_write_back += hit as u64;
         Ok(hit)
     }
 }

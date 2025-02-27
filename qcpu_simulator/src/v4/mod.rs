@@ -1,22 +1,24 @@
 pub mod bp;
 mod decode;
 pub mod execute;
+pub mod log;
 pub mod memory;
 pub mod stat;
-mod syntax;
+pub mod syntax;
 mod table;
 
 use std::{
     fs::File,
-    io::{BufReader, BufWriter, Read, Write as _},
+    io::{BufReader, BufWriter, Read},
     path::PathBuf,
 };
 
 use bp::BranchPredictor;
 use decode::decode;
 use memory::MemoryV4;
+use serde::Serialize;
 use stat::Statistics;
-use syntax::{get_reg_name, OpName, OpV4};
+use syntax::{OpName, OpV4};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
@@ -83,42 +85,38 @@ impl SimulatorV4Builder {
         let decoded_len = decoded.len();
 
         SimulatorV4 {
-            prev_op: OpV4::default(),
             // program,
             input: input_reader,
+            per_instruction_stat: vec![Instat::default(); decoded_len],
             output: output_writer,
             output_file: output,
             log_file: log,
             log: log_writer,
             decoded_len,
-            decoded,
+            instructions: decoded,
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
             memory: MemoryV4::new(self.verbose),
-            cache_hit: false,
             stat: Statistics::default(),
             bp: BranchPredictor::new(),
-            #[cfg(feature = "lw")]
-            instat: vec![Instat::default(); decoded_len],
+            cache_hit: false,
         }
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct Instat {
     pub hit: u64,
-    pub read: u64,
+    pub call: u64,
 }
 
 pub struct SimulatorV4 {
     // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
     // pub program: Vec<u32>,
-    pub decoded: Vec<OpV4>,
+    pub instructions: Vec<OpV4>,
+    pub per_instruction_stat: Vec<Instat>,
     // per instruction stat
-    #[cfg(feature = "lw")]
-    pub instat: Vec<Instat>,
-
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
     pub log: BufWriter<File>,
@@ -134,12 +132,9 @@ pub struct SimulatorV4 {
     // usize (8 bytes)
     pub pc: usize,
     pub decoded_len: usize,
-    // OpV4 (likely 8 or 16 bytes)
-    pub prev_op: OpV4,
-
     // bool (1 byte each, will be packed)
-    pub cache_hit: bool,
     pub verbose: bool,
+    pub cache_hit: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -155,52 +150,7 @@ pub enum SimulatorV4HaltKind {
     Complete,
 }
 
-const NUM_OPNAMES: usize = 64;
-
-const DEFAULT_DELAY: u8 = 1;
-const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
-    let mut delays = [DEFAULT_DELAY; NUM_OPNAMES];
-    delays[OpName::Fadd as usize] = 4;
-    delays[OpName::Fsub as usize] = 4;
-    delays[OpName::Fmul as usize] = 3;
-    delays[OpName::Ftoi as usize] = 2;
-    delays[OpName::Fitof as usize] = 3;
-    delays[OpName::Fdiv as usize] = 6;
-    delays
-};
-
-pub const CLOCK_MHZ: u64 = 122;
-pub const CACHE_HIT_PENALTY: u64 = 2;
-pub const CACHE_MISS_PENALTY: u64 = 55;
-
 impl SimulatorV4 {
-    pub fn log_stat(&mut self) {
-        self.log
-            .write_all(format!("{}\n{}\n{}\n", self.stat, self.memory.stat, self.bp).as_bytes())
-            .unwrap();
-    }
-
-    pub fn log_registers(&self) {
-        for (i, reg) in self.reg.iter().enumerate() {
-            let reg_name = get_reg_name(i as u8);
-            if i < 32 {
-                print!("{:5}: 0x{:08x} ({:12})", reg_name, reg, *reg as i32);
-            } else {
-                print!(
-                    "{:5}: 0x{:08x} ({:12.6e})",
-                    reg_name,
-                    reg,
-                    f32::from_bits(*reg)
-                );
-            }
-
-            print!(" ");
-            if i % 4 == 3 {
-                println!();
-            }
-        }
-    }
-
     pub fn get_reg(&self, reg: u8) -> u32 {
         *unsafe { self.reg.get_unchecked(reg as usize) }
     }
@@ -222,42 +172,13 @@ impl SimulatorV4 {
             let index = pc >> 2;
             if index >= self.decoded_len {
                 return Err(SimulatorV4HaltDetail {
-                    op: self.prev_op,
+                    op: self.instructions[index - 1],
                     line: index - 1,
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
 
-            let op = unsafe { *self.decoded.get_unchecked(index) };
-
-            if self.verbose {
-                self.stat.instr_count += 1;
-                let base_delay = *unsafe { DELAY_LOOKUP.get_unchecked(op.opname as usize) } as u64;
-
-                self.stat.cycle_count += match self.prev_op.opname {
-                    OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Inw => {
-                        let has_hazard = (op.rs1 == self.prev_op.rd || op.rs2 == self.prev_op.rd)
-                            && self.prev_op.rd != 0;
-
-                        let cache_penalty = if self.cache_hit {
-                            CACHE_HIT_PENALTY
-                        } else {
-                            CACHE_MISS_PENALTY
-                        };
-
-                        let delay = if has_hazard {
-                            self.stat.hazard_count += 1;
-                            base_delay + cache_penalty
-                        } else {
-                            base_delay.max(cache_penalty)
-                        };
-
-                        self.cache_hit = true;
-                        delay
-                    }
-                    _ => base_delay,
-                };
-            }
+            let op = unsafe { *self.instructions.get_unchecked(index) };
 
             let next_pc = self.execute(&op).map_err(|kind| SimulatorV4HaltDetail {
                 op,
@@ -266,17 +187,20 @@ impl SimulatorV4 {
             })?;
 
             if self.verbose {
+                let stat = unsafe { &mut self.per_instruction_stat.get_unchecked_mut(index) };
+                stat.call += 1;
                 match op.opname {
                     OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                        let flushed = self.bp.update_taken(&op, pc >> 2, next_pc >> 2);
-                        self.stat.cycle_count += if flushed { 2 } else { 0 };
+                        self.bp.update_taken(&op, pc, next_pc);
+                    }
+                    OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
+                        stat.hit += self.cache_hit as u64;
                     }
                     _ => {}
                 }
             }
 
             self.pc = next_pc;
-            self.prev_op = op;
         }
     }
 }

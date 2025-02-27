@@ -20,7 +20,7 @@ const TAKEN_PHT_SIZE: usize = 1024;
 const TAKEN_PHT_MASK: usize = TAKEN_PHT_SIZE - 1;
 const SELECTOR_PHT_SIZE: usize = 256;
 const SELECTOR_PHT_MASK: usize = SELECTOR_PHT_SIZE - 1;
-const JALR_ADDR_SIZE: usize = 256;
+const JALR_ADDR_SIZE: usize = 2048;
 const JALR_ADDR_MASK: usize = JALR_ADDR_SIZE - 1;
 const GH_MASK: usize = 1023;
 
@@ -41,12 +41,13 @@ impl BranchPredictor {
     }
 
     pub fn update_taken(&mut self, op: &OpV4, pc: usize, next_pc: usize) -> bool {
-        let untaken = pc.wrapping_add(1);
+        let pci = pc >> 2;
+        let untaken = pc.wrapping_add(4);
 
         match op.opname {
             OpName::Jalr => {
                 self.total_count_jalr += 1;
-                let idx = pc & JALR_ADDR_MASK;
+                let idx = pci & JALR_ADDR_MASK;
                 let predicted_pc = if self.jalr_addr[idx] == 0 {
                     untaken
                 } else {
@@ -61,7 +62,7 @@ impl BranchPredictor {
             }
             OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
                 self.total_count_branch += 1;
-                let xor = self.gh ^ pc;
+                let xor = self.gh ^ pci;
                 let taken = pc.wrapping_add_signed(op.imm as isize);
                 let taken_idx = xor & TAKEN_PHT_MASK;
                 let selector_idx = xor & SELECTOR_PHT_MASK;

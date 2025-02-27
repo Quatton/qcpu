@@ -199,6 +199,24 @@ impl ParsingContext {
         self.main_label = label;
         self
     }
+
+    /// A utility to reverse lookup the maximum label that has index just before the i so like a floor function
+    pub fn reverse_lookup_floor(&self, i: usize) -> &str {
+        let mut entries: Vec<_> = self.label_map.0.iter().collect();
+        entries.sort_by_key(|(_, &idx)| idx);
+
+        match entries.binary_search_by(|(_, &idx)| {
+            if idx <= i {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            }
+        }) {
+            Ok(idx) => entries[idx].0,
+            Err(idx) if idx > 0 => entries[idx - 1].0,
+            _ => "",
+        }
+    }
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Op {

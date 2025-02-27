@@ -9,7 +9,6 @@ edition = "2021"
 
 [workspace.dependencies]
 clap = { version = "4.5.19", features = ["derive"] }
-
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 ratatui = "0.29.0"
 strum = "0.26.3"
@@ -25,6 +24,8 @@ bitvec = "1.0.1"
 tracing = "0.1.41"
 cfg-if = "1.0.0"
 chrono = "0.4.39"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 qcpu_assembler = { path = "./qcpu_assembler" }
 qcpu_syntax = { path = "./qcpu_syntax" }

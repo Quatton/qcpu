@@ -581,12 +581,6 @@ impl SimulatorV4 {
         self.set_reg(op.rd, val);
         self.cache_hit = hit;
 
-        #[cfg(feature = "lw")]
-        {
-            self.instat[self.pc >> 2].read += 1;
-            self.instat[self.pc >> 2].hit += hit as u64;
-        }
-
         Ok(())
     }
 
@@ -594,13 +588,8 @@ impl SimulatorV4 {
         let addr = self.get_reg(op.rs1).wrapping_add(self.get_reg(op.rs2)) as usize;
         let (val, hit) = self.memory.read(addr)?;
         self.set_reg(op.rd, val);
-        self.cache_hit = hit;
 
-        #[cfg(feature = "lw")]
-        {
-            self.instat[self.pc >> 2].read += 1;
-            self.instat[self.pc >> 2].hit += hit as u64;
-        }
+        self.cache_hit = hit;
 
         Ok(())
     }
@@ -609,13 +598,8 @@ impl SimulatorV4 {
         let addr = op.imm as usize;
         let (val, hit) = self.memory.read(addr)?;
         self.set_reg(op.rd, val);
-        self.cache_hit = hit;
 
-        #[cfg(feature = "lw")]
-        {
-            self.instat[self.pc >> 2].read += 1;
-            self.instat[self.pc >> 2].hit += hit as u64;
-        }
+        self.cache_hit = hit;
 
         Ok(())
     }
@@ -623,14 +607,18 @@ impl SimulatorV4 {
     fn exec_sw(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.get_reg(op.rs1).wrapping_add(op.imm) as usize;
         let hit = self.memory.write(addr, self.get_reg(op.rs2))?;
+
         self.cache_hit = hit;
+
         Ok(())
     }
 
     fn exec_swi(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
         let addr = op.imm as usize;
         let hit = self.memory.write(addr, self.get_reg(op.rs2))?;
+
         self.cache_hit = hit;
+
         Ok(())
     }
 
@@ -647,6 +635,7 @@ impl SimulatorV4 {
 
     pub fn execute(&mut self, op: &OpV4) -> Result<usize, SimulatorV4HaltKind> {
         let mut next_pc = self.pc + 4;
+        self.cache_hit = false;
         match op.opname {
             OpName::Add => self.exec_add(op),
             OpName::Sub => self.exec_sub(op),

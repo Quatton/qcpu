@@ -11,6 +11,8 @@ strum_macros.workspace = true
 qcpu_assembler.workspace = true
 qcpu_simulator.workspace = true
 qcpu_syntax.workspace = true
+serde_json.workspace = true
+serde.workspace = true
 
 [features]
 default = []
@@ -36,4 +38,3 @@ fsqrt = ["qcpu_simulator/fsqrt"]
 ftoi = ["qcpu_simulator/ftoi"]
 itof = ["qcpu_simulator/itof"]
 debug = ["qcpu_simulator/debug"]
-lw = ["qcpu_simulator/lw"]

@@ -4,12 +4,10 @@ use std::{
     fs::OpenOptions,
     io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write},
     path::PathBuf,
-    time::Duration,
 };
 
 use clap::{Parser, Subcommand};
-use qcpu_simulator::v4::{SimulatorV4Builder, CACHE_MISS_PENALTY};
-use qcpu_syntax::ParsingContext;
+use qcpu_simulator::v4::SimulatorV4Builder;
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -69,8 +67,12 @@ enum Commands {
         verbose: bool,
 
         /// Clock (MHz)
-        #[clap(long, default_value = "122.22")]
+        #[clap(long, default_value = "125")]
         clock: f64,
+
+        /// JSON
+        #[clap(long)]
+        json: Option<PathBuf>,
     },
 
     Diff {
@@ -256,6 +258,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             verbose,
             clock,
             log,
+            json,
         } => {
             let s = std::time::Instant::now();
 
@@ -298,124 +301,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log,
             })
             .build();
-            let e = s.elapsed();
 
+            let e = s.elapsed();
             if let Err(e) = sim.run() {
                 eprintln!("Simulation Result: {:?}", e);
             }
             let e2 = s.elapsed();
 
+            sim.tally();
             sim.log_registers();
 
             if verbose {
-                sim.log_stat();
-
-                let total_time_us = sim.stat.cycle_count as f64 / clock;
-
-                let cache_miss = sim.memory.stat.read - sim.memory.stat.hit;
-
-                let hazard_time_with_cache_hit = sim.stat.hazard_count as f64 * cache_miss as f64
-                    / sim.memory.stat.read as f64
-                    * 2.0
-                    / clock;
-
-                let cache_miss_time_us = cache_miss as f64 * CACHE_MISS_PENALTY as f64 / clock;
-
-                let cache_write_miss = sim.memory.stat.write - sim.memory.stat.non_miss_write_back;
-
-                let cache_write_miss_time_us =
-                    cache_write_miss as f64 * CACHE_MISS_PENALTY as f64 / clock;
-
-                let jalr_flush_time_us = sim.bp.flush_count_jalr as f64 * 2.0 / clock;
-
-                let branch_flush_time_us = sim.bp.flush_count_branch as f64 * 2.0 / clock;
-
-                let total_time = Duration::from_micros(total_time_us as u64);
-                let hazard_time = Duration::from_micros(hazard_time_with_cache_hit as u64);
-                let cache_miss_time = Duration::from_micros(cache_miss_time_us as u64);
-                let cache_write_miss_time = Duration::from_micros(cache_write_miss_time_us as u64);
-                let jalr_flush_time = Duration::from_micros(jalr_flush_time_us as u64);
-                let branch_flush_time = Duration::from_micros(branch_flush_time_us as u64);
-
-                sim.log.write_fmt(
-                    format_args!(
-                        "Time optimization info:\nShould complete in: {:?} for a clock of {} MHz\nHazard time with cache hit: {:?} ({:.02}%)\nCache miss time: read: {:?} ({:.02}%), write: {:?} ({:.02}%)\nJALR flush time: {:?} ({:.02}%)\nBranch flush time: {:?} ({:.02}%)\n",
-                        total_time,
-                        clock,
-                        hazard_time,
-                        hazard_time_with_cache_hit / total_time_us * 100.0,
-                        cache_miss_time,
-                        cache_miss_time_us / total_time_us * 100.0,
-                        cache_write_miss_time,
-                        cache_write_miss_time_us / total_time_us * 100.0,
-                        jalr_flush_time,
-                        jalr_flush_time_us / total_time_us * 100.0,
-                        branch_flush_time,
-                        branch_flush_time_us / total_time_us * 100.0,
-                    )
-                ).unwrap();
-            }
-
-            sim.log
-                .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))
-                .unwrap();
-
-            #[cfg(feature = "lw")]
-            {
-                let mut instat_vec: Vec<_> = sim
-                    .instat
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, s)| s.read > 0 && s.hit < s.read)
-                    .map(|(i, s)| {
-                        let miss = s.read - s.hit;
-                        let miss_rate = miss as f64 / s.read as f64;
-                        (i, s, miss, miss_rate)
-                    })
-                    .collect();
-
-                instat_vec.sort_by(|a, b| b.2.cmp(&a.2).then(b.3.partial_cmp(&a.3).unwrap()));
+                sim.log_stat()?;
+                sim.time_optimize_info(clock)?;
 
                 sim.log
-                    .write_fmt(format_args!("\nPer-instruction Stat\n"))
-                    .unwrap();
+                    .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))?;
 
-                if ctx.is_some() {
-                    sim.log.write_fmt(format_args!(
-                        "{:4} {:32} {:12} {:12} {:4}\n",
-                        "PC", "Label", "Total Read", "Cache Miss", "Miss Rate",
-                    ))?;
-                } else {
-                    sim.log.write_fmt(format_args!(
-                        "{:4} {:12} {:12} {:4}\n",
-                        "PC", "Cache Hit", "Cache Miss", "Miss Rate",
-                    ))?;
-                }
+                sim.process_stat(ctx.as_ref())?;
 
-                for (i, s, _miss, miss_rate) in instat_vec {
-                    if miss_rate > 0.01 {
-                        match ctx {
-                            Some(ref ctx) => {
-                                sim.log.write_fmt(format_args!(
-                                    "{:02} {:32} {:12} {:12} {:.02}%\n",
-                                    i,
-                                    reverse_lookup_floor(i, ctx),
-                                    s.read,
-                                    s.read - s.hit,
-                                    miss_rate * 100.0,
-                                ))?;
-                            }
-                            None => {
-                                sim.log.write_fmt(format_args!(
-                                    "{:02}: {:12} {:12} {:.02}%\n",
-                                    i,
-                                    s.read,
-                                    s.read - s.hit,
-                                    miss_rate * 100.0,
-                                ))?;
-                            }
-                        }
-                    }
+                if let Some(json) = json {
+                    let mut file = std::fs::File::options()
+                        .create(true)
+                        .write(true)
+                        .truncate(true)
+                        .open(json)
+                        .unwrap();
+
+                    let mut writer = std::io::BufWriter::new(&mut file);
+
+                    let json = JsonOutput {
+                        data: sim.per_instruction_stat.clone(),
+                        label: ctx.as_ref().map(|c| c.label_map.0.clone()),
+                    };
+
+                    serde_json::to_writer_pretty(&mut writer, &json)?;
                 }
             }
 
@@ -426,20 +346,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// A utility to reverse lookup the maximum label that has index just before the i so like a floor function
-fn reverse_lookup_floor(i: usize, ctx: &ParsingContext) -> &str {
-    let mut entries: Vec<_> = ctx.label_map.0.iter().collect();
-    entries.sort_by_key(|(_, &idx)| idx);
-
-    match entries.binary_search_by(|(_, &idx)| {
-        if idx <= i {
-            std::cmp::Ordering::Less
-        } else {
-            std::cmp::Ordering::Greater
-        }
-    }) {
-        Ok(idx) => entries[idx].0,
-        Err(idx) if idx > 0 => entries[idx - 1].0,
-        _ => "",
-    }
+#[derive(Debug, serde::Serialize)]
+struct JsonOutput {
+    data: Vec<qcpu_simulator::v4::Instat>,
+    label: Option<std::collections::HashMap<String, usize>>,
 }
