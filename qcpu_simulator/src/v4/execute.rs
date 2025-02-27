@@ -136,12 +136,13 @@ fn fdiv(x1: u32, x2: u32) -> u32 {
 
 fn fsqrt(x: u32) -> u32 {
     // Stage 1
-    let s_st1 = (x >> 31) & 1;
-    let e_st1 = (x >> 23) & 0xFF;
+    let s_st1 = (x & 0x80000000) != 0;
+    let e_st1 = ((x >> 23) & 0xFF) as u8;
     let m_st1 = x & 0x7FFFFF;
 
-    let ey1_st1 = ((e_st1 >> 1) + 63) & 0xFF; // 8-bit arithmetic
-    let ey2_st1 = (ey1_st1 + 1) & 0xFF; // 8-bit arithmetic
+    let ey1_st1 = (e_st1 >> 1).wrapping_add(63);
+    let ey2_st1 = ey1_st1.wrapping_add(1);
+
     let in24_st1 = (e_st1 & 1) == 0;
     let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
 
@@ -154,11 +155,11 @@ fn fsqrt(x: u32) -> u32 {
     let b_st2 = (ab_st2 & 0x7FFFFF) as u32; // 23 bits
     let d_st2 = d_st1;
 
-    let ad1_st2 = (a_st2 as u64 * d_st2 as u64) & 0xFFFFFFF; // 14×14 = 28 bits
+    let ad1_st2 = (a_st2 * d_st2) & 0xFFFFFFF; // 14×14 = 28 bits
     let ad2_st2 = if in24_st1 {
-        ((ad1_st2 >> 14) & 0x7FFFFF) as u32 // bits [27:14]
+        (ad1_st2 >> 14) & 0x7FFFFF // bits [27:14]
     } else {
-        ((ad1_st2 >> 15) & 0x7FFFFF) as u32 // bits [27:15]
+        (ad1_st2 >> 15) & 0x7FFFFF // bits [27:15]
     };
     let my1_st2 = (b_st2 + ad2_st2) & 0x7FFFFF; // 23-bit addition
 
@@ -181,86 +182,64 @@ fn fsqrt(x: u32) -> u32 {
     };
     let my = if is_zero || is_inf { 0 } else { my1_st3 };
 
-    (sy << 31) | (ey << 23) | my
+    ((sy as u32) << 31) | ((ey as u32) << 23) | my
 
     // f32_to(f32_from(x).sqrt())
 }
 
 fn fadd(x1: u32, x2: u32) -> u32 {
-    // Stage 1: Unpack inputs
-    let s1 = (x1 & 0x80000000) != 0;
-    let e1 = ((x1 >> 23) & 0xFF) as u8;
+    // Stage 1: Extract components and compare magnitudes
+    let s1 = (x1 >> 31) & 1;
+    let e1 = (x1 >> 23) & 0xFF;
     let m1 = x1 & 0x7FFFFF; // 23 bits
 
-    let s2 = (x2 & 0x80000000) != 0;
-    let e2 = ((x2 >> 23) & 0xFF) as u8;
+    let s2 = (x2 >> 31) & 1;
+    let e2 = (x2 >> 23) & 0xFF;
     let m2 = x2 & 0x7FFFFF; // 23 bits
 
     let x1_is_bigger = (x1 & 0x7FFFFFFF) > (x2 & 0x7FFFFFFF);
     let e_big = if x1_is_bigger { e1 } else { e2 };
     let e_small = if x1_is_bigger { e2 } else { e1 };
 
-    // Stage 2: Align and add/subtract
-    let ey1 = (e_big as u16) + 1; // 10 bits
+    // Stage 2: Align and add/subtract mantissas
+    let ey1 = e_big + 1;
     let e_small_is_zero = e_small == 0;
-    let shift = e_big - e_small;
+    let shift = e_big.wrapping_sub(e_small) & 0xFF;
 
     let m_big = if x1_is_bigger {
-        (1 << 24) | (m1 << 1) // 26 bits: 01.mmmm...
+        (1 << 24) | (m1 << 1) // 2'b01 + mantissa + 1'b0
     } else {
-        (1 << 24) | (m2 << 1) // 26 bits: 01.mmmm...
+        (1 << 24) | (m2 << 1)
     };
 
     let m_small_prev = if x1_is_bigger {
-        (1 << 24) | (m2 << 1) // 26 bits: 01.mmmm...
+        (1 << 24) | (m2 << 1)
     } else {
-        (1 << 24) | (m1 << 1) // 26 bits: 01.mmmm...
+        (1 << 24) | (m1 << 1)
     };
 
-    let m_small = (m_small_prev >> shift) & 0x3FFFFFF; // 26 bits
-    let my1 = if s1 == s2 {
-        m_big + m_small // 26 bits
+    let m_small = m_small_prev.checked_shr(shift).unwrap_or(0);
+    let s1_st2 = if x1_is_bigger { s1 } else { s2 };
+    let s2_st2 = if x1_is_bigger { s2 } else { s1 };
+    let my1 = if s1_st2 == s2_st2 {
+        m_big.wrapping_add(m_small)
     } else {
-        m_big - m_small // 26 bits
+        m_big.wrapping_sub(m_small)
     };
 
-    // Stage 3: Normalize
-    let m_shift = match my1 {
-        n if n & (1 << 25) != 0 => 0,
-        n if n & (1 << 24) != 0 => 1,
-        n if n & (1 << 23) != 0 => 2,
-        n if n & (1 << 22) != 0 => 3,
-        n if n & (1 << 21) != 0 => 4,
-        n if n & (1 << 20) != 0 => 5,
-        n if n & (1 << 19) != 0 => 6,
-        n if n & (1 << 18) != 0 => 7,
-        n if n & (1 << 17) != 0 => 8,
-        n if n & (1 << 16) != 0 => 9,
-        n if n & (1 << 15) != 0 => 10,
-        n if n & (1 << 14) != 0 => 11,
-        n if n & (1 << 13) != 0 => 12,
-        n if n & (1 << 12) != 0 => 13,
-        n if n & (1 << 11) != 0 => 14,
-        n if n & (1 << 10) != 0 => 15,
-        n if n & (1 << 9) != 0 => 16,
-        n if n & (1 << 8) != 0 => 17,
-        n if n & (1 << 7) != 0 => 18,
-        n if n & (1 << 6) != 0 => 19,
-        n if n & (1 << 5) != 0 => 20,
-        n if n & (1 << 4) != 0 => 21,
-        n if n & (1 << 3) != 0 => 22,
-        n if n & (1 << 2) != 0 => 23,
-        n if n & (1 << 1) != 0 => 24,
-        n if n & 1 != 0 => 25,
-        _ => 26,
+    // Stage 3: Normalize result
+    let m_shift = if my1 == 0 {
+        26
+    } else {
+        (my1.leading_zeros()).saturating_sub(6)
     };
 
-    let my2_prev = (my1 as u64) << m_shift; // 52 bits
-    let my2 = ((my2_prev >> 2) & 0x7FFFFF) as u32; // 23 bits
-    let ey2 = ey1 - m_shift as u16; // 10 bits
+    let my2_prev = my1 << m_shift;
+    let my2 = (my2_prev >> 2) & 0x7FFFFF; // Extract 23 bits
+    let ey2 = ey1.wrapping_sub(m_shift) & 0x3FF;
 
-    let underflow = e_big == 0 || (ey2 & 0x200) != 0 || ey2 == 0 || m_shift == 26;
-    let overflow = e_big == 255 || (ey2 & 0x100) != 0 || ey2 == 255;
+    let underflow = (e_big == 0) || (ey2 & 0x200 != 0) || (ey2 == 0) || (m_shift == 26);
+    let overflow = (e_big == 255) || (ey2 & 0x100 != 0) || (ey2 == 255);
 
     // Stage 4: Final assembly
     let sy = if x1_is_bigger { s1 } else { s2 };
@@ -271,21 +250,18 @@ fn fadd(x1: u32, x2: u32) -> u32 {
     } else if overflow {
         255
     } else {
-        ey2 as u8
+        ey2 & 0xFF
     };
 
     let my = if e_small_is_zero {
-        (m_big >> 1) & 0x7FFFFF // 23 bits
+        (m_big >> 1) & 0x7FFFFF
     } else if underflow || overflow {
         0
     } else {
         my2
     };
 
-    // Pack result
-    ((sy as u32) << 31) | ((ey as u32) << 23) | my
-
-    // f32_to(f32_from(x1) + f32_from(x2))
+    (sy << 31) | (ey << 23) | my
 }
 
 fn fsub(x1: u32, x2: u32) -> u32 {
@@ -294,60 +270,123 @@ fn fsub(x1: u32, x2: u32) -> u32 {
 }
 
 fn ftoi(x: u32) -> u32 {
-    // // Stage 1
-    // let s_st1 = (x >> 31) & 1;
-    // let e_st1 = ((x >> 23) & 0xFF) as u8;
-    // let m_st1 = x & 0x007FFFFF;
-    // let my_st1 = (1 << 23) | m_st1;
-    // let y1_st1 = if e_st1 < 149 {
-    //     let shift = (149 - e_st1) as u32;
-    //     (my_st1 as u64) >> shift
-    // } else {
-    //     let shift = (e_st1 - 149) as u32;
-    //     (my_st1 as u64) << shift
-    // };
-    // let y1_st1 = y1_st1 & 0x1FFFFFFFF;
-    // let y2_st1 = (y1_st1 + 1) & 0x1FFFFFFFF;
+    // Stage 1
+    let s_st1 = (x >> 31) & 1;
+    let e_st1 = ((x >> 23) & 0xFF) as u8;
+    let m_st1 = x & 0x007FFFFF;
+    let my_st1 = (1 << 23) | m_st1;
+    let y1_st1 = if e_st1 < 149 {
+        let shift = (149 - e_st1) as u32;
+        (my_st1).checked_shr(shift).unwrap_or(0)
+    } else {
+        let shift = (e_st1 - 149) as u32;
+        (my_st1).checked_shl(shift).unwrap_or(0)
+    };
 
-    // // Stage 2
-    // let s_st2 = s_st1;
-    // let y2_st2 = y2_st1;
-    // let y3 = (y2_st2 >> 1) as u32;
+    let y2_st1 = y1_st1.wrapping_add(1);
 
-    // if s_st2 == 1 {
-    //     (!y3).wrapping_add(1)
-    // } else {
-    //     y3
-    // }
+    // Stage 2
+    let s_st2 = s_st1;
+    let y2_st2 = y2_st1;
+    let y3 = y2_st2 >> 1;
 
-    f32_from(x).round_ties_even() as i32 as u32
+    if s_st2 == 1 {
+        (!y3).wrapping_add(1)
+    } else {
+        y3
+    }
+
+    // f32_from(x).round_ties_even() as i32 as u32
 }
 
 fn itof(x: u32) -> u32 {
-    // // Stage 1
-    // let is_zero = x == 0;
-    // let s = x & (1 << 31);
-    // let m1 = if s != 0 { x.wrapping_neg() } else { x };
+    // stage1
+    let is_zero = x == 0;
+    let s = (x & 0x80000000) != 0;
+    let m1 = if s { (!x).wrapping_add(1) } else { x };
 
-    // let shifts = m1.leading_zeros();
+    let shifts: u8 = if m1 & 0x80000000 != 0 {
+        0
+    } else if m1 & 0x40000000 != 0 {
+        1
+    } else if m1 & 0x20000000 != 0 {
+        2
+    } else if m1 & 0x10000000 != 0 {
+        3
+    } else if m1 & 0x08000000 != 0 {
+        4
+    } else if m1 & 0x04000000 != 0 {
+        5
+    } else if m1 & 0x02000000 != 0 {
+        6
+    } else if m1 & 0x01000000 != 0 {
+        7
+    } else if m1 & 0x00800000 != 0 {
+        8
+    } else if m1 & 0x00400000 != 0 {
+        9
+    } else if m1 & 0x00200000 != 0 {
+        10
+    } else if m1 & 0x00100000 != 0 {
+        11
+    } else if m1 & 0x00080000 != 0 {
+        12
+    } else if m1 & 0x00040000 != 0 {
+        13
+    } else if m1 & 0x00020000 != 0 {
+        14
+    } else if m1 & 0x00010000 != 0 {
+        15
+    } else if m1 & 0x00008000 != 0 {
+        16
+    } else if m1 & 0x00004000 != 0 {
+        17
+    } else if m1 & 0x00002000 != 0 {
+        18
+    } else if m1 & 0x00001000 != 0 {
+        19
+    } else if m1 & 0x00000800 != 0 {
+        20
+    } else if m1 & 0x00000400 != 0 {
+        21
+    } else if m1 & 0x00000200 != 0 {
+        22
+    } else if m1 & 0x00000100 != 0 {
+        23
+    } else if m1 & 0x00000080 != 0 {
+        24
+    } else if m1 & 0x00000040 != 0 {
+        25
+    } else if m1 & 0x00000020 != 0 {
+        26
+    } else if m1 & 0x00000010 != 0 {
+        27
+    } else if m1 & 0x00000008 != 0 {
+        28
+    } else if m1 & 0x00000004 != 0 {
+        29
+    } else if m1 & 0x00000002 != 0 {
+        30
+    } else {
+        31
+    };
 
-    // // Stage 2
-    // let m2 = m1 << shifts;
-    // let m3 = m2.wrapping_add(0x80); // Rounding
-    // let m = if is_zero { 0 } else { (m3 >> 8) & 0x7FFFFF };
+    // stage2
+    let m2 = m1 << shifts;
+    let m3 = m2.wrapping_add(0x80);
+    let m = if is_zero { 0 } else { (m3 >> 8) & 0x007FFFFF };
+    let e = if is_zero {
+        0
+    } else if (m3 & 0x80000000) != 0 {
+        158 - shifts
+    } else {
+        159 - shifts
+    };
 
-    // let e = if is_zero {
-    //     0
-    // } else if m3 & (1 << 31) != 0 {
-    //     158 - shifts
-    // } else {
-    //     159 - shifts
-    // };
+    // stage3
+    (s as u32) << 31 | (e as u32) << 23 | m
 
-    // // Stage 3
-    // s | (e << 23) | m
-
-    f32_to(x as i32 as F32)
+    // f32_to(x as i32 as F32)
 }
 
 fn fmul(x1: u32, x2: u32) -> u32 {
@@ -365,9 +404,9 @@ fn fmul(x1: u32, x2: u32) -> u32 {
     let h2 = (1 << 12) | h2_sub; // 13 bits: 1.bbbb...
 
     // Stage 1: Multiplications
-    let hh = ((h1 as u32) * (h2 as u32)) & 0x3FFFFFF; // 26 bits
-    let hl = ((h1 as u32) * (l2 as u32)) & 0xFFFFFF; // 24 bits
-    let lh = ((l1 as u32) * (h2 as u32)) & 0xFFFFFF; // 24 bits
+    let hh = (h1 * h2) & 0x3FFFFFF; // 26 bits
+    let hl = (h1 * l2) & 0xFFFFFF; // 24 bits
+    let lh = (l1 * h2) & 0xFFFFFF; // 24 bits
 
     // Stage 2: Addition and normalization
     let tmp = hh + ((hl >> 11) & 0x1FFF) + ((lh >> 11) & 0x1FFF) + 1; // 26 bits
@@ -378,8 +417,8 @@ fn fmul(x1: u32, x2: u32) -> u32 {
         (tmp >> 1) & 0x7FFFFF // 23 bits
     };
 
-    let ey1 = (e1 as u16) + (e2 as u16) - 127; // 10 bits
-    let ey2 = (e1 as u16) + (e2 as u16) - 126; // 10 bits
+    let ey1 = (e1 as u16).wrapping_add(e2 as u16).wrapping_sub(127); // 10 bits
+    let ey2 = (e1 as u16).wrapping_add(e2 as u16).wrapping_sub(126); // 10 bits
     let ey3 = if (tmp & (1 << 25)) != 0 { ey2 } else { ey1 };
 
     // Stage 3: Final assembly
@@ -658,39 +697,156 @@ impl SimulatorV4 {
 mod test {
     use std::time;
 
+    use rand::{distr::Uniform, rng, Rng as _};
     use rayon::prelude::*;
 
     #[test]
     fn test_fsqrt() {
         let start = time::Instant::now();
 
-        let time_gain = (0..(1 << 20))
+        let p = (0..(1 << 7))
             .into_par_iter()
-            .fold(
-                || 0,
-                |acc, x| {
+            .flat_map(|m| {
+                (1..=255).into_par_iter().map(move |e| {
+                    let x = ((e as u32) << 23) | m;
                     let y = super::fsqrt(x);
-                    let start = time::Instant::now();
-                    let yf = f32::from_bits(y);
-                    let elapsed = start.elapsed();
-                    let start = time::Instant::now();
-                    let xf = f32::from_bits(x);
-                    let elapsed2 = start.elapsed();
-                    let yf2 = xf.sqrt();
-                    assert!(
-                        (yf - yf2).abs() < 0.0001,
-                        "x: {}, y: {}, yf: {}, yf2: {}",
-                        x,
-                        y,
-                        yf,
-                        yf2
-                    );
-                    acc + ((elapsed).as_nanos() as i64 - (elapsed2).as_nanos() as i64) / 1000
-                },
-            )
-            .sum::<i64>();
+
+                    let yf2 = f32::from_bits(y & !(1 << 20));
+                    let xf = f32::from_bits(x & !(1 << 20));
+
+                    let yf = xf.sqrt();
+
+                    if yf.is_nan() && yf2.is_nan() {
+                        return true;
+                    }
+
+                    let diff = (yf - yf2).abs();
+
+                    if diff > f32::EPSILON {
+                        println!(
+                            "x: {:032b}, 
+                            xf: {:?},
+                        f32::sqrt: {}, self: {}",
+                            x, xf, yf, yf2
+                        );
+                        return false;
+                    }
+
+                    true
+                })
+            })
+            .all(|x| x);
 
         println!("elapsed: {:?}", start.elapsed());
-        println!("time gain: {:?}", time_gain);
+        assert!(p);
+    }
+
+    #[test]
+    fn test_ftoi() {
+        let start = time::Instant::now();
+
+        let p = (0..(1 << 20))
+            .into_par_iter()
+            .flat_map(|m| {
+                (1..=32).into_par_iter().map(move |e| {
+                    let x = ((e as u32) << 23) | m;
+
+                    let xf = f32::from_bits(x);
+                    let xi = xf.round() as i32;
+                    let yi = super::ftoi(x) as i32;
+
+                    if xi != yi {
+                        println!(
+                            "x: {:032b}, 
+                            xf: {:?},
+                        rust: {}, self: {}",
+                            x, xf, xi, yi
+                        );
+                        return false;
+                    }
+
+                    true
+                })
+            })
+            .all(|x| x);
+
+        println!("elapsed: {:?}", start.elapsed());
+        assert!(p);
+    }
+
+    #[test]
+    fn test_itof() {
+        let start = time::Instant::now();
+        (0..(1 << 10)).into_par_iter().for_each(|x| {
+            let y = super::itof(x);
+            let yf = f32::from_bits(y);
+            let yf2 = x as f32;
+
+            assert_eq!(yf, yf2, "x: {}, yf: {}, yf2: {}", x, yf, yf2);
+        });
+
+        println!("elapsed: {:?}", start.elapsed());
+    }
+
+    #[test]
+    fn test_fadd() {
+        let start = time::Instant::now();
+
+        let _e_set = Uniform::new(1, u8::MAX).unwrap();
+
+        let p = (149..=255).into_par_iter().all(|e1| {
+            (e1..=255).into_par_iter().all(|e2| {
+                (0..(1 << 12)).into_par_iter().all(|m1| {
+                    (0..11).into_par_iter().all(|shift| {
+                        let m1 = m1 << shift;
+
+                        let x1 = ((e1 as u32) << 23) | m1;
+
+                        let x2 = ((e2 as u32) << 23) | m1;
+
+                        let xf1 = f32::from_bits(x1);
+                        let xf2 = f32::from_bits(x2);
+
+                        let yf = xf1 + xf2;
+                        let y = super::fadd(x1, x2);
+
+                        let yf2 = f32::from_bits(y);
+
+                        if yf.is_nan() && yf2.is_nan() {
+                            return true;
+                        }
+
+                        let diff = (yf - yf2).abs();
+
+                        if diff
+                            > [
+                                xf1 * 2.0_f32.powi(-23),
+                                xf2 * 2.0_f32.powi(-23),
+                                yf * 2.0_f32.powi(-23),
+                                f32::EPSILON,
+                            ]
+                            .iter()
+                            .filter(|&&x| !x.is_nan())
+                            .max_by(|&x, &y| x.partial_cmp(y).unwrap())
+                            .copied()
+                            .unwrap()
+                        {
+                            println!(
+                                "x1: {:032b}, x2: {:032b}, 
+                    xf1: {:?}, xf2: {:?},
+                f32::add: {}, self: {}",
+                                x1, x2, xf1, xf2, yf, yf2
+                            );
+                            return false;
+                        }
+
+                        true
+                    })
+                })
+            })
+        });
+
+        println!("elapsed: {:?}", start.elapsed());
+        assert!(p);
     }
 }
