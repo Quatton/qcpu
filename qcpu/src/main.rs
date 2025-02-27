@@ -8,7 +8,7 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
-use qcpu_simulator::v4::SimulatorV4Builder;
+use qcpu_simulator::v4::{SimulatorV4Builder, CACHE_MISS_PENALTY};
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -70,14 +70,6 @@ enum Commands {
         /// Clock (MHz)
         #[clap(long, default_value = "122.22")]
         clock: f64,
-
-        /// Cache line
-        #[clap(long)]
-        cache_line: Option<usize>,
-
-        /// Cache miss penalty
-        #[clap(long)]
-        cache_miss_penalty: Option<u64>,
     },
 
     Diff {
@@ -258,8 +250,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             output,
             verbose,
             clock,
-            cache_line,
-            cache_miss_penalty,
             log,
         } => {
             let s = std::time::Instant::now();
@@ -297,8 +287,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 input,
                 output,
                 verbose,
-                cache_line,
-                cache_miss_penalty,
                 log,
             })
             .build();
@@ -323,13 +311,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     * 2.0
                     / clock;
 
-                let cache_miss_time_us =
-                    cache_miss as f64 * cache_miss_penalty.unwrap_or(55) as f64 / clock;
+                let cache_miss_time_us = cache_miss as f64 * CACHE_MISS_PENALTY as f64 / clock;
 
                 let cache_write_miss = sim.memory.stat.write - sim.memory.stat.non_miss_write_back;
 
                 let cache_write_miss_time_us =
-                    cache_write_miss as f64 * cache_miss_penalty.unwrap_or(55) as f64 / clock;
+                    cache_write_miss as f64 * CACHE_MISS_PENALTY as f64 / clock;
 
                 let jalr_flush_time_us = sim.bp.flush_count_jalr as f64 * 2.0 / clock;
 

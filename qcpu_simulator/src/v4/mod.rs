@@ -25,9 +25,6 @@ pub struct SimulatorV4Builder {
     pub bin: PathBuf,
     pub verbose: bool,
     pub log: Option<PathBuf>,
-
-    pub cache_miss_penalty: Option<u64>,
-    pub cache_line: Option<usize>,
 }
 
 impl SimulatorV4Builder {
@@ -96,10 +93,9 @@ impl SimulatorV4Builder {
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
-            memory: MemoryV4::new(self.cache_line, self.verbose),
+            memory: MemoryV4::new(self.verbose),
             cache_hit: false,
             stat: Statistics::default(),
-            cache_miss_penalty: self.cache_miss_penalty.unwrap_or(CACHE_MISS_PENALTY),
             bp: BranchPredictor::new(),
         }
     }
@@ -124,7 +120,6 @@ pub struct SimulatorV4 {
     // usize (8 bytes)
     pub pc: usize,
     pub decoded_len: usize,
-    pub cache_miss_penalty: u64,
     // OpV4 (likely 8 or 16 bytes)
     pub prev_op: OpV4,
     // bool (1 byte each, will be packed)
@@ -160,8 +155,8 @@ const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
 };
 
 pub const CLOCK_MHZ: u64 = 122;
-const CACHE_MISS_PENALTY: u64 = 55;
-const CACHE_HIT_PENALTY: u64 = 2;
+pub const CACHE_HIT_PENALTY: u64 = 2;
+pub const CACHE_MISS_PENALTY: u64 = 55;
 
 impl SimulatorV4 {
     pub fn log_stat(&mut self) {
@@ -238,7 +233,7 @@ impl SimulatorV4 {
                         let cache_penalty = if self.cache_hit {
                             CACHE_HIT_PENALTY
                         } else {
-                            self.cache_miss_penalty
+                            CACHE_MISS_PENALTY
                         };
 
                         let delay = if has_hazard {
