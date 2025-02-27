@@ -122,8 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ppm1 = ppm::PPMImage::from_base_on_extension(&file1);
             let ppm2 = ppm::PPMImage::from_base_on_extension(&file2);
 
-            let diff = ppm1.diff(&ppm2);
-            // .contrast(0, 0xff)
+            let diff = ppm1.diff(&ppm2).contrast(0, 0xff);
 
             diff.export(&output.unwrap_or_else(|| file1.with_file_name("diff.ppm")));
 

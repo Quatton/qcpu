@@ -1,10 +1,10 @@
 pub mod bp;
 mod decode;
 pub mod execute;
-mod fsqrt_table;
 pub mod memory;
 pub mod stat;
 mod syntax;
+mod table;
 
 use std::{
     fs::File,

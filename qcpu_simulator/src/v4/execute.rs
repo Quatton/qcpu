@@ -23,57 +23,171 @@ fn f32_round_to_u32(x: F32) -> u32 {
     x.round() as i32 as u32
 }
 
-fn custom_sqrt(x: u32) -> u32 {
-    f32_to(f32_from(x).sqrt())
+fn finv(x: u32) -> u32 {
+    // Stage 1
+    let index = (x >> 13) & 0x3FF; // 10 bits [22:13]
+    let d_st1 = x & 0x1FFF; // 13 bits [12:0]
 
-    // let s_st1 = (x >> 31) & 1;
-    // let e_st1 = (x >> 23) & 0xFF;
-    // let m_st1 = x & 0x7FFFFF;
+    // Stage 2
+    let ab_st2 = super::table::FINV_TABLE[index as usize]; // 36-bit value
+    let d_st2 = d_st1;
 
-    // let ey1_st1 = ((e_st1 as i16 >> 1) + 63) as u8;
-    // let ey2_st1 = ey1_st1.wrapping_add(1);
+    // Stage 3
+    let ab_st3 = ab_st2;
+    let d_st3 = d_st2;
 
-    // let in24_st1 = (e_st1 & 1) == 0;
+    let a_st3 = ((ab_st3 >> 23) & 0x1FFF) as u32; // 13 bits
+    let b_st3 = (ab_st3 & 0x7FFFFF) as u32; // 23 bits
 
-    // let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
+    let ad1_st3 = (a_st3 as u64 * d_st3 as u64) & 0x3FFFFFF;
+    let ad2_st3 = ((ad1_st3 >> 12) & 0x7FFFFF) as u32; // Take bits [25:12]
 
-    // let index = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) >> 13;
-    // let d_st1 = ((if in24_st1 { 1 << 23 } else { 0 }) | m_st1) & ((1 << 13) - 1);
+    // 23-bit subtraction
+    (b_st3.wrapping_sub(ad2_st3)) & 0x7FFFFF
+}
 
-    // let ab_st2_table = super::fsqrt_table::FSQRT_TABLE[(index & 1023) as usize];
-    // let ab_st2 = (1u64 << 36) | ab_st2_table;
+fn fdiv(x1: u32, x2: u32) -> u32 {
+    // Stage 1
+    let s1_st1 = (x1 >> 31) & 1;
+    let e1_st1 = (x1 >> 23) & 0xFF;
+    let m1_st1 = x1 & 0x7FFFFF;
 
-    // let a_st2 = ((ab_st2 >> 23) & ((1 << 14) - 1)) as u32;
-    // let b_st2 = (ab_st2 & ((1 << 23) - 1)) as u32;
+    let s2_st1 = (x2 >> 31) & 1;
+    let e2_st1 = (x2 >> 23) & 0xFF;
+    let m2_st1 = x2 & 0x7FFFFF;
 
-    // let ad1_st2 = a_st2 * d_st1;
+    // Stage 2
+    let s1_st2 = s1_st1;
+    let e1_st2 = e1_st1;
+    let m1_st2 = m1_st1;
+    let s2_st2 = s2_st1;
+    let e2_st2 = e2_st1;
 
-    // let ad2_st2 = if in24_st1 {
-    //     (ad1_st2 >> 14) & ((1 << 23) - 1)
-    // } else {
-    //     (ad1_st2 >> 15) & ((1 << 23) - 1)
-    // };
+    // Stage 3
+    let s1_st3 = s1_st2;
+    let e1_st3 = e1_st2;
+    let m1_st3 = m1_st2;
+    let s2_st3 = s2_st2;
+    let e2_st3 = e2_st2;
+    let m2_st3 = finv(m2_st1); // Using previously defined finv function
 
-    // let my1_st2 = b_st2 + ad2_st2;
+    // Stage 4
+    let s1_st4 = s1_st3;
+    let e1_st4 = e1_st3;
+    let m1_st4 = m1_st3;
+    let s2_st4 = s2_st3;
+    let e2_st4 = e2_st3;
+    let m2_st4 = m2_st3;
 
-    // let is_zero = e_st1 == 0;
-    // let is_inf = e_st1 == 255;
+    let h1_sub_st4 = (m1_st4 >> 11) & 0xFFF; // 12 bits
+    let h1_st4 = (1 << 12) | h1_sub_st4; // 13 bits
+    let l1_st4 = m1_st4 & 0x7FF; // 11 bits
 
-    // let sy = s_st1;
-    // let ey = if is_zero {
-    //     0
-    // } else if is_inf {
-    //     255
-    // } else {
-    //     ey3_st1
-    // };
-    // let my = if is_zero || is_inf {
-    //     0
-    // } else {
-    //     my1_st2 & ((1 << 23) - 1)
-    // };
+    let h2_sub_st4 = (m2_st4 >> 11) & 0xFFF; // 12 bits
+    let h2_st4 = (1 << 12) | h2_sub_st4; // 13 bits
+    let l2_st4 = m2_st4 & 0x7FF; // 11 bits
 
-    // (sy << 31) | ((ey as u32) << 23) | (my & ((1 << 23) - 1))
+    let hh_st4 = (h1_st4 as u64 * h2_st4 as u64) & 0x3FFFFFF; // 13×13 = 26 bits
+    let hl_st4 = (h1_st4 as u64 * l2_st4 as u64) & 0xFFFFFF; // 13×11 = 24 bits
+    let lh_st4 = (l1_st4 as u64 * h2_st4 as u64) & 0xFFFFFF; // 11×13 = 24 bits
+
+    // Stage 5
+    let s1_st5 = s1_st4;
+    let e1_st5 = e1_st4;
+    let s2_st5 = s2_st4;
+    let e2_st5 = e2_st4;
+    let hh_st5 = hh_st4;
+    let hl_st5 = hl_st4;
+    let lh_st5 = lh_st4;
+
+    let tmp = hh_st5 + ((hl_st5 >> 11) & 0x1FFF) + ((lh_st5 >> 11) & 0x1FFF) + 1;
+    let m = if tmp & (1 << 25) != 0 {
+        (tmp >> 2) & 0x7FFFFF
+    } else {
+        (tmp >> 1) & 0x7FFFFF
+    };
+
+    let ey1 = ((e1_st5 as i32) - (e2_st5 as i32) + 126) & 0x3FF; // 10-bit
+    let ey2 = ((e1_st5 as i32) - (e2_st5 as i32) + 127) & 0x3FF; // 10-bit
+    let ey3 = if tmp & (1 << 25) != 0 { ey2 } else { ey1 };
+
+    let underflow_st5 = (e1_st5 == 0) || (e2_st5 == 0) || (ey3 & 0x200 != 0) || (ey3 == 0);
+    let overflow_st5 = (e1_st5 == 255) || (e2_st5 == 255) || (ey3 & 0x100 != 0) || (ey3 == 255);
+
+    // Stage 6
+    let s1_st6 = s1_st5;
+    let s2_st6 = s2_st5;
+    let underflow_st6 = underflow_st5;
+    let overflow_st6 = overflow_st5;
+    let ey3_st6 = ey3;
+    let m_st6 = m;
+
+    let sy = s1_st6 ^ s2_st6;
+    let ey = if underflow_st6 {
+        0
+    } else if overflow_st6 {
+        255
+    } else {
+        ey3_st6 as u8
+    };
+    let my = if underflow_st6 || overflow_st6 {
+        0
+    } else {
+        m_st6
+    };
+
+    (sy << 31) | ((ey as u32) << 23) | my as u32
+}
+fn fsqrt(x: u32) -> u32 {
+    // Stage 1
+    let s_st1 = (x >> 31) & 1;
+    let e_st1 = (x >> 23) & 0xFF;
+    let m_st1 = x & 0x7FFFFF;
+
+    let ey1_st1 = ((e_st1 >> 1) + 63) & 0xFF; // 8-bit arithmetic
+    let ey2_st1 = (ey1_st1 + 1) & 0xFF; // 8-bit arithmetic
+    let in24_st1 = (e_st1 & 1) == 0;
+    let ey3_st1 = if in24_st1 { ey1_st1 } else { ey2_st1 };
+
+    let index = ((in24_st1 as u32) << 9) | (m_st1 >> 14); // 10 bits: {in24_st1, m_st1[22:14]}
+    let d_st1 = m_st1 & 0x3FFF; // 14 bits: m_st1[13:0]
+
+    // Stage 2
+    let ab_st2 = (1u64 << 36) | super::table::FSQRT_TABLE[index as usize]; // 37 bits
+    let a_st2 = ((ab_st2 >> 23) & 0x3FFF) as u32; // 14 bits
+    let b_st2 = (ab_st2 & 0x7FFFFF) as u32; // 23 bits
+    let d_st2 = d_st1;
+
+    let ad1_st2 = (a_st2 as u64 * d_st2 as u64) & 0xFFFFFFF; // 14×14 = 28 bits
+    let ad2_st2 = if in24_st1 {
+        ((ad1_st2 >> 14) & 0x7FFFFF) as u32 // bits [27:14]
+    } else {
+        ((ad1_st2 >> 15) & 0x7FFFFF) as u32 // bits [27:15]
+    };
+    let my1_st2 = (b_st2 + ad2_st2) & 0x7FFFFF; // 23-bit addition
+
+    // Stage 3
+    let s_st3 = s_st1;
+    let e_st3 = e_st1;
+    let ey3_st3 = ey3_st1;
+    let my1_st3 = my1_st2;
+
+    let is_zero = e_st3 == 0;
+    let is_inf = e_st3 == 255;
+
+    let sy = s_st3;
+    let ey = if is_zero {
+        0
+    } else if is_inf {
+        255
+    } else {
+        ey3_st3
+    };
+    let my = if is_zero || is_inf { 0 } else { my1_st3 };
+
+    (sy << 31) | (ey << 23) | my
+
+    // f32_to(f32_from(x).sqrt())
 }
 
 impl SimulatorV4 {
@@ -185,9 +299,10 @@ impl SimulatorV4 {
     }
 
     fn exec_fdiv(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, f32_to(rs1f / rs2f));
+        // let rs1f = f32_from(self.get_reg(op.rs1));
+        // let rs2f = f32_from(self.get_reg(op.rs2));
+        // self.set_reg(op.rd, f32_to(rs1f / rs2f));
+        self.set_reg(op.rd, fdiv(self.get_reg(op.rs1), self.get_reg(op.rs2)));
     }
 
     fn exec_fsgnj(&mut self, op: &OpV4) {
@@ -239,7 +354,7 @@ impl SimulatorV4 {
     }
 
     fn exec_fsqrt(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, custom_sqrt(self.get_reg(op.rs1)));
+        self.set_reg(op.rd, fsqrt(self.get_reg(op.rs1)));
     }
 
     fn exec_lw(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
@@ -353,7 +468,7 @@ mod test {
             .fold(
                 || 0,
                 |acc, x| {
-                    let y = super::custom_sqrt(x);
+                    let y = super::fsqrt(x);
                     let start = time::Instant::now();
                     let yf = f32::from_bits(y);
                     let elapsed = start.elapsed();
