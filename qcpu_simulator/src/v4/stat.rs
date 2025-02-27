@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Default, Clone, Copy)]
+use serde::Serialize;
+
+#[derive(Default, Clone, Copy, Serialize, Debug)]
 pub struct Statistics {
     pub instr_count: u64,
     pub cycle_count: u64,

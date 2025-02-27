@@ -1,4 +1,6 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
+
+use serde::{ser::SerializeStruct, Serialize};
 
 pub type Reg = u8;
 
@@ -195,6 +197,70 @@ pub enum OpName {
     Fitof,
 }
 
+impl Display for OpName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpName::Raw => write!(f, "raw"),
+
+            OpName::Add => write!(f, "add"),
+            OpName::Sub => write!(f, "sub"),
+            OpName::Sll => write!(f, "sll"),
+            OpName::Srl => write!(f, "srl"),
+            OpName::Xor => write!(f, "xor"),
+            OpName::Or => write!(f, "or"),
+            OpName::And => write!(f, "and"),
+
+            OpName::Addi => write!(f, "addi"),
+            OpName::Slli => write!(f, "slli"),
+            OpName::Srli => write!(f, "srli"),
+
+            OpName::Lw => write!(f, "lw"),
+            OpName::Lwr => write!(f, "lwr"),
+            OpName::Lwi => write!(f, "lwi"),
+            OpName::Sw => write!(f, "sw"),
+            OpName::Swi => write!(f, "swi"),
+
+            OpName::Beq => write!(f, "beq"),
+            OpName::Bne => write!(f, "bne"),
+
+            OpName::Blt => write!(f, "blt"),
+            OpName::Bge => write!(f, "bge"),
+
+            OpName::Jalr => write!(f, "jalr"),
+
+            OpName::Jal => write!(f, "jal"),
+
+            OpName::Lui => write!(f, "lui"),
+
+            OpName::Inw => write!(f, "inw"),
+            OpName::Outb => write!(f, "outb"),
+
+            OpName::Fadd => write!(f, "fadd"),
+            OpName::Fsub => write!(f, "fsub"),
+            OpName::Fmul => write!(f, "fmul"),
+            OpName::Fdiv => write!(f, "fdiv"),
+            OpName::Fsqrt => write!(f, "fsqrt"),
+            OpName::Fsgnj => write!(f, "fsgnj"),
+            OpName::Fsgnjn => write!(f, "fsgnjn"),
+            OpName::Fsgnjx => write!(f, "fsgnjx"),
+            OpName::Ftoi => write!(f, "ftoi"),
+            OpName::Feq => write!(f, "feq"),
+            OpName::Flt => write!(f, "flt"),
+            OpName::Fle => write!(f, "fle"),
+            OpName::Fitof => write!(f, "fitof"),
+        }
+    }
+}
+
+impl Serialize for OpName {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct OpV4 {
     #[cfg(feature = "debug")]
@@ -206,6 +272,21 @@ pub struct OpV4 {
     pub rs2: Reg,
     #[cfg(feature = "debug")]
     pub opcode: OpCode,
+}
+
+impl Serialize for OpV4 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        let mut state = serializer.serialize_struct("OpV4", 5)?;
+        state.serialize_field("imm", &self.imm)?;
+        state.serialize_field("opname", &self.opname)?;
+        state.serialize_field("rd", &self.rd)?;
+        state.serialize_field("rs1", &self.rs1)?;
+        state.serialize_field("rs2", &self.rs2)?;
+        state.end()
+    }
 }
 
 impl Debug for OpV4 {

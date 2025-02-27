@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use serde::Serialize;
+
 use super::SimulatorV4HaltKind;
 
 #[derive(Debug, Clone)]
@@ -46,7 +48,7 @@ impl CacheLine {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize)]
 pub struct CacheStat {
     pub hit: u64,
     pub read: u64,

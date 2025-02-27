@@ -7,7 +7,10 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
-use qcpu_simulator::v4::SimulatorV4Builder;
+use qcpu_simulator::v4::{
+    log::{CACHE_HIT_PENALTY, CACHE_MISS_PENALTY, INW_DELAY},
+    SimulatorV4Builder,
+};
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -333,6 +336,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let json = JsonOutput {
                         data: sim.per_instruction_stat.clone(),
                         label: ctx.as_ref().map(|c| c.label_map.0.clone()),
+                        program: sim.instructions.clone(),
+                        memory: sim.memory.stat,
+                        stat: sim.stat,
+                        const_: Constants {
+                            clock_mhz: clock as u64,
+                            cache_hit_penalty: CACHE_HIT_PENALTY,
+                            cache_miss_penalty: CACHE_MISS_PENALTY,
+                            inw_delay: INW_DELAY,
+                        },
                     };
 
                     serde_json::to_writer_pretty(&mut writer, &json)?;
@@ -348,6 +360,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Debug, serde::Serialize)]
 struct JsonOutput {
+    const_: Constants,
+    stat: qcpu_simulator::v4::stat::Statistics,
+    memory: qcpu_simulator::v4::memory::CacheStat,
     data: Vec<qcpu_simulator::v4::Instat>,
     label: Option<std::collections::HashMap<String, usize>>,
+    program: Vec<qcpu_simulator::v4::syntax::OpV4>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct Constants {
+    clock_mhz: u64,
+    cache_hit_penalty: u64,
+    cache_miss_penalty: u64,
+    inw_delay: u64,
 }
