@@ -11,3 +11,28 @@ strum_macros.workspace = true
 qcpu_assembler.workspace = true
 qcpu_simulator.workspace = true
 qcpu_syntax.workspace = true
+
+[features]
+default = []
+fast = [
+  # "qcpu_simulator/fdiv",
+  # "qcpu_simulator/fsqrt",
+  # "qcpu_simulator/ftoi",
+  # "qcpu_simulator/itof",
+]
+# fpu = ["qcpu_simulator/fpu"]
+fpu = [
+  "fdiv",
+  "fadd",
+  "fmul",
+  "fsqrt",
+  # "ftoi",
+  #  "itof"
+]
+fadd = ["qcpu_simulator/fadd"]
+fmul = ["qcpu_simulator/fmul"]
+fdiv = ["qcpu_simulator/fdiv"]
+fsqrt = ["qcpu_simulator/fsqrt"]
+ftoi = ["qcpu_simulator/ftoi"]
+itof = ["qcpu_simulator/itof"]
+debug = ["qcpu_simulator/debug"]
