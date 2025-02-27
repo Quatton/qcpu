@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu"
-version = "4.6.4"
+version = "5.0.0"
 dependencies = [
  "clap",
  "qcpu_assembler",
@@ -370,7 +370,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_assembler"
-version = "4.6.4"
+version = "5.0.0"
 dependencies = [
  "nom",
  "qcpu_syntax",
@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_simulator"
-version = "4.6.4"
+version = "5.0.0"
 dependencies = [
  "bitvec",
  "cfg-if",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "qcpu_syntax"
-version = "4.6.4"
+version = "5.0.0"
 dependencies = [
  "bitvec",
  "enum_properties",
