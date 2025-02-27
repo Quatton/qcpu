@@ -75,7 +75,7 @@ impl Display for CacheStat {
 
 pub const CACHE_LINE_BITS: usize = 14;
 pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
-pub const MEMORY_SIZE: usize = 1 << 21;
+pub const MEMORY_SIZE: usize = 1 << 19;
 pub const CACHE_WAY: usize = 1;
 
 impl MemoryV4 {
@@ -147,43 +147,6 @@ impl MemoryV4 {
             Ok(hit)
         } else {
             Ok(true)
-        }
-    }
-
-    /// Read a 32-bit word from memory without bounds checking.
-    /// # Safety
-    /// This function is unsafe because it does not check if the address is within bounds.
-    pub unsafe fn read_unchecked(&mut self, addr: usize) -> (u32, bool) {
-        if self.verbose {
-            let idx = addr & self.cache_mask;
-            let entry = &mut self.cache.get_unchecked_mut(idx);
-            self.stat.read += 1;
-            if let Some(val) = entry.read(addr) {
-                self.stat.hit += 1;
-                return (val, true);
-            }
-
-            let value = *self.m.get_unchecked(addr);
-            entry.write(addr, value);
-            (value, false)
-        } else {
-            (*self.m.get_unchecked(addr), true)
-        }
-    }
-
-    /// Write a 32-bit word to memory without bounds checking.
-    /// # Safety
-    /// This function is unsafe because it does not check if the address is within bounds.
-    pub unsafe fn write_unchecked(&mut self, addr: usize, val: u32) -> bool {
-        *self.m.get_unchecked_mut(addr) = val;
-        if self.verbose {
-            self.stat.write += 1;
-            let idx = addr & self.cache_mask;
-            let hit = self.cache.get_unchecked_mut(idx).write(addr, val);
-            self.stat.non_miss_write_back += hit as u64;
-            hit
-        } else {
-            true
         }
     }
 }
