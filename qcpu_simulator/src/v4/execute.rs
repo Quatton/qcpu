@@ -638,7 +638,6 @@ impl SimulatorV4 {
 mod test {
     use std::time;
 
-    use rand::{distr::Uniform, rng, Rng as _};
     use rayon::prelude::*;
 
     #[test]
@@ -732,8 +731,6 @@ mod test {
     #[test]
     fn test_fadd() {
         let start = time::Instant::now();
-
-        let _e_set = Uniform::new(1, u8::MAX).unwrap();
 
         let p = (149..=255).into_par_iter().all(|e1| {
             (e1..=255).into_par_iter().all(|e2| {
