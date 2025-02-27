@@ -7,16 +7,18 @@ pub struct MemoryV4 {
     pub m: Vec<u32>,
     pub cache: Vec<CacheLine>,
     pub stat: CacheStat,
-    pub cache_line: usize,
     pub verbose: bool,
-    cache_mask: usize, // optimization: precomputed mask
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct CacheLine {
-    tag: u32,
-    data: u32,
-    valid: bool,
+    tag: u8,
+}
+
+impl Default for CacheLine {
+    fn default() -> Self {
+        Self { tag: u8::MAX }
+    }
 }
 
 impl CacheLine {
@@ -24,19 +26,23 @@ impl CacheLine {
         Self::default()
     }
 
-    #[inline(always)]
-    pub fn read(&self, addr: usize) -> Option<u32> {
-        let tag = (addr >> CACHE_LINE_BITS) as u32;
-        (self.valid && self.tag == tag).then_some(self.data)
-    }
+    // #[inline(always)]
+    // pub fn read(&mut self, addr: usize) -> Option<u32> {
+    //     let tag = (addr >> CACHE_LINE_BITS) as u8;
+    //     if self.valid && self.tag == tag {
+    //         Some(self.data)
+    //     } else {
+    //         None
+    //     }
+    // }
 
     #[inline(always)]
-    pub fn write(&mut self, addr: usize, val: u32) -> bool {
-        let tag = (addr >> CACHE_LINE_BITS) as u32;
-        let hit = self.valid && self.tag == tag;
+    pub fn write(&mut self, addr: usize) -> bool {
+        let tag = (addr >> CACHE_LINE_BITS) as u8;
+        let hit = self.tag == tag;
         self.tag = tag;
-        self.data = val;
-        self.valid = true;
+        // self.data = val;
+        // self.valid = true;
         hit
     }
 }
@@ -51,7 +57,7 @@ pub struct CacheStat {
 
 impl Display for CacheStat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{} lines * {} ways", CACHE_LINE, CACHE_WAY)?;
+        writeln!(f, "{} lines direct-mapped cache", CACHE_LINE)?;
         writeln!(
             f,
             "Read: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
@@ -76,53 +82,39 @@ impl Display for CacheStat {
 pub const CACHE_LINE_BITS: usize = 14;
 pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
 pub const MEMORY_SIZE: usize = 1 << 19;
-pub const CACHE_WAY: usize = 1;
+pub const CACHE_MASK: usize = CACHE_LINE - 1;
 
 impl MemoryV4 {
-    pub fn new(cache_line: Option<usize>, verbose: bool) -> Self {
-        let line = cache_line.unwrap_or(CACHE_LINE);
+    pub fn new(verbose: bool) -> Self {
         Self {
             m: vec![0; MEMORY_SIZE],
-            cache: vec![CacheLine::default(); line],
+            cache: vec![CacheLine::default(); CACHE_LINE],
             stat: CacheStat::default(),
             verbose,
-            cache_line: line,
-            cache_mask: line - 1, // precompute mask
         }
     }
 
     #[inline(always)]
     pub fn read(&mut self, addr: usize) -> Result<(u32, bool), SimulatorV4HaltKind> {
-        if self.verbose {
-            let idx = addr & self.cache_mask;
-            let entry = &mut self.cache[idx];
-
-            self.stat.read += 1;
-            if let Some(val) = entry.read(addr) {
-                self.stat.hit += 1;
-                return Ok((val, true));
-            }
-
-            let value = self
-                .m
-                .get(addr)
-                .copied()
-                .ok_or(SimulatorV4HaltKind::MemoryAccess {
-                    bound: MEMORY_SIZE,
-                    index: addr,
-                })?;
-            entry.write(addr, value);
-            Ok((value, false))
-        } else {
-            self.m
-                .get(addr)
-                .copied()
-                .ok_or(SimulatorV4HaltKind::MemoryAccess {
-                    bound: MEMORY_SIZE,
-                    index: addr,
-                })
-                .map(|v| (v, true))
+        if addr >= MEMORY_SIZE {
+            return Err(SimulatorV4HaltKind::MemoryAccess {
+                bound: MEMORY_SIZE,
+                index: addr,
+            });
         }
+
+        let value = unsafe { *self.m.get_unchecked(addr) };
+
+        if !self.verbose {
+            return Ok((value, false));
+        }
+
+        self.stat.read += 1;
+        let idx = addr & CACHE_MASK;
+        let entry = &mut self.cache[idx];
+        let hit = entry.write(addr);
+        self.stat.hit += hit as u64;
+        Ok((value, hit))
     }
 
     #[inline(always)]
@@ -138,21 +130,21 @@ impl MemoryV4 {
             *self.m.get_unchecked_mut(addr) = val;
         }
 
-        if self.verbose {
-            self.stat.write += 1;
-            let idx = addr & self.cache_mask;
-            let entry = &mut self.cache[idx];
-            let hit = entry.write(addr, val);
-            self.stat.non_miss_write_back += hit as u64;
-            Ok(hit)
-        } else {
-            Ok(true)
+        if !self.verbose {
+            return Ok(true);
         }
+
+        self.stat.write += 1;
+        let idx = addr & CACHE_MASK;
+        let entry = &mut self.cache[idx];
+        let hit = entry.write(addr);
+        self.stat.non_miss_write_back += hit as u64;
+        Ok(hit)
     }
 }
 
 impl Default for MemoryV4 {
     fn default() -> Self {
-        Self::new(None, false)
+        Self::new(false)
     }
 }
