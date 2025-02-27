@@ -80,6 +80,8 @@ impl SimulatorV4Builder {
 
         let decoded = program.iter().map(|&p| decode(p)).collect::<Vec<_>>();
 
+        let decoded_len = decoded.len();
+
         SimulatorV4 {
             prev_op: OpV4::default(),
             // program,
@@ -88,7 +90,7 @@ impl SimulatorV4Builder {
             output_file: output,
             log_file: log,
             log: log_writer,
-            decoded_len: decoded.len(),
+            decoded_len,
             decoded,
             verbose: self.verbose,
             reg: [0; 64],
@@ -97,14 +99,26 @@ impl SimulatorV4Builder {
             cache_hit: false,
             stat: Statistics::default(),
             bp: BranchPredictor::new(),
+            #[cfg(feature = "lw")]
+            instat: vec![Instat::default(); decoded_len],
         }
     }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Instat {
+    pub hit: u64,
+    pub read: u64,
 }
 
 pub struct SimulatorV4 {
     // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
     // pub program: Vec<u32>,
     pub decoded: Vec<OpV4>,
+    // per instruction stat
+    #[cfg(feature = "lw")]
+    pub instat: Vec<Instat>,
+
     pub input: BufReader<File>,
     pub output: BufWriter<File>,
     pub log: BufWriter<File>,
@@ -122,6 +136,7 @@ pub struct SimulatorV4 {
     pub decoded_len: usize,
     // OpV4 (likely 8 or 16 bytes)
     pub prev_op: OpV4,
+
     // bool (1 byte each, will be packed)
     pub cache_hit: bool,
     pub verbose: bool,
@@ -160,9 +175,6 @@ pub const CACHE_MISS_PENALTY: u64 = 55;
 
 impl SimulatorV4 {
     pub fn log_stat(&mut self) {
-        // println!("{}", self.stat);
-        // println!("{}", self.memory.stat);
-        // println!("{}", self.bp);
         self.log
             .write_all(format!("{}\n{}\n{}\n", self.stat, self.memory.stat, self.bp).as_bytes())
             .unwrap();

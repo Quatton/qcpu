@@ -1,2 +1,2 @@
 git pull
-cargo install --features fast --path ./qcpu
+cargo install --features lw --path ./qcpu

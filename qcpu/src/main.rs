@@ -9,6 +9,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use qcpu_simulator::v4::{SimulatorV4Builder, CACHE_MISS_PENALTY};
+use qcpu_syntax::ParsingContext;
 
 /// QCPU Utility
 #[derive(Parser, Debug)]
@@ -258,10 +259,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let s = std::time::Instant::now();
 
+            let mut ctx = None;
             if let Some(source) = source {
                 let asm = std::fs::read_to_string(&source).unwrap();
 
-                let (mc, _) = qcpu_assembler::v2::assemble(&asm, false).unwrap();
+                let (mc, _ctx) = qcpu_assembler::v2::assemble(&asm, false).unwrap();
+
+                ctx = Some(_ctx);
 
                 let path = source.with_extension("bin");
 
@@ -356,9 +360,86 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))
                 .unwrap();
 
+            #[cfg(feature = "lw")]
+            {
+                let mut instat_vec: Vec<_> = sim
+                    .instat
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| s.read > 0 && s.hit < s.read)
+                    .map(|(i, s)| {
+                        let miss = s.read - s.hit;
+                        let miss_rate = miss as f64 / s.read as f64;
+                        (i, s, miss, miss_rate)
+                    })
+                    .collect();
+
+                instat_vec.sort_by(|a, b| b.2.cmp(&a.2).then(b.3.partial_cmp(&a.3).unwrap()));
+
+                sim.log
+                    .write_fmt(format_args!("\nPer-instruction Stat\n"))
+                    .unwrap();
+
+                if ctx.is_some() {
+                    sim.log.write_fmt(format_args!(
+                        "{:4} {:32} {:12} {:12} {:4}\n",
+                        "PC", "Label", "Total Read", "Cache Miss", "Miss Rate",
+                    ))?;
+                } else {
+                    sim.log.write_fmt(format_args!(
+                        "{:4} {:12} {:12} {:4}\n",
+                        "PC", "Cache Hit", "Cache Miss", "Miss Rate",
+                    ))?;
+                }
+
+                for (i, s, _miss, miss_rate) in instat_vec {
+                    if miss_rate > 0.01 {
+                        match ctx {
+                            Some(ref ctx) => {
+                                sim.log.write_fmt(format_args!(
+                                    "{:02} {:32} {:12} {:12} {:.02}%\n",
+                                    i,
+                                    reverse_lookup_floor(i, ctx),
+                                    s.read,
+                                    s.read - s.hit,
+                                    miss_rate * 100.0,
+                                ))?;
+                            }
+                            None => {
+                                sim.log.write_fmt(format_args!(
+                                    "{:02}: {:12} {:12} {:.02}%\n",
+                                    i,
+                                    s.read,
+                                    s.read - s.hit,
+                                    miss_rate * 100.0,
+                                ))?;
+                            }
+                        }
+                    }
+                }
+            }
+
             println!("Output written to: {:?}", sim.output_file);
             println!("Log written to: {:?}", sim.log_file);
         }
     }
     Ok(())
+}
+
+/// A utility to reverse lookup the maximum label that has index just before the i so like a floor function
+fn reverse_lookup_floor(i: usize, ctx: &ParsingContext) -> &str {
+    let mut entries: Vec<_> = ctx.label_map.0.iter().collect();
+    entries.sort_by_key(|(_, &idx)| idx);
+
+    match entries.binary_search_by(|(_, &idx)| {
+        if idx <= i {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    }) {
+        Ok(idx) => entries[idx].0,
+        Err(idx) if idx > 0 => entries[idx - 1].0,
+        _ => "",
+    }
 }

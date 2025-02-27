@@ -59,7 +59,7 @@ pub trait FromMachineCode<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct LabelMap(HashMap<String, usize>, HashMap<usize, String>);
+pub struct LabelMap(pub HashMap<String, usize>, pub HashMap<usize, String>);
 
 impl LabelMap {
     pub fn new() -> Self {

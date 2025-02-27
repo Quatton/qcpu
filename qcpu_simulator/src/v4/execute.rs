@@ -18,6 +18,7 @@ fn f32_to(x: F32) -> u32 {
     F32::to_bits(x)
 }
 
+#[allow(dead_code)]
 fn finv(x: u32) -> u32 {
     // Stage 1
     let index = (x >> 13) & 0x3FF; // 10 bits [22:13]
@@ -490,11 +491,13 @@ impl SimulatorV4 {
 
     fn exec_jal(&mut self, op: &OpV4, pc: &mut usize) {
         self.set_reg(op.rd, (self.pc + 4) as u32);
+
         *pc = self.pc.wrapping_add_signed(op.imm as i32 as isize);
     }
 
     fn exec_jalr(&mut self, op: &OpV4, pc: &mut usize) {
         self.set_reg(op.rd, (self.pc + 4) as u32);
+
         *pc = self.get_reg(op.rs1).wrapping_add_signed(op.imm as i32) as usize;
     }
 
@@ -577,6 +580,13 @@ impl SimulatorV4 {
         let (val, hit) = self.memory.read(addr)?;
         self.set_reg(op.rd, val);
         self.cache_hit = hit;
+
+        #[cfg(feature = "lw")]
+        {
+            self.instat[self.pc >> 2].read += 1;
+            self.instat[self.pc >> 2].hit += hit as u64;
+        }
+
         Ok(())
     }
 
@@ -585,6 +595,13 @@ impl SimulatorV4 {
         let (val, hit) = self.memory.read(addr)?;
         self.set_reg(op.rd, val);
         self.cache_hit = hit;
+
+        #[cfg(feature = "lw")]
+        {
+            self.instat[self.pc >> 2].read += 1;
+            self.instat[self.pc >> 2].hit += hit as u64;
+        }
+
         Ok(())
     }
 
@@ -593,6 +610,13 @@ impl SimulatorV4 {
         let (val, hit) = self.memory.read(addr)?;
         self.set_reg(op.rd, val);
         self.cache_hit = hit;
+
+        #[cfg(feature = "lw")]
+        {
+            self.instat[self.pc >> 2].read += 1;
+            self.instat[self.pc >> 2].hit += hit as u64;
+        }
+
         Ok(())
     }
 
