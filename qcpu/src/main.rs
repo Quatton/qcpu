@@ -314,12 +314,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             sim.tally();
             sim.log_registers();
 
+            sim.log.write_fmt(format_args!(
+                "Loaded in: {:?}\nSimulated in: {:?}\n\n",
+                e, e2
+            ))?;
+
+            println!("Loaded in: {:?}\nSimulated in: {:?}", e, e2);
+
             if verbose {
                 sim.log_stat()?;
                 sim.time_optimize_info(clock)?;
-
-                sim.log
-                    .write_fmt(format_args!("Loaded in: {:?}\nSimulated in: {:?}\n", e, e2))?;
 
                 sim.process_stat(ctx.as_ref())?;
 
