@@ -40,7 +40,7 @@ impl BranchPredictor {
         }
     }
 
-    #[inline(always)]
+    
     pub fn update_taken(&mut self, op: &OpV4, pc: usize, next_pc: usize) -> bool {
         let untaken = pc.wrapping_add(1);
 

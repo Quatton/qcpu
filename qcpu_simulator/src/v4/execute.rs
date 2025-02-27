@@ -18,11 +18,6 @@ fn f32_to(x: F32) -> u32 {
     F32::to_bits(x)
 }
 
-fn f32_round_to_u32(x: F32) -> u32 {
-    // x.round().to_u32()
-    x.round() as i32 as u32
-}
-
 fn finv(x: u32) -> u32 {
     // Stage 1
     let index = (x >> 13) & 0x3FF; // 10 bits [22:13]
@@ -138,6 +133,7 @@ fn fdiv(x1: u32, x2: u32) -> u32 {
 
     (sy << 31) | ((ey as u32) << 23) | my as u32
 }
+
 fn fsqrt(x: u32) -> u32 {
     // Stage 1
     let s_st1 = (x >> 31) & 1;
@@ -190,8 +186,221 @@ fn fsqrt(x: u32) -> u32 {
     // f32_to(f32_from(x).sqrt())
 }
 
+fn fadd(x1: u32, x2: u32) -> u32 {
+    // Stage 1: Unpack inputs
+    let s1 = (x1 & 0x80000000) != 0;
+    let e1 = ((x1 >> 23) & 0xFF) as u8;
+    let m1 = x1 & 0x7FFFFF; // 23 bits
+
+    let s2 = (x2 & 0x80000000) != 0;
+    let e2 = ((x2 >> 23) & 0xFF) as u8;
+    let m2 = x2 & 0x7FFFFF; // 23 bits
+
+    let x1_is_bigger = (x1 & 0x7FFFFFFF) > (x2 & 0x7FFFFFFF);
+    let e_big = if x1_is_bigger { e1 } else { e2 };
+    let e_small = if x1_is_bigger { e2 } else { e1 };
+
+    // Stage 2: Align and add/subtract
+    let ey1 = (e_big as u16) + 1; // 10 bits
+    let e_small_is_zero = e_small == 0;
+    let shift = e_big - e_small;
+
+    let m_big = if x1_is_bigger {
+        (1 << 24) | (m1 << 1) // 26 bits: 01.mmmm...
+    } else {
+        (1 << 24) | (m2 << 1) // 26 bits: 01.mmmm...
+    };
+
+    let m_small_prev = if x1_is_bigger {
+        (1 << 24) | (m2 << 1) // 26 bits: 01.mmmm...
+    } else {
+        (1 << 24) | (m1 << 1) // 26 bits: 01.mmmm...
+    };
+
+    let m_small = (m_small_prev >> shift) & 0x3FFFFFF; // 26 bits
+    let my1 = if s1 == s2 {
+        m_big + m_small // 26 bits
+    } else {
+        m_big - m_small // 26 bits
+    };
+
+    // Stage 3: Normalize
+    let m_shift = match my1 {
+        n if n & (1 << 25) != 0 => 0,
+        n if n & (1 << 24) != 0 => 1,
+        n if n & (1 << 23) != 0 => 2,
+        n if n & (1 << 22) != 0 => 3,
+        n if n & (1 << 21) != 0 => 4,
+        n if n & (1 << 20) != 0 => 5,
+        n if n & (1 << 19) != 0 => 6,
+        n if n & (1 << 18) != 0 => 7,
+        n if n & (1 << 17) != 0 => 8,
+        n if n & (1 << 16) != 0 => 9,
+        n if n & (1 << 15) != 0 => 10,
+        n if n & (1 << 14) != 0 => 11,
+        n if n & (1 << 13) != 0 => 12,
+        n if n & (1 << 12) != 0 => 13,
+        n if n & (1 << 11) != 0 => 14,
+        n if n & (1 << 10) != 0 => 15,
+        n if n & (1 << 9) != 0 => 16,
+        n if n & (1 << 8) != 0 => 17,
+        n if n & (1 << 7) != 0 => 18,
+        n if n & (1 << 6) != 0 => 19,
+        n if n & (1 << 5) != 0 => 20,
+        n if n & (1 << 4) != 0 => 21,
+        n if n & (1 << 3) != 0 => 22,
+        n if n & (1 << 2) != 0 => 23,
+        n if n & (1 << 1) != 0 => 24,
+        n if n & 1 != 0 => 25,
+        _ => 26,
+    };
+
+    let my2_prev = (my1 as u64) << m_shift; // 52 bits
+    let my2 = ((my2_prev >> 2) & 0x7FFFFF) as u32; // 23 bits
+    let ey2 = ey1 - m_shift as u16; // 10 bits
+
+    let underflow = e_big == 0 || (ey2 & 0x200) != 0 || ey2 == 0 || m_shift == 26;
+    let overflow = e_big == 255 || (ey2 & 0x100) != 0 || ey2 == 255;
+
+    // Stage 4: Final assembly
+    let sy = if x1_is_bigger { s1 } else { s2 };
+    let ey = if e_small_is_zero {
+        e_big
+    } else if underflow {
+        0
+    } else if overflow {
+        255
+    } else {
+        ey2 as u8
+    };
+
+    let my = if e_small_is_zero {
+        (m_big >> 1) & 0x7FFFFF // 23 bits
+    } else if underflow || overflow {
+        0
+    } else {
+        my2
+    };
+
+    // Pack result
+    ((sy as u32) << 31) | ((ey as u32) << 23) | my
+
+    // f32_to(f32_from(x1) + f32_from(x2))
+}
+
+fn fsub(x1: u32, x2: u32) -> u32 {
+    let minus_x2 = (!x2 & 0x80000000) | (x2 & 0x7FFFFFFF);
+    fadd(x1, minus_x2)
+}
+
+fn ftoi(x: u32) -> u32 {
+    // // Stage 1
+    // let s_st1 = (x >> 31) & 1;
+    // let e_st1 = ((x >> 23) & 0xFF) as u8;
+    // let m_st1 = x & 0x007FFFFF;
+    // let my_st1 = (1 << 23) | m_st1;
+    // let y1_st1 = if e_st1 < 149 {
+    //     let shift = (149 - e_st1) as u32;
+    //     (my_st1 as u64) >> shift
+    // } else {
+    //     let shift = (e_st1 - 149) as u32;
+    //     (my_st1 as u64) << shift
+    // };
+    // let y1_st1 = y1_st1 & 0x1FFFFFFFF;
+    // let y2_st1 = (y1_st1 + 1) & 0x1FFFFFFFF;
+
+    // // Stage 2
+    // let s_st2 = s_st1;
+    // let y2_st2 = y2_st1;
+    // let y3 = (y2_st2 >> 1) as u32;
+
+    // if s_st2 == 1 {
+    //     (!y3).wrapping_add(1)
+    // } else {
+    //     y3
+    // }
+
+    f32_from(x).round_ties_even() as i32 as u32
+}
+
+fn itof(x: u32) -> u32 {
+    // // Stage 1
+    // let is_zero = x == 0;
+    // let s = x & (1 << 31);
+    // let m1 = if s != 0 { x.wrapping_neg() } else { x };
+
+    // let shifts = m1.leading_zeros();
+
+    // // Stage 2
+    // let m2 = m1 << shifts;
+    // let m3 = m2.wrapping_add(0x80); // Rounding
+    // let m = if is_zero { 0 } else { (m3 >> 8) & 0x7FFFFF };
+
+    // let e = if is_zero {
+    //     0
+    // } else if m3 & (1 << 31) != 0 {
+    //     158 - shifts
+    // } else {
+    //     159 - shifts
+    // };
+
+    // // Stage 3
+    // s | (e << 23) | m
+
+    f32_to(x as i32 as F32)
+}
+
+fn fmul(x1: u32, x2: u32) -> u32 {
+    // Stage 1: Unpack inputs
+    let s1 = (x1 & 0x80000000) != 0;
+    let e1 = (x1 >> 23) & 0xFF;
+    let h1_sub = (x1 >> 11) & 0xFFF; // 12 bits
+    let l1 = x1 & 0x7FF; // 11 bits
+    let h1 = (1 << 12) | h1_sub; // 13 bits: 1.bbbb...
+
+    let s2 = (x2 & 0x80000000) != 0;
+    let e2 = (x2 >> 23) & 0xFF;
+    let h2_sub = (x2 >> 11) & 0xFFF; // 12 bits
+    let l2 = x2 & 0x7FF; // 11 bits
+    let h2 = (1 << 12) | h2_sub; // 13 bits: 1.bbbb...
+
+    // Stage 1: Multiplications
+    let hh = ((h1 as u32) * (h2 as u32)) & 0x3FFFFFF; // 26 bits
+    let hl = ((h1 as u32) * (l2 as u32)) & 0xFFFFFF; // 24 bits
+    let lh = ((l1 as u32) * (h2 as u32)) & 0xFFFFFF; // 24 bits
+
+    // Stage 2: Addition and normalization
+    let tmp = hh + ((hl >> 11) & 0x1FFF) + ((lh >> 11) & 0x1FFF) + 1; // 26 bits
+
+    let m = if (tmp & (1 << 25)) != 0 {
+        (tmp >> 2) & 0x7FFFFF // 23 bits
+    } else {
+        (tmp >> 1) & 0x7FFFFF // 23 bits
+    };
+
+    let ey1 = (e1 as u16) + (e2 as u16) - 127; // 10 bits
+    let ey2 = (e1 as u16) + (e2 as u16) - 126; // 10 bits
+    let ey3 = if (tmp & (1 << 25)) != 0 { ey2 } else { ey1 };
+
+    // Stage 3: Final assembly
+    let underflow = e1 == 0 || e2 == 0 || (ey3 & 0x200) != 0 || ey3 == 0;
+    let overflow = e1 == 255 || e2 == 255 || (ey3 & 0x100) != 0 || ey3 == 255;
+
+    let sy = s1 ^ s2;
+    let ey = if underflow {
+        0
+    } else if overflow {
+        255
+    } else {
+        ey3 as u8
+    };
+    let my = if underflow || overflow { 0 } else { m };
+
+    // Pack result
+    ((sy as u32) << 31) | ((ey as u32) << 23) | (my & 0x7FFFFF)
+}
+
 impl SimulatorV4 {
-    #[inline(always)]
     fn exec_add(&mut self, op: &OpV4) {
         self.set_reg(
             op.rd,
@@ -199,7 +408,6 @@ impl SimulatorV4 {
         );
     }
 
-    #[inline(always)]
     fn exec_sub(&mut self, op: &OpV4) {
         self.set_reg(
             op.rd,
@@ -281,21 +489,15 @@ impl SimulatorV4 {
     }
 
     fn exec_fadd(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, f32_to(rs1f + rs2f));
+        self.set_reg(op.rd, fadd(self.get_reg(op.rs1), self.get_reg(op.rs2)));
     }
 
     fn exec_fsub(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, f32_to(rs1f - rs2f));
+        self.set_reg(op.rd, fsub(self.get_reg(op.rs1), self.get_reg(op.rs2)));
     }
 
     fn exec_fmul(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, f32_to(rs1f * rs2f));
+        self.set_reg(op.rd, fmul(self.get_reg(op.rs1), self.get_reg(op.rs2)));
     }
 
     fn exec_fdiv(&mut self, op: &OpV4) {
@@ -327,12 +529,11 @@ impl SimulatorV4 {
     }
 
     fn exec_ftoi(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        self.set_reg(op.rd, f32_round_to_u32(rs1f));
+        self.set_reg(op.rd, ftoi(self.get_reg(op.rs1)));
     }
 
     fn exec_fitof(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, (self.get_reg(op.rs1) as i32 as f32).to_bits());
+        self.set_reg(op.rd, itof(self.get_reg(op.rs1)));
     }
 
     fn exec_feq(&mut self, op: &OpV4) {

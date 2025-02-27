@@ -189,12 +189,10 @@ impl SimulatorV4 {
         }
     }
 
-    #[inline(always)]
     pub fn get_reg(&self, reg: u8) -> u32 {
         *unsafe { self.reg.get_unchecked(reg as usize) }
     }
 
-    #[inline(always)]
     pub fn set_reg(&mut self, reg: u8, val: u32) {
         if reg == 0 {
             return;
@@ -202,7 +200,6 @@ impl SimulatorV4 {
         *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
     }
 
-    #[inline(always)]
     pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
         unsafe { self.reg.get_unchecked_mut(reg as usize) }
     }
