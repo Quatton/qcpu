@@ -150,16 +150,16 @@ const NUM_OPNAMES: usize = 64;
 const DEFAULT_DELAY: u8 = 1;
 const DELAY_LOOKUP: [u8; NUM_OPNAMES] = {
     let mut delays = [DEFAULT_DELAY; NUM_OPNAMES];
-    delays[OpName::Fadd as usize] = 3;
-    delays[OpName::Fsub as usize] = 3;
+    delays[OpName::Fadd as usize] = 4;
+    delays[OpName::Fsub as usize] = 4;
     delays[OpName::Fmul as usize] = 3;
-    delays[OpName::Ftoi as usize] = 3;
+    delays[OpName::Ftoi as usize] = 2;
     delays[OpName::Fitof as usize] = 3;
-    delays[OpName::Fdiv as usize] = 9;
+    delays[OpName::Fdiv as usize] = 6;
     delays
 };
 
-pub const CLOCK_MHZ: u64 = 120;
+pub const CLOCK_MHZ: u64 = 122;
 const CACHE_MISS_PENALTY: u64 = 55;
 const CACHE_HIT_PENALTY: u64 = 2;
 
