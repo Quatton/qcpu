@@ -162,10 +162,11 @@ impl SimulatorV4 {
 
     #[inline(always)]
     pub fn set_reg(&mut self, reg: Reg, val: u32) {
-        if reg as usize != 0 {
-            unsafe {
-                *self.reg.get_unchecked_mut(reg as usize) = val;
-            }
+        if reg == 0 {
+            return;
+        }
+        unsafe {
+            *self.reg.get_unchecked_mut(reg as usize) = val;
         }
     }
 
@@ -218,6 +219,7 @@ impl SimulatorV4 {
             }
             _ => {}
         }
+        self.cache_hit = false;
     }
 }
 

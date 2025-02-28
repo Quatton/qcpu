@@ -706,7 +706,9 @@ impl SimulatorV4 {
             self.pc,
         )?;
         self.set_reg(self.op.rd, val);
-        self.cache_hit = hit;
+        if self.verbose {
+            self.cache_hit = hit;
+        }
 
         Ok(())
     }
@@ -723,7 +725,9 @@ impl SimulatorV4 {
         )?;
         self.set_reg(self.op.rd, val);
 
-        self.cache_hit = hit;
+        if self.verbose {
+            self.cache_hit = hit;
+        }
 
         Ok(())
     }
@@ -738,7 +742,9 @@ impl SimulatorV4 {
         )?;
         self.set_reg(self.op.rd, val);
 
-        self.cache_hit = hit;
+        if self.verbose {
+            self.cache_hit = hit;
+        }
 
         Ok(())
     }
@@ -753,7 +759,9 @@ impl SimulatorV4 {
             self.pc,
         )?;
 
-        self.cache_hit = hit;
+        if self.verbose {
+            self.cache_hit = hit;
+        }
 
         Ok(())
     }
@@ -768,7 +776,9 @@ impl SimulatorV4 {
             self.pc,
         )?;
 
-        self.cache_hit = hit;
+        if self.verbose {
+            self.cache_hit = hit;
+        }
 
         Ok(())
     }
@@ -788,7 +798,6 @@ impl SimulatorV4 {
 
     #[inline(always)]
     pub fn execute(&mut self) -> Result<(), SimulatorV4HaltKind> {
-        self.cache_hit = false;
         match self.op.opname {
             OpName::Add => self.exec_add(),
             OpName::Sub => self.exec_sub(),
