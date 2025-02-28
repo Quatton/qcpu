@@ -327,6 +327,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 sim.process_stat(ctx.as_ref())?;
 
+                #[cfg(feature = "conflict_pair")]
+                sim.process_memory_conflict_pc(ctx.as_ref())?;
+
                 if let Some(json) = json {
                     let mut file = std::fs::File::options()
                         .create(true)

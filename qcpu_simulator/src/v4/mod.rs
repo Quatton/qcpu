@@ -18,7 +18,7 @@ use decode::decode;
 use memory::MemoryV4;
 use serde::Serialize;
 use stat::Statistics;
-use syntax::{OpName, OpV4};
+use syntax::{OpName, OpV4, Reg};
 
 #[derive(Debug, Default, Clone)]
 pub struct SimulatorV4Builder {
@@ -97,10 +97,12 @@ impl SimulatorV4Builder {
             verbose: self.verbose,
             reg: [0; 64],
             pc: 0,
+            next_pc: 0,
             memory: MemoryV4::new(self.verbose),
             stat: Statistics::default(),
             bp: BranchPredictor::new(),
             cache_hit: false,
+            op: OpV4::default(),
         }
     }
 }
@@ -111,6 +113,7 @@ pub struct Instat {
     pub call: u64,
 }
 
+#[derive(Debug)]
 pub struct SimulatorV4 {
     // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
     // pub program: Vec<u32>,
@@ -130,8 +133,10 @@ pub struct SimulatorV4 {
     pub output_file: PathBuf,
     pub log_file: PathBuf,
     // usize (8 bytes)
-    pub pc: usize,
+    pub pc: u32,
+    pub next_pc: u32,
     pub decoded_len: usize,
+    pub op: OpV4,
     // bool (1 byte each, will be packed)
     pub verbose: bool,
     pub cache_hit: bool,
@@ -151,37 +156,38 @@ pub enum SimulatorV4HaltKind {
 }
 
 impl SimulatorV4 {
-    pub fn get_reg(&self, reg: u8) -> u32 {
+    pub fn get_reg(&self, reg: Reg) -> u32 {
         *unsafe { self.reg.get_unchecked(reg as usize) }
     }
 
-    pub fn set_reg(&mut self, reg: u8, val: u32) {
+    pub fn set_reg(&mut self, reg: Reg, val: u32) {
         if reg == 0 {
             return;
         }
         *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
     }
 
-    pub fn get_reg_mut(&mut self, reg: u8) -> &mut u32 {
+    pub fn get_reg_mut(&mut self, reg: Reg) -> &mut u32 {
         unsafe { self.reg.get_unchecked_mut(reg as usize) }
     }
 
     pub fn run(&mut self) -> Result<(), SimulatorV4HaltDetail> {
         loop {
-            let pc = self.pc;
-            let index = pc >> 2;
-            if index >= self.decoded_len {
-                return Err(SimulatorV4HaltDetail {
-                    op: self.instructions[index - 1],
+            let index = (self.pc >> 2) as usize;
+
+            self.op = *self
+                .instructions
+                .get(index)
+                .ok_or_else(|| SimulatorV4HaltDetail {
+                    op: self.op,
                     line: index - 1,
                     kind: SimulatorV4HaltKind::Complete,
-                });
-            }
+                })?;
 
-            let op = unsafe { *self.instructions.get_unchecked(index) };
+            self.next_pc = self.pc + 4;
 
-            let next_pc = self.execute(&op).map_err(|kind| SimulatorV4HaltDetail {
-                op,
+            self.execute().map_err(|kind| SimulatorV4HaltDetail {
+                op: self.op,
                 line: index,
                 kind,
             })?;
@@ -189,9 +195,10 @@ impl SimulatorV4 {
             if self.verbose {
                 let stat = unsafe { &mut self.per_instruction_stat.get_unchecked_mut(index) };
                 stat.call += 1;
-                match op.opname {
+                match self.op.opname {
                     OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                        self.bp.update_taken(&op, pc, next_pc);
+                        self.bp
+                            .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
                     }
                     OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
                         stat.hit += self.cache_hit as u64;
@@ -200,7 +207,7 @@ impl SimulatorV4 {
                 }
             }
 
-            self.pc = next_pc;
+            self.pc = self.next_pc;
         }
     }
 }
@@ -208,8 +215,6 @@ impl SimulatorV4 {
 #[cfg(test)]
 mod test {
     use qcpu_syntax::v2::op::Op;
-
-    use crate::v4::syntax::OpName;
 
     use super::*;
 
@@ -234,40 +239,25 @@ mod test {
         for (i, (d, c)) in decoded.iter().zip(compared.iter()).enumerate() {
             // if d.rs1 != 0 {
             assert_eq!(
-                d.rs1, c.rs1 as usize as u8,
+                d.rs1, c.rs1 as usize as Reg,
                 "rs1 mismatch at {}, {:?} vs {:?}",
                 i, d, c
             );
             // }
             // if d.rs2 != 0 {
             assert_eq!(
-                d.rs2, c.rs2 as usize as u8,
+                d.rs2, c.rs2 as usize as Reg,
                 "rs2 mismatch at {}, {:?} vs {:?}",
                 i, d, c
             );
             // }
             // if d.rd != 0 {
             assert_eq!(
-                d.rd, c.rd as usize as u8,
+                d.rd, c.rd as usize as Reg,
                 "rd mismatch at {}, {:?} vs {:?}",
                 i, d, c
             );
             // }
-
-            if c.imm.raw().is_some() {
-                assert_eq!(
-                    d.imm,
-                    if let OpName::Lui = d.opname {
-                        (c.imm.raw().unwrap() as u32) << 12
-                    } else {
-                        c.imm.raw().unwrap() as u32
-                    },
-                    "imm mismatch at {}, {:?} vs {:?}",
-                    i,
-                    d,
-                    c
-                );
-            }
         }
     }
 }

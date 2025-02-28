@@ -1,9 +1,6 @@
 use std::io::{Read as _, Write as _};
 
-use super::{
-    syntax::{OpName, OpV4},
-    SimulatorV4, SimulatorV4HaltKind,
-};
+use super::{syntax::OpName, SimulatorV4, SimulatorV4HaltKind};
 
 pub type ExecuteResult = (usize, Option<u32>);
 
@@ -479,268 +476,320 @@ fn fmul(x1: u32, x2: u32) -> u32 {
 }
 
 impl SimulatorV4 {
-    fn exec_add(&mut self, op: &OpV4) {
+    fn exec_add(&mut self) {
         self.set_reg(
-            op.rd,
-            (self.get_reg(op.rs1) as i32).wrapping_add(self.get_reg(op.rs2) as i32) as u32,
+            self.op.rd,
+            (self.get_reg(self.op.rs1) as i32).wrapping_add(self.get_reg(self.op.rs2) as i32)
+                as u32,
         );
     }
 
-    fn exec_sub(&mut self, op: &OpV4) {
+    fn exec_sub(&mut self) {
         self.set_reg(
-            op.rd,
-            (self.get_reg(op.rs1) as i32).wrapping_sub(self.get_reg(op.rs2) as i32) as u32,
+            self.op.rd,
+            (self.get_reg(self.op.rs1) as i32).wrapping_sub(self.get_reg(self.op.rs2) as i32)
+                as u32,
         );
     }
 
-    fn exec_sll(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) << self.get_reg(op.rs2));
-    }
-
-    fn exec_srl(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) >> self.get_reg(op.rs2));
-    }
-
-    fn exec_xor(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) ^ self.get_reg(op.rs2));
-    }
-
-    fn exec_and(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) & self.get_reg(op.rs2));
-    }
-
-    fn exec_or(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) | self.get_reg(op.rs2));
-    }
-
-    fn exec_addi(&mut self, op: &OpV4) {
+    fn exec_sll(&mut self) {
         self.set_reg(
-            op.rd,
-            (self.get_reg(op.rs1) as i32).wrapping_add(op.imm as i32) as u32,
+            self.op.rd,
+            self.get_reg(self.op.rs1) << self.get_reg(self.op.rs2),
         );
     }
 
-    fn exec_slli(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) << op.imm);
+    fn exec_srl(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            self.get_reg(self.op.rs1) >> self.get_reg(self.op.rs2),
+        );
     }
 
-    fn exec_srli(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, self.get_reg(op.rs1) >> op.imm);
+    fn exec_xor(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            self.get_reg(self.op.rs1) ^ self.get_reg(self.op.rs2),
+        );
     }
 
-    fn exec_beq(&mut self, op: &OpV4, pc: &mut usize) {
-        if self.get_reg(op.rs1) == self.get_reg(op.rs2) {
-            *pc = self.pc.wrapping_add_signed(op.imm as isize);
+    fn exec_and(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            self.get_reg(self.op.rs1) & self.get_reg(self.op.rs2),
+        );
+    }
+
+    fn exec_or(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            self.get_reg(self.op.rs1) | self.get_reg(self.op.rs2),
+        );
+    }
+
+    fn exec_addi(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            (self.get_reg(self.op.rs1) as i32).wrapping_add(self.op.imm as i32) as u32,
+        );
+    }
+
+    fn exec_slli(&mut self) {
+        self.set_reg(self.op.rd, self.get_reg(self.op.rs1) << self.op.imm);
+    }
+
+    fn exec_srli(&mut self) {
+        self.set_reg(self.op.rd, self.get_reg(self.op.rs1) >> self.op.imm);
+    }
+
+    fn exec_beq(&mut self) {
+        if self.get_reg(self.op.rs1) == self.get_reg(self.op.rs2) {
+            self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
-    fn exec_bge(&mut self, op: &OpV4, pc: &mut usize) {
-        if (self.get_reg(op.rs1) as i32) >= (self.get_reg(op.rs2) as i32) {
-            *pc = self.pc.wrapping_add_signed(op.imm as isize);
+    fn exec_bge(&mut self) {
+        if (self.get_reg(self.op.rs1) as i32) >= (self.get_reg(self.op.rs2) as i32) {
+            self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
-    fn exec_blt(&mut self, op: &OpV4, pc: &mut usize) {
-        if (self.get_reg(op.rs1) as i32) < (self.get_reg(op.rs2) as i32) {
-            *pc = self.pc.wrapping_add_signed(op.imm as isize);
+    fn exec_blt(&mut self) {
+        if (self.get_reg(self.op.rs1) as i32) < (self.get_reg(self.op.rs2) as i32) {
+            self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
-    fn exec_bne(&mut self, op: &OpV4, pc: &mut usize) {
-        if self.get_reg(op.rs1) != self.get_reg(op.rs2) {
-            *pc = self.pc.wrapping_add_signed(op.imm as isize);
+    fn exec_bne(&mut self) {
+        if self.get_reg(self.op.rs1) != self.get_reg(self.op.rs2) {
+            self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
-    fn exec_jal(&mut self, op: &OpV4, pc: &mut usize) {
-        self.set_reg(op.rd, (self.pc + 4) as u32);
+    fn exec_jal(&mut self) {
+        self.set_reg(self.op.rd, self.pc + 4);
 
-        *pc = self.pc.wrapping_add_signed(op.imm as i32 as isize);
+        self.next_pc = self.pc.wrapping_add(self.op.imm);
     }
 
-    fn exec_jalr(&mut self, op: &OpV4, pc: &mut usize) {
-        self.set_reg(op.rd, (self.pc + 4) as u32);
+    fn exec_jalr(&mut self) {
+        self.set_reg(self.op.rd, self.pc + 4);
 
-        *pc = self.get_reg(op.rs1).wrapping_add_signed(op.imm as i32) as usize;
+        self.next_pc = self.get_reg(self.op.rs1).wrapping_add(self.op.imm);
     }
 
-    fn exec_lui(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, op.imm);
+    fn exec_lui(&mut self) {
+        self.set_reg(self.op.rd, self.op.imm);
     }
 
-    fn exec_fadd(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, fadd(self.get_reg(op.rs1), self.get_reg(op.rs2)));
-    }
-
-    fn exec_fsub(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, fsub(self.get_reg(op.rs1), self.get_reg(op.rs2)));
-    }
-
-    fn exec_fmul(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, fmul(self.get_reg(op.rs1), self.get_reg(op.rs2)));
-    }
-
-    fn exec_fdiv(&mut self, op: &OpV4) {
-        // let rs1f = f32_from(self.get_reg(op.rs1));
-        // let rs2f = f32_from(self.get_reg(op.rs2));
-        // self.set_reg(op.rd, f32_to(rs1f / rs2f));
-        self.set_reg(op.rd, fdiv(self.get_reg(op.rs1), self.get_reg(op.rs2)));
-    }
-
-    fn exec_fsgnj(&mut self, op: &OpV4) {
+    fn exec_fadd(&mut self) {
         self.set_reg(
-            op.rd,
-            (self.get_reg(op.rs1) & !(1 << 31)) | (self.get_reg(op.rs2) & (1 << 31)),
+            self.op.rd,
+            fadd(self.get_reg(self.op.rs1), self.get_reg(self.op.rs2)),
         );
     }
 
-    fn exec_fsgnjn(&mut self, op: &OpV4) {
+    fn exec_fsub(&mut self) {
         self.set_reg(
-            op.rd,
-            (self.get_reg(op.rs1) & !(1 << 31)) | ((!self.get_reg(op.rs2)) & (1 << 31)),
+            self.op.rd,
+            fsub(self.get_reg(self.op.rs1), self.get_reg(self.op.rs2)),
         );
     }
 
-    fn exec_fsgnjx(&mut self, op: &OpV4) {
+    fn exec_fmul(&mut self) {
         self.set_reg(
-            op.rd,
-            self.get_reg(op.rs1) ^ (self.get_reg(op.rs2) & (1 << 31)),
+            self.op.rd,
+            fmul(self.get_reg(self.op.rs1), self.get_reg(self.op.rs2)),
         );
     }
 
-    fn exec_ftoi(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, ftoi(self.get_reg(op.rs1)));
+    fn exec_fdiv(&mut self) {
+        // let rs1f = f32_from(self.get_reg(self.op.rs1));
+        // let rs2f = f32_from(self.get_reg(self.op.rs2));
+        // self.set_reg(self.op.rd, f32_to(rs1f / rs2f));
+        self.set_reg(
+            self.op.rd,
+            fdiv(self.get_reg(self.op.rs1), self.get_reg(self.op.rs2)),
+        );
     }
 
-    fn exec_fitof(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, itof(self.get_reg(op.rs1)));
+    fn exec_fsgnj(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            (self.get_reg(self.op.rs1) & !(1 << 31)) | (self.get_reg(self.op.rs2) & (1 << 31)),
+        );
     }
 
-    fn exec_feq(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, if rs1f == rs2f { 1 } else { 0 });
+    fn exec_fsgnjn(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            (self.get_reg(self.op.rs1) & !(1 << 31)) | ((!self.get_reg(self.op.rs2)) & (1 << 31)),
+        );
     }
 
-    fn exec_flt(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, if rs1f < rs2f { 1 } else { 0 });
+    fn exec_fsgnjx(&mut self) {
+        self.set_reg(
+            self.op.rd,
+            self.get_reg(self.op.rs1) ^ (self.get_reg(self.op.rs2) & (1 << 31)),
+        );
     }
 
-    fn exec_fle(&mut self, op: &OpV4) {
-        let rs1f = f32_from(self.get_reg(op.rs1));
-        let rs2f = f32_from(self.get_reg(op.rs2));
-        self.set_reg(op.rd, if rs1f <= rs2f { 1 } else { 0 });
+    fn exec_ftoi(&mut self) {
+        self.set_reg(self.op.rd, ftoi(self.get_reg(self.op.rs1)));
     }
 
-    fn exec_fsqrt(&mut self, op: &OpV4) {
-        self.set_reg(op.rd, fsqrt(self.get_reg(op.rs1)));
+    fn exec_fitof(&mut self) {
+        self.set_reg(self.op.rd, itof(self.get_reg(self.op.rs1)));
     }
 
-    fn exec_lw(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
-        let addr = self.get_reg(op.rs1).wrapping_add(op.imm) as usize;
-        let (val, hit) = self.memory.read(addr)?;
-        self.set_reg(op.rd, val);
+    fn exec_feq(&mut self) {
+        let rs1f = f32_from(self.get_reg(self.op.rs1));
+        let rs2f = f32_from(self.get_reg(self.op.rs2));
+        self.set_reg(self.op.rd, if rs1f == rs2f { 1 } else { 0 });
+    }
+
+    fn exec_flt(&mut self) {
+        let rs1f = f32_from(self.get_reg(self.op.rs1));
+        let rs2f = f32_from(self.get_reg(self.op.rs2));
+        self.set_reg(self.op.rd, if rs1f < rs2f { 1 } else { 0 });
+    }
+
+    fn exec_fle(&mut self) {
+        let rs1f = f32_from(self.get_reg(self.op.rs1));
+        let rs2f = f32_from(self.get_reg(self.op.rs2));
+        self.set_reg(self.op.rd, if rs1f <= rs2f { 1 } else { 0 });
+    }
+
+    fn exec_fsqrt(&mut self) {
+        self.set_reg(self.op.rd, fsqrt(self.get_reg(self.op.rs1)));
+    }
+
+    fn exec_lw(&mut self) -> Result<(), SimulatorV4HaltKind> {
+        let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
+        let (val, hit) = self.memory.read(
+            addr,
+            #[cfg(feature = "conflict_pair")]
+            self.pc,
+        )?;
+        self.set_reg(self.op.rd, val);
         self.cache_hit = hit;
 
         Ok(())
     }
 
-    fn exec_lwr(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
-        let addr = self.get_reg(op.rs1).wrapping_add(self.get_reg(op.rs2)) as usize;
-        let (val, hit) = self.memory.read(addr)?;
-        self.set_reg(op.rd, val);
+    fn exec_lwr(&mut self) -> Result<(), SimulatorV4HaltKind> {
+        let addr = self
+            .get_reg(self.op.rs1)
+            .wrapping_add(self.get_reg(self.op.rs2)) as usize;
+        let (val, hit) = self.memory.read(
+            addr,
+            #[cfg(feature = "conflict_pair")]
+            self.pc,
+        )?;
+        self.set_reg(self.op.rd, val);
 
         self.cache_hit = hit;
 
         Ok(())
     }
 
-    fn exec_lwi(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
-        let addr = op.imm as usize;
-        let (val, hit) = self.memory.read(addr)?;
-        self.set_reg(op.rd, val);
+    fn exec_lwi(&mut self) -> Result<(), SimulatorV4HaltKind> {
+        let addr = self.op.imm as usize;
+        let (val, hit) = self.memory.read(
+            addr,
+            #[cfg(feature = "conflict_pair")]
+            self.pc,
+        )?;
+        self.set_reg(self.op.rd, val);
 
         self.cache_hit = hit;
 
         Ok(())
     }
 
-    fn exec_sw(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
-        let addr = self.get_reg(op.rs1).wrapping_add(op.imm) as usize;
-        let hit = self.memory.write(addr, self.get_reg(op.rs2))?;
+    fn exec_sw(&mut self) -> Result<(), SimulatorV4HaltKind> {
+        let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
+        let hit = self.memory.write(
+            addr,
+            self.get_reg(self.op.rs2),
+            #[cfg(feature = "conflict_pair")]
+            self.pc,
+        )?;
 
         self.cache_hit = hit;
 
         Ok(())
     }
 
-    fn exec_swi(&mut self, op: &OpV4) -> Result<(), SimulatorV4HaltKind> {
-        let addr = op.imm as usize;
-        let hit = self.memory.write(addr, self.get_reg(op.rs2))?;
+    fn exec_swi(&mut self) -> Result<(), SimulatorV4HaltKind> {
+        let addr = self.op.imm as usize;
+        let hit = self.memory.write(
+            addr,
+            self.get_reg(self.op.rs2),
+            #[cfg(feature = "conflict_pair")]
+            self.pc,
+        )?;
 
         self.cache_hit = hit;
 
         Ok(())
     }
 
-    fn exec_outb(&mut self, op: &OpV4) {
-        let val = self.get_reg(op.rs2);
+    fn exec_outb(&mut self) {
+        let val = self.get_reg(self.op.rs2);
         self.output.write_all(&[(val & 0xff) as u8]).unwrap();
     }
 
-    fn exec_inw(&mut self, op: &OpV4) {
+    fn exec_inw(&mut self) {
         let mut buf = [0; 4];
         self.input.read_exact(&mut buf).unwrap();
-        self.set_reg(op.rd, u32::from_le_bytes(buf));
+        self.set_reg(self.op.rd, u32::from_le_bytes(buf));
     }
 
-    pub fn execute(&mut self, op: &OpV4) -> Result<usize, SimulatorV4HaltKind> {
-        let mut next_pc = self.pc + 4;
+    pub fn execute(&mut self) -> Result<(), SimulatorV4HaltKind> {
         self.cache_hit = false;
-        match op.opname {
-            OpName::Add => self.exec_add(op),
-            OpName::Sub => self.exec_sub(op),
-            OpName::Sll => self.exec_sll(op),
-            OpName::Srl => self.exec_srl(op),
-            OpName::Xor => self.exec_xor(op),
-            OpName::And => self.exec_and(op),
-            OpName::Or => self.exec_or(op),
-            OpName::Addi => self.exec_addi(op),
-            OpName::Slli => self.exec_slli(op),
-            OpName::Srli => self.exec_srli(op),
-            OpName::Beq => self.exec_beq(op, &mut next_pc),
-            OpName::Bge => self.exec_bge(op, &mut next_pc),
-            OpName::Blt => self.exec_blt(op, &mut next_pc),
-            OpName::Bne => self.exec_bne(op, &mut next_pc),
-            OpName::Jal => self.exec_jal(op, &mut next_pc),
-            OpName::Jalr => self.exec_jalr(op, &mut next_pc),
-            OpName::Lui => self.exec_lui(op),
-            OpName::Fadd => self.exec_fadd(op),
-            OpName::Fsub => self.exec_fsub(op),
-            OpName::Fmul => self.exec_fmul(op),
-            OpName::Fdiv => self.exec_fdiv(op),
-            OpName::Fsgnj => self.exec_fsgnj(op),
-            OpName::Fsgnjn => self.exec_fsgnjn(op),
-            OpName::Fsgnjx => self.exec_fsgnjx(op),
-            OpName::Ftoi => self.exec_ftoi(op),
-            OpName::Fitof => self.exec_fitof(op),
-            OpName::Feq => self.exec_feq(op),
-            OpName::Flt => self.exec_flt(op),
-            OpName::Fle => self.exec_fle(op),
-            OpName::Fsqrt => self.exec_fsqrt(op),
-            OpName::Lw => self.exec_lw(op)?,
-            OpName::Lwr => self.exec_lwr(op)?,
-            OpName::Lwi => self.exec_lwi(op)?,
-            OpName::Sw => self.exec_sw(op)?,
-            OpName::Swi => self.exec_swi(op)?,
-            OpName::Outb => self.exec_outb(op),
-            OpName::Inw => self.exec_inw(op),
+        match self.op.opname {
+            OpName::Add => self.exec_add(),
+            OpName::Sub => self.exec_sub(),
+            OpName::Sll => self.exec_sll(),
+            OpName::Srl => self.exec_srl(),
+            OpName::Xor => self.exec_xor(),
+            OpName::And => self.exec_and(),
+            OpName::Or => self.exec_or(),
+            OpName::Addi => self.exec_addi(),
+            OpName::Slli => self.exec_slli(),
+            OpName::Srli => self.exec_srli(),
+            OpName::Beq => self.exec_beq(),
+            OpName::Bge => self.exec_bge(),
+            OpName::Blt => self.exec_blt(),
+            OpName::Bne => self.exec_bne(),
+            OpName::Jal => self.exec_jal(),
+            OpName::Jalr => self.exec_jalr(),
+            OpName::Lui => self.exec_lui(),
+            OpName::Fadd => self.exec_fadd(),
+            OpName::Fsub => self.exec_fsub(),
+            OpName::Fmul => self.exec_fmul(),
+            OpName::Fdiv => self.exec_fdiv(),
+            OpName::Fsgnj => self.exec_fsgnj(),
+            OpName::Fsgnjn => self.exec_fsgnjn(),
+            OpName::Fsgnjx => self.exec_fsgnjx(),
+            OpName::Ftoi => self.exec_ftoi(),
+            OpName::Fitof => self.exec_fitof(),
+            OpName::Feq => self.exec_feq(),
+            OpName::Flt => self.exec_flt(),
+            OpName::Fle => self.exec_fle(),
+            OpName::Fsqrt => self.exec_fsqrt(),
+            OpName::Lw => self.exec_lw()?,
+            OpName::Lwr => self.exec_lwr()?,
+            OpName::Lwi => self.exec_lwi()?,
+            OpName::Sw => self.exec_sw()?,
+            OpName::Swi => self.exec_swi()?,
+            OpName::Outb => self.exec_outb(),
+            OpName::Inw => self.exec_inw(),
             _ => unimplemented!(),
         }
 
-        Ok(next_pc)
+        Ok(())
     }
 }
 

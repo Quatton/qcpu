@@ -1,8 +1,8 @@
-use std::{io::Write as _, time::Duration};
+use std::{collections::BTreeMap, io::Write as _, time::Duration};
 
 use qcpu_syntax::ParsingContext;
 
-use crate::v4::syntax::get_reg_name;
+use crate::v4::syntax::{get_reg_name, Reg};
 
 pub const CLOCK_MHZ: u64 = 125;
 pub const CACHE_HIT_PENALTY: u64 = 2;
@@ -101,6 +101,44 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    pub fn process_memory_conflict_pc(
+        &mut self,
+        ctx: Option<&ParsingContext>,
+    ) -> Result<(), std::io::Error> {
+        self.log
+            .write_fmt(format_args!("\nCommon memory conflict PC\n"))?;
+
+        let sorted: BTreeMap<&u64, &u32> = self
+            .memory
+            .stat
+            .conflict_pair
+            .iter()
+            .map(|(k, v)| (v, k))
+            .collect();
+
+        for (count, pc1pc2) in sorted.into_iter().rev().take(100) {
+            let pc2 = (pc1pc2 & 0xffff) >> 2;
+            let pc1 = ((pc1pc2 >> 16) & 0xffff) >> 2;
+            match ctx {
+                Some(ctx) => {
+                    self.log.write_fmt(format_args!(
+                        "{:32} ({:02}) vs {:32} ({:02}) {:010}\n",
+                        ctx.reverse_lookup_floor(pc1 as usize),
+                        pc1,
+                        ctx.reverse_lookup_floor(pc2 as usize),
+                        pc2,
+                        count
+                    ))?;
+                }
+                None => {
+                    println!("{:05} vs {:05} {:010}\n", pc1, pc2, count);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn tally(&mut self) {
         self.stat.cycle_count = 0;
         self.stat.instr_count = 0;
@@ -158,7 +196,7 @@ impl SimulatorV4 {
 
     pub fn log_registers(&self) {
         for (i, reg) in self.reg.iter().enumerate() {
-            let reg_name = get_reg_name(i as u8);
+            let reg_name = get_reg_name(i as Reg);
             if i < 32 {
                 print!("{:5}: 0x{:08x} ({:12})", reg_name, reg, *reg as i32);
             } else {

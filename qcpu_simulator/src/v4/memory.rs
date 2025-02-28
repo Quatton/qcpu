@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::BTreeMap, fmt::Display};
 
 use serde::Serialize;
 
@@ -15,11 +15,17 @@ pub struct MemoryV4 {
 #[derive(Debug, Clone, Copy)]
 pub struct CacheLine {
     tag: u8,
+    #[cfg(feature = "conflict_pair")]
+    pc: u32,
 }
 
 impl Default for CacheLine {
     fn default() -> Self {
-        Self { tag: u8::MAX }
+        Self {
+            tag: u8::MAX,
+            #[cfg(feature = "conflict_pair")]
+            pc: u32::MAX,
+        }
     }
 }
 
@@ -28,32 +34,32 @@ impl CacheLine {
         Self::default()
     }
 
-    //
-    // pub fn read(&mut self, addr: usize) -> Option<u32> {
-    //     let tag = (addr >> CACHE_LINE_BITS) as u8;
-    //     if self.valid && self.tag == tag {
-    //         Some(self.data)
-    //     } else {
-    //         None
-    //     }
-    // }
+    #[cfg(feature = "conflict_pair")]
+    pub fn replace(&mut self, addr: usize, pc: u32) -> (bool, u32) {
+        let tag = (addr >> CACHE_LINE_BITS) as u8;
+        let hit = self.tag == tag;
+        self.tag = tag;
+        let prev = self.pc;
+        self.pc = pc;
+        (hit, prev)
+    }
 
+    #[cfg(not(feature = "conflict_pair"))]
     pub fn replace(&mut self, addr: usize) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u8;
         let hit = self.tag == tag;
         self.tag = tag;
-        // self.data = val;
-        // self.valid = true;
         hit
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct CacheStat {
     pub hit: u64,
     pub read: u64,
     pub write: u64,
     pub write_hit: u64,
+    pub conflict_pair: BTreeMap<u32, u64>,
 }
 
 impl Display for CacheStat {
@@ -97,50 +103,83 @@ impl MemoryV4 {
         }
     }
 
-    pub fn read(&mut self, addr: usize) -> Result<(u32, bool), SimulatorV4HaltKind> {
-        if addr >= MEMORY_SIZE {
-            return Err(SimulatorV4HaltKind::MemoryAccess {
-                bound: MEMORY_SIZE,
-                index: addr,
-            });
-        }
-
-        let value = unsafe { *self.m.get_unchecked(addr) };
+    pub fn read(
+        &mut self,
+        addr: usize,
+        #[cfg(feature = "conflict_pair")] pc: u32,
+    ) -> Result<(u32, bool), SimulatorV4HaltKind> {
+        let value = *self.m.get(addr).ok_or(SimulatorV4HaltKind::MemoryAccess {
+            bound: MEMORY_SIZE,
+            index: addr,
+        })?;
 
         if !self.verbose {
             return Ok((value, false));
         }
 
-        // self.stat.read += 1;
         let idx = addr & CACHE_MASK;
         let entry = &mut self.cache[idx];
-        let hit = entry.replace(addr);
-        // self.stat.hit += hit as u64;
-        Ok((value, hit))
+
+        #[cfg(feature = "conflict_pair")]
+        {
+            let (hit, prev) = entry.replace(addr, pc);
+            if !prev != 0 {
+                let map_idx = if prev < pc {
+                    prev << 16 | pc
+                } else {
+                    pc << 16 | prev
+                };
+                *self.stat.conflict_pair.entry(map_idx).or_insert(0) += 1;
+            }
+            Ok((value, hit))
+        }
+
+        #[cfg(not(feature = "conflict_pair"))]
+        {
+            let hit = entry.replace(addr);
+            Ok((value, hit))
+        }
     }
 
-    pub fn write(&mut self, addr: usize, val: u32) -> Result<bool, SimulatorV4HaltKind> {
-        if addr >= MEMORY_SIZE {
-            return Err(SimulatorV4HaltKind::MemoryAccess {
+    pub fn write(
+        &mut self,
+        addr: usize,
+        val: u32,
+        #[cfg(feature = "conflict_pair")] pc: u32,
+    ) -> Result<bool, SimulatorV4HaltKind> {
+        *self
+            .m
+            .get_mut(addr)
+            .ok_or(SimulatorV4HaltKind::MemoryAccess {
                 bound: MEMORY_SIZE,
                 index: addr,
-            });
-        }
-
-        unsafe {
-            *self.m.get_unchecked_mut(addr) = val;
-        }
+            })? = val;
 
         if !self.verbose {
             return Ok(true);
         }
 
-        // self.stat.write += 1;
         let idx = addr & CACHE_MASK;
         let entry = &mut self.cache[idx];
-        let hit = entry.replace(addr);
-        // self.stat.non_miss_write_back += hit as u64;
-        Ok(hit)
+        #[cfg(feature = "conflict_pair")]
+        {
+            let (hit, prev) = entry.replace(addr, pc);
+            if !prev != 0 {
+                let map_idx = if prev < pc {
+                    prev << 16 | pc
+                } else {
+                    pc << 16 | prev
+                };
+                *self.stat.conflict_pair.entry(map_idx).or_insert(0) += 1;
+            }
+            Ok(hit)
+        }
+
+        #[cfg(not(feature = "conflict_pair"))]
+        {
+            let hit = entry.replace(addr);
+            Ok(hit)
+        }
     }
 }
 
