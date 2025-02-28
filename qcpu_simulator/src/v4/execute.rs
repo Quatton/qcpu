@@ -205,6 +205,81 @@ fn fsqrt(x: u32) -> u32 {
 fn fadd(x1: u32, x2: u32) -> u32 {
     #[cfg(feature = "fadd")]
     {
+        // // Stage 1: Extract components and compare magnitudes
+        // let s1 = (x1 >> 31) & 1;
+        // let e1 = (x1 >> 23) & 0xFF;
+        // let m1 = x1 & 0x7FFFFF; // 23 bits
+
+        // let s2 = (x2 >> 31) & 1;
+        // let e2 = (x2 >> 23) & 0xFF;
+        // let m2 = x2 & 0x7FFFFF; // 23 bits
+
+        // let x1_is_bigger = (x1 & 0x7FFFFFFF) > (x2 & 0x7FFFFFFF);
+        // let e_big = if x1_is_bigger { e1 } else { e2 };
+        // let e_small = if x1_is_bigger { e2 } else { e1 };
+
+        // // Stage 2: Align and add/subtract mantissas
+        // let ey1 = e_big + 1;
+        // let e_small_is_zero = e_small == 0;
+        // let shift = e_big.wrapping_sub(e_small) & 0xFF;
+
+        // let m_big = if x1_is_bigger {
+        //     (1 << 24) | (m1 << 1) // 2'b01 + mantissa + 1'b0
+        // } else {
+        //     (1 << 24) | (m2 << 1)
+        // };
+
+        // let m_small_prev = if x1_is_bigger {
+        //     (1 << 24) | (m2 << 1)
+        // } else {
+        //     (1 << 24) | (m1 << 1)
+        // };
+
+        // let m_small = m_small_prev.checked_shr(shift).unwrap_or(0);
+        // let s1_st2 = if x1_is_bigger { s1 } else { s2 };
+        // let s2_st2 = if x1_is_bigger { s2 } else { s1 };
+        // let my1 = if s1_st2 == s2_st2 {
+        //     m_big.wrapping_add(m_small)
+        // } else {
+        //     m_big.wrapping_sub(m_small)
+        // };
+
+        // // Stage 3: Normalize result
+        // let m_shift = if my1 == 0 {
+        //     26
+        // } else {
+        //     (my1.leading_zeros()).saturating_sub(6)
+        // };
+
+        // let my2_prev = my1 << m_shift;
+        // let my2 = (my2_prev >> 2) & 0x7FFFFF; // Extract 23 bits
+        // let ey2 = ey1.wrapping_sub(m_shift) & 0x3FF;
+
+        // let underflow = (e_big == 0) || (ey2 & 0x200 != 0) || (ey2 == 0) || (m_shift == 26);
+        // let overflow = (e_big == 255) || (ey2 & 0x100 != 0) || (ey2 == 255);
+
+        // // Stage 4: Final assembly
+        // let sy = if x1_is_bigger { s1 } else { s2 };
+        // let ey = if e_small_is_zero {
+        //     e_big
+        // } else if underflow {
+        //     0
+        // } else if overflow {
+        //     255
+        // } else {
+        //     ey2 & 0xFF
+        // };
+
+        // let my = if e_small_is_zero {
+        //     (m_big >> 1) & 0x7FFFFF
+        // } else if underflow || overflow {
+        //     0
+        // } else {
+        //     my2
+        // };
+
+        // (sy << 31) | (ey << 23) | my
+
         // Stage 1: Extract components and compare magnitudes
         let s1 = (x1 >> 31) & 1;
         let e1 = (x1 >> 23) & 0xFF;
@@ -215,30 +290,19 @@ fn fadd(x1: u32, x2: u32) -> u32 {
         let m2 = x2 & 0x7FFFFF; // 23 bits
 
         let x1_is_bigger = (x1 & 0x7FFFFFFF) > (x2 & 0x7FFFFFFF);
-        let e_big = if x1_is_bigger { e1 } else { e2 };
-        let e_small = if x1_is_bigger { e2 } else { e1 };
+        let (e_big, e_small, m_big, m_small_pre, s_big, s_small) = if x1_is_bigger {
+            (e1, e2, (1 << 24) | (m1 << 1), (1 << 24) | (m2 << 1), s1, s2)
+        } else {
+            (e2, e1, (1 << 24) | (m2 << 1), (1 << 24) | (m1 << 1), s2, s1)
+        };
 
         // Stage 2: Align and add/subtract mantissas
         let ey1 = e_big + 1;
         let e_small_is_zero = e_small == 0;
         let shift = e_big.wrapping_sub(e_small) & 0xFF;
+        let m_small = m_small_pre.checked_shr(shift).unwrap_or(0);
 
-        let m_big = if x1_is_bigger {
-            (1 << 24) | (m1 << 1) // 2'b01 + mantissa + 1'b0
-        } else {
-            (1 << 24) | (m2 << 1)
-        };
-
-        let m_small_prev = if x1_is_bigger {
-            (1 << 24) | (m2 << 1)
-        } else {
-            (1 << 24) | (m1 << 1)
-        };
-
-        let m_small = m_small_prev.checked_shr(shift).unwrap_or(0);
-        let s1_st2 = if x1_is_bigger { s1 } else { s2 };
-        let s2_st2 = if x1_is_bigger { s2 } else { s1 };
-        let my1 = if s1_st2 == s2_st2 {
+        let my1 = if s_big == s_small {
             m_big.wrapping_add(m_small)
         } else {
             m_big.wrapping_sub(m_small)
@@ -248,18 +312,17 @@ fn fadd(x1: u32, x2: u32) -> u32 {
         let m_shift = if my1 == 0 {
             26
         } else {
-            (my1.leading_zeros()).saturating_sub(6)
+            my1.leading_zeros().saturating_sub(6)
         };
 
-        let my2_prev = my1 << m_shift;
-        let my2 = (my2_prev >> 2) & 0x7FFFFF; // Extract 23 bits
+        let my2 = ((my1 << m_shift) >> 2) & 0x7FFFFF; // Shift and extract 23 bits
         let ey2 = ey1.wrapping_sub(m_shift) & 0x3FF;
 
-        let underflow = (e_big == 0) || (ey2 & 0x200 != 0) || (ey2 == 0) || (m_shift == 26);
-        let overflow = (e_big == 255) || (ey2 & 0x100 != 0) || (ey2 == 255);
+        let underflow = e_big == 0 || (ey2 & 0x200) != 0 || ey2 == 0 || m_shift == 26;
+        let overflow = e_big == 255 || (ey2 & 0x100) != 0 || ey2 == 255;
 
         // Stage 4: Final assembly
-        let sy = if x1_is_bigger { s1 } else { s2 };
+        let sy = s_big;
         let ey = if e_small_is_zero {
             e_big
         } else if underflow {
@@ -267,7 +330,7 @@ fn fadd(x1: u32, x2: u32) -> u32 {
         } else if overflow {
             255
         } else {
-            ey2 & 0xFF
+            ey2
         };
 
         let my = if e_small_is_zero {

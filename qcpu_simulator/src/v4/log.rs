@@ -4,11 +4,10 @@ use qcpu_syntax::ParsingContext;
 
 use crate::v4::syntax::get_reg_name;
 
-pub const CLOCK_MHZ: u64 = 122;
+pub const CLOCK_MHZ: u64 = 125;
 pub const CACHE_HIT_PENALTY: u64 = 2;
-pub const CACHE_MISS_PENALTY_PER_100: u64 = 45;
-pub const CACHE_MISS_PENALTY: u64 = 56;
-pub const INW_DELAY: u64 = 107;
+pub const CACHE_MISS_PENALTY: u64 = 57;
+pub const INW_DELAY: u64 = 105;
 
 use super::{
     syntax::{OpName, OpV4},
