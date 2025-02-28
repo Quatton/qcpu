@@ -45,6 +45,7 @@ impl CacheLine {
     }
 
     #[cfg(not(feature = "conflict_pair"))]
+    #[inline(always)]
     pub fn replace(&mut self, addr: usize) -> bool {
         let tag = (addr >> CACHE_LINE_BITS) as u8;
         let hit = self.tag == tag;
@@ -97,7 +98,12 @@ impl MemoryV4 {
     pub fn new(verbose: bool) -> Self {
         Self {
             m: vec![0; MEMORY_SIZE],
-            cache: vec![CacheLine::default(); CACHE_LINE],
+            cache: if verbose {
+                vec![CacheLine::default(); CACHE_LINE]
+            } else {
+                // Empty vector when not needed
+                Vec::new()
+            },
             stat: CacheStat::default(),
             verbose,
         }
@@ -108,17 +114,21 @@ impl MemoryV4 {
         addr: usize,
         #[cfg(feature = "conflict_pair")] pc: u32,
     ) -> Result<(u32, bool), SimulatorV4HaltKind> {
-        let value = *self.m.get(addr).ok_or(SimulatorV4HaltKind::MemoryAccess {
-            bound: MEMORY_SIZE,
-            index: addr,
-        })?;
+        if addr >= MEMORY_SIZE {
+            return Err(SimulatorV4HaltKind::MemoryAccess {
+                bound: MEMORY_SIZE,
+                index: addr,
+            });
+        }
+
+        let value = unsafe { *self.m.get_unchecked(addr) };
 
         if !self.verbose {
             return Ok((value, false));
         }
 
         let idx = addr & CACHE_MASK;
-        let entry = &mut self.cache[idx];
+        let entry = unsafe { self.cache.get_unchecked_mut(idx) };
 
         #[cfg(feature = "conflict_pair")]
         {
@@ -147,20 +157,21 @@ impl MemoryV4 {
         val: u32,
         #[cfg(feature = "conflict_pair")] pc: u32,
     ) -> Result<bool, SimulatorV4HaltKind> {
-        *self
-            .m
-            .get_mut(addr)
-            .ok_or(SimulatorV4HaltKind::MemoryAccess {
+        if addr >= MEMORY_SIZE {
+            return Err(SimulatorV4HaltKind::MemoryAccess {
                 bound: MEMORY_SIZE,
                 index: addr,
-            })? = val;
+            });
+        }
+
+        unsafe { *self.m.get_unchecked_mut(addr) = val };
 
         if !self.verbose {
             return Ok(true);
         }
 
         let idx = addr & CACHE_MASK;
-        let entry = &mut self.cache[idx];
+        let entry = &mut unsafe { self.cache.get_unchecked_mut(idx) };
         #[cfg(feature = "conflict_pair")]
         {
             let (hit, prev) = entry.replace(addr, pc);

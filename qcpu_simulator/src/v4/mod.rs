@@ -87,7 +87,11 @@ impl SimulatorV4Builder {
         SimulatorV4 {
             // program,
             input: input_reader,
-            per_instruction_stat: vec![Instat::default(); decoded_len],
+            per_instruction_stat: if self.verbose {
+                vec![Instat::default(); decoded_len]
+            } else {
+                Vec::new()
+            },
             output: output_writer,
             output_file: output,
             log_file: log,
@@ -115,31 +119,26 @@ pub struct Instat {
 
 #[derive(Debug)]
 pub struct SimulatorV4 {
-    // Vec and BufReader/BufWriter are pointer-sized (8 bytes)
-    // pub program: Vec<u32>,
-    pub instructions: Vec<OpV4>,
-    pub per_instruction_stat: Vec<Instat>,
-    // per instruction stat
-    pub input: BufReader<File>,
-    pub output: BufWriter<File>,
-    pub log: BufWriter<File>,
+    // Reorder fields for better cache locality - group frequently accessed fields together
+    pub pc: u32,         // Hot: accessed every iteration
+    pub next_pc: u32,    // Hot: accessed every iteration
+    pub reg: [u32; 64],  // Hot: frequently accessed
+    pub op: OpV4,        // Hot: used every iteration
+    pub cache_hit: bool, // Used in main loop
 
-    // Fixed-size array (256 bytes)
-    pub reg: [u32; 64],
-    // Memory and other larger structs
+    // Less frequently accessed fields
     pub memory: MemoryV4,
     pub bp: BranchPredictor,
     pub stat: Statistics,
+    pub instructions: Vec<OpV4>,
+    pub per_instruction_stat: Vec<Instat>,
+    pub input: BufReader<File>,
+    pub output: BufWriter<File>,
+    pub log: BufWriter<File>,
     pub output_file: PathBuf,
     pub log_file: PathBuf,
-    // usize (8 bytes)
-    pub pc: u32,
-    pub next_pc: u32,
     pub decoded_len: usize,
-    pub op: OpV4,
-    // bool (1 byte each, will be packed)
     pub verbose: bool,
-    pub cache_hit: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -156,17 +155,21 @@ pub enum SimulatorV4HaltKind {
 }
 
 impl SimulatorV4 {
+    #[inline(always)]
     pub fn get_reg(&self, reg: Reg) -> u32 {
-        *unsafe { self.reg.get_unchecked(reg as usize) }
+        unsafe { *self.reg.get_unchecked(reg as usize) }
     }
 
+    #[inline(always)]
     pub fn set_reg(&mut self, reg: Reg, val: u32) {
-        if reg == 0 {
-            return;
+        if reg as usize != 0 {
+            unsafe {
+                *self.reg.get_unchecked_mut(reg as usize) = val;
+            }
         }
-        *unsafe { self.reg.get_unchecked_mut(reg as usize) } = val;
     }
 
+    #[inline(always)]
     pub fn get_reg_mut(&mut self, reg: Reg) -> &mut u32 {
         unsafe { self.reg.get_unchecked_mut(reg as usize) }
     }
@@ -175,14 +178,15 @@ impl SimulatorV4 {
         loop {
             let index = (self.pc >> 2) as usize;
 
-            self.op = *self
-                .instructions
-                .get(index)
-                .ok_or_else(|| SimulatorV4HaltDetail {
+            if index >= self.decoded_len {
+                return Err(SimulatorV4HaltDetail {
                     op: self.op,
                     line: index - 1,
                     kind: SimulatorV4HaltKind::Complete,
-                })?;
+                });
+            }
+
+            self.op = unsafe { *self.instructions.get_unchecked(index) };
 
             self.next_pc = self.pc + 4;
 
@@ -193,21 +197,26 @@ impl SimulatorV4 {
             })?;
 
             if self.verbose {
-                let stat = unsafe { &mut self.per_instruction_stat.get_unchecked_mut(index) };
-                stat.call += 1;
-                match self.op.opname {
-                    OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
-                        self.bp
-                            .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
-                    }
-                    OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
-                        stat.hit += self.cache_hit as u64;
-                    }
-                    _ => {}
-                }
+                self.update_statistics(index);
             }
 
             self.pc = self.next_pc;
+        }
+    }
+
+    #[inline(always)]
+    fn update_statistics(&mut self, index: usize) {
+        let stat = unsafe { &mut self.per_instruction_stat.get_unchecked_mut(index) };
+        stat.call += 1;
+        match self.op.opname {
+            OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
+                self.bp
+                    .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
+            }
+            OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
+                stat.hit += self.cache_hit as u64;
+            }
+            _ => {}
         }
     }
 }

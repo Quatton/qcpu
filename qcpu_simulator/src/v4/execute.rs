@@ -6,16 +6,19 @@ pub type ExecuteResult = (usize, Option<u32>);
 
 type F32 = f32;
 
+#[inline(always)]
 fn f32_from(x: u32) -> F32 {
     F32::from_bits(x)
 }
 
 #[allow(dead_code)]
+#[inline(always)]
 fn f32_to(x: F32) -> u32 {
     F32::to_bits(x)
 }
 
 #[allow(dead_code)]
+#[inline(always)]
 fn finv(x: u32) -> u32 {
     // Stage 1
     let index = (x >> 13) & 0x3FF; // 10 bits [22:13]
@@ -39,6 +42,7 @@ fn finv(x: u32) -> u32 {
     (b_st3.wrapping_sub(ad2_st3)) & 0x7FFFFF
 }
 
+#[inline(always)]
 fn fdiv(x1: u32, x2: u32) -> u32 {
     #[cfg(feature = "fdiv")]
     {
@@ -140,6 +144,7 @@ fn fdiv(x1: u32, x2: u32) -> u32 {
     }
 }
 
+#[inline(always)]
 fn fsqrt(x: u32) -> u32 {
     #[cfg(feature = "fsqrt")]
     {
@@ -199,6 +204,7 @@ fn fsqrt(x: u32) -> u32 {
     }
 }
 
+#[inline(always)]
 fn fadd(x1: u32, x2: u32) -> u32 {
     #[cfg(feature = "fadd")]
     {
@@ -345,11 +351,13 @@ fn fadd(x1: u32, x2: u32) -> u32 {
     f32_to(f32_from(x1) + f32_from(x2))
 }
 
+#[inline(always)]
 fn fsub(x1: u32, x2: u32) -> u32 {
     let minus_x2 = (!x2 & 0x80000000) | (x2 & 0x7FFFFFFF);
     fadd(x1, minus_x2)
 }
 
+#[inline(always)]
 fn ftoi(x: u32) -> u32 {
     #[cfg(feature = "ftoi")]
     {
@@ -386,6 +394,7 @@ fn ftoi(x: u32) -> u32 {
     }
 }
 
+#[inline(always)]
 fn itof(x: u32) -> u32 {
     #[cfg(feature = "itof")]
     {
@@ -419,6 +428,7 @@ fn itof(x: u32) -> u32 {
     f32_to(x as i32 as F32)
 }
 
+#[inline(always)]
 fn fmul(x1: u32, x2: u32) -> u32 {
     #[cfg(feature = "fmul")]
     {
@@ -476,22 +486,23 @@ fn fmul(x1: u32, x2: u32) -> u32 {
 }
 
 impl SimulatorV4 {
+    #[inline(always)]
     fn exec_add(&mut self) {
         self.set_reg(
             self.op.rd,
-            (self.get_reg(self.op.rs1) as i32).wrapping_add(self.get_reg(self.op.rs2) as i32)
-                as u32,
+            (self.get_reg(self.op.rs1)).wrapping_add(self.get_reg(self.op.rs2)),
         );
     }
 
+    #[inline(always)]
     fn exec_sub(&mut self) {
         self.set_reg(
             self.op.rd,
-            (self.get_reg(self.op.rs1) as i32).wrapping_sub(self.get_reg(self.op.rs2) as i32)
-                as u32,
+            (self.get_reg(self.op.rs1)).wrapping_sub(self.get_reg(self.op.rs2)),
         );
     }
 
+    #[inline(always)]
     fn exec_sll(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -499,6 +510,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_srl(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -506,6 +518,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_xor(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -513,6 +526,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_and(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -520,6 +534,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_or(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -527,61 +542,70 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_addi(&mut self) {
         self.set_reg(
             self.op.rd,
-            (self.get_reg(self.op.rs1) as i32).wrapping_add(self.op.imm as i32) as u32,
+            (self.get_reg(self.op.rs1)).wrapping_add(self.op.imm),
         );
     }
 
+    #[inline(always)]
     fn exec_slli(&mut self) {
         self.set_reg(self.op.rd, self.get_reg(self.op.rs1) << self.op.imm);
     }
 
+    #[inline(always)]
     fn exec_srli(&mut self) {
         self.set_reg(self.op.rd, self.get_reg(self.op.rs1) >> self.op.imm);
     }
 
+    #[inline(always)]
     fn exec_beq(&mut self) {
         if self.get_reg(self.op.rs1) == self.get_reg(self.op.rs2) {
             self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
+    #[inline(always)]
     fn exec_bge(&mut self) {
         if (self.get_reg(self.op.rs1) as i32) >= (self.get_reg(self.op.rs2) as i32) {
             self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
+    #[inline(always)]
     fn exec_blt(&mut self) {
         if (self.get_reg(self.op.rs1) as i32) < (self.get_reg(self.op.rs2) as i32) {
             self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
+    #[inline(always)]
     fn exec_bne(&mut self) {
         if self.get_reg(self.op.rs1) != self.get_reg(self.op.rs2) {
             self.next_pc = self.pc.wrapping_add(self.op.imm);
         }
     }
 
+    #[inline(always)]
     fn exec_jal(&mut self) {
-        self.set_reg(self.op.rd, self.pc + 4);
-
+        self.set_reg(self.op.rd, self.next_pc);
         self.next_pc = self.pc.wrapping_add(self.op.imm);
     }
 
+    #[inline(always)]
     fn exec_jalr(&mut self) {
-        self.set_reg(self.op.rd, self.pc + 4);
-
+        self.set_reg(self.op.rd, self.next_pc);
         self.next_pc = self.get_reg(self.op.rs1).wrapping_add(self.op.imm);
     }
 
+    #[inline(always)]
     fn exec_lui(&mut self) {
         self.set_reg(self.op.rd, self.op.imm);
     }
 
+    #[inline(always)]
     fn exec_fadd(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -589,6 +613,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_fsub(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -596,6 +621,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_fmul(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -603,16 +629,15 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_fdiv(&mut self) {
-        // let rs1f = f32_from(self.get_reg(self.op.rs1));
-        // let rs2f = f32_from(self.get_reg(self.op.rs2));
-        // self.set_reg(self.op.rd, f32_to(rs1f / rs2f));
         self.set_reg(
             self.op.rd,
             fdiv(self.get_reg(self.op.rs1), self.get_reg(self.op.rs2)),
         );
     }
 
+    #[inline(always)]
     fn exec_fsgnj(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -620,6 +645,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_fsgnjn(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -627,6 +653,7 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_fsgnjx(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -634,36 +661,43 @@ impl SimulatorV4 {
         );
     }
 
+    #[inline(always)]
     fn exec_ftoi(&mut self) {
         self.set_reg(self.op.rd, ftoi(self.get_reg(self.op.rs1)));
     }
 
+    #[inline(always)]
     fn exec_fitof(&mut self) {
         self.set_reg(self.op.rd, itof(self.get_reg(self.op.rs1)));
     }
 
+    #[inline(always)]
     fn exec_feq(&mut self) {
         let rs1f = f32_from(self.get_reg(self.op.rs1));
         let rs2f = f32_from(self.get_reg(self.op.rs2));
         self.set_reg(self.op.rd, if rs1f == rs2f { 1 } else { 0 });
     }
 
+    #[inline(always)]
     fn exec_flt(&mut self) {
         let rs1f = f32_from(self.get_reg(self.op.rs1));
         let rs2f = f32_from(self.get_reg(self.op.rs2));
         self.set_reg(self.op.rd, if rs1f < rs2f { 1 } else { 0 });
     }
 
+    #[inline(always)]
     fn exec_fle(&mut self) {
         let rs1f = f32_from(self.get_reg(self.op.rs1));
         let rs2f = f32_from(self.get_reg(self.op.rs2));
         self.set_reg(self.op.rd, if rs1f <= rs2f { 1 } else { 0 });
     }
 
+    #[inline(always)]
     fn exec_fsqrt(&mut self) {
         self.set_reg(self.op.rd, fsqrt(self.get_reg(self.op.rs1)));
     }
 
+    #[inline(always)]
     fn exec_lw(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
         let (val, hit) = self.memory.read(
@@ -677,6 +711,7 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[inline(always)]
     fn exec_lwr(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self
             .get_reg(self.op.rs1)
@@ -693,6 +728,7 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[inline(always)]
     fn exec_lwi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let (val, hit) = self.memory.read(
@@ -707,6 +743,7 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[inline(always)]
     fn exec_sw(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
         let hit = self.memory.write(
@@ -721,6 +758,7 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[inline(always)]
     fn exec_swi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let hit = self.memory.write(
@@ -735,17 +773,20 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[inline(always)]
     fn exec_outb(&mut self) {
         let val = self.get_reg(self.op.rs2);
         self.output.write_all(&[(val & 0xff) as u8]).unwrap();
     }
 
+    #[inline(always)]
     fn exec_inw(&mut self) {
         let mut buf = [0; 4];
         self.input.read_exact(&mut buf).unwrap();
         self.set_reg(self.op.rd, u32::from_le_bytes(buf));
     }
 
+    #[inline(always)]
     pub fn execute(&mut self) -> Result<(), SimulatorV4HaltKind> {
         self.cache_hit = false;
         match self.op.opname {
@@ -800,6 +841,7 @@ mod test {
     use rayon::prelude::*;
 
     #[test]
+    #[inline(always)]
     fn test_fsqrt() {
         let start = time::Instant::now();
 
@@ -841,6 +883,7 @@ mod test {
     }
 
     #[test]
+    #[inline(always)]
     fn test_ftoi() {
         let start = time::Instant::now();
 
@@ -874,6 +917,7 @@ mod test {
     }
 
     #[test]
+    #[inline(always)]
     fn test_itof() {
         let start = time::Instant::now();
         (0..(1 << 10)).into_par_iter().for_each(|x| {
@@ -888,6 +932,7 @@ mod test {
     }
 
     #[test]
+    #[inline(always)]
     fn test_fadd() {
         let start = time::Instant::now();
 
