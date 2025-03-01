@@ -65,7 +65,7 @@ pub struct CacheStat {
 
 impl Display for CacheStat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{} lines direct-mapped cache", CACHE_LINE)?;
+        writeln!(f, "{} lines x 4 words direct-mapped cache", CACHE_LINE >> 2)?;
         writeln!(
             f,
             "Read: {}, Hit: {} ({:.02}%), Miss: {} ({:.02}%)",
@@ -89,7 +89,7 @@ impl Display for CacheStat {
     }
 }
 
-pub const CACHE_LINE_BITS: usize = 14;
+pub const CACHE_LINE_BITS: usize = 16;
 pub const CACHE_LINE: usize = 1 << CACHE_LINE_BITS;
 pub const MEMORY_SIZE: usize = 1 << 19;
 pub const CACHE_MASK: usize = CACHE_LINE - 1;

@@ -1,0 +1,9 @@
+li a0, 16384
+li a1, 65536
+lw t0, 0(zero)
+lw t0, 0(zero)
+lw t0, 0(a0)
+lw t0, 0(a0)
+lw t0, 0(zero)
+lw t0, 0(a1)
+lw t0, 0(zero)
