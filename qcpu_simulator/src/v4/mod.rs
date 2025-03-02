@@ -113,8 +113,9 @@ impl SimulatorV4Builder {
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct Instat {
-    pub hit: u64,
-    pub call: u64,
+    pub hit: u32,
+    pub call: u32,
+    pub prev_ma: u32,
 }
 
 #[derive(Debug)]
@@ -187,6 +188,16 @@ impl SimulatorV4 {
                 });
             }
 
+            if self.verbose
+                && matches!(
+                    self.op.opname,
+                    OpName::Lwi | OpName::Lwr | OpName::Lw | OpName::Sw | OpName::Swi | OpName::Inw
+                )
+            {
+                let stat = unsafe { self.per_instruction_stat.get_unchecked_mut(index) };
+                stat.prev_ma += 1;
+            }
+
             self.op = unsafe { *self.instructions.get_unchecked(index) };
 
             self.next_pc = self.pc + 4;
@@ -207,7 +218,7 @@ impl SimulatorV4 {
 
     #[inline(always)]
     fn update_statistics(&mut self, index: usize) {
-        let stat = unsafe { &mut self.per_instruction_stat.get_unchecked_mut(index) };
+        let stat = unsafe { self.per_instruction_stat.get_unchecked_mut(index) };
         stat.call += 1;
         match self.op.opname {
             OpName::Jalr | OpName::Beq | OpName::Bne | OpName::Blt | OpName::Bge => {
@@ -215,7 +226,7 @@ impl SimulatorV4 {
                     .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
             }
             OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
-                stat.hit += self.cache_hit as u64;
+                stat.hit += self.cache_hit as u32;
             }
             _ => {}
         }

@@ -36,7 +36,7 @@ impl CacheLine {
 
     #[cfg(feature = "conflict_pair")]
     pub fn replace(&mut self, addr: usize, pc: u32) -> (bool, u32) {
-        let tag = (addr >> CACHE_LINE_BITS) as u8;
+        let tag = (addr >> CACHE_LINE_BITS >> 2) as u8;
         let hit = self.tag == tag;
         self.tag = tag;
         let prev = self.pc;
