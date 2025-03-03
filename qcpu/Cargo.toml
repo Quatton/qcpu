@@ -15,7 +15,7 @@ serde_json.workspace = true
 serde.workspace = true
 
 [features]
-default = []
+default = ["full_ops", "fpu"]
 fast = [
   # "qcpu_simulator/fdiv",
   # "qcpu_simulator/fsqrt",
@@ -40,3 +40,4 @@ itof = ["qcpu_simulator/itof"]
 debug = ["qcpu_simulator/debug"]
 conflict_pair = ["qcpu_simulator/conflict_pair"]
 safe = ["qcpu_simulator/safe"]
+full_ops = ["qcpu_simulator/full_ops"]

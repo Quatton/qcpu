@@ -187,15 +187,31 @@ impl SimulatorV4 {
                     kind: SimulatorV4HaltKind::Complete,
                 });
             }
+            #[cfg(feature = "full_ops")]
+            if self.verbose {
+                match self.op.opname {
+                    OpName::Lwr
+                    | OpName::Lw
+                    | OpName::Sw
+                    | OpName::Inw
+                    | OpName::Swi
+                    | OpName::Lwi => {
+                        let stat = unsafe { self.per_instruction_stat.get_unchecked_mut(index) };
+                        stat.prev_ma += 1;
+                    }
+                    _ => {}
+                }
+            }
 
-            if self.verbose
-                && matches!(
-                    self.op.opname,
-                    OpName::Lwi | OpName::Lwr | OpName::Lw | OpName::Sw | OpName::Swi | OpName::Inw
-                )
-            {
-                let stat = unsafe { self.per_instruction_stat.get_unchecked_mut(index) };
-                stat.prev_ma += 1;
+            #[cfg(not(feature = "full_ops"))]
+            if self.verbose {
+                match self.op.opname {
+                    OpName::Lwr | OpName::Lw | OpName::Sw | OpName::Inw => {
+                        let stat = unsafe { self.per_instruction_stat.get_unchecked_mut(index) };
+                        stat.prev_ma += 1;
+                    }
+                    _ => {}
+                }
             }
 
             self.op = unsafe { *self.instructions.get_unchecked(index) };
@@ -228,7 +244,12 @@ impl SimulatorV4 {
                 self.bp
                     .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
             }
+            #[cfg(feature = "full_ops")]
             OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
+                stat.hit += self.cache_hit as u64;
+            }
+            #[cfg(not(feature = "full_ops"))]
+            OpName::Lw | OpName::Lwr | OpName::Sw => {
                 stat.hit += self.cache_hit as u64;
             }
             _ => {}

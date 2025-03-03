@@ -522,6 +522,7 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(feature = "full_ops")]
     fn exec_xor(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -530,6 +531,7 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(feature = "full_ops")]
     fn exec_and(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -538,6 +540,7 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(feature = "full_ops")]
     fn exec_or(&mut self) {
         self.set_reg(
             self.op.rd,
@@ -759,6 +762,7 @@ impl SimulatorV4 {
 
     #[inline(always)]
     #[cfg(feature = "safe")]
+    #[cfg(feature = "full_ops")]
     fn exec_lwi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let (val, hit) = self.memory.read(
@@ -777,6 +781,7 @@ impl SimulatorV4 {
 
     #[inline(always)]
     #[cfg(not(feature = "safe"))]
+    #[cfg(feature = "full_ops")]
     fn exec_lwi(&mut self) {
         let addr = self.op.imm as usize;
         let (val, hit) = self.memory.read(addr);
@@ -812,6 +817,7 @@ impl SimulatorV4 {
 
     #[inline(always)]
     #[cfg(feature = "safe")]
+    #[cfg(feature = "full_ops")]
     fn exec_swi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let hit = self.memory.write(
@@ -830,6 +836,7 @@ impl SimulatorV4 {
 
     #[inline(always)]
     #[cfg(not(feature = "safe"))]
+    #[cfg(feature = "full_ops")]
     fn exec_swi(&mut self) {
         let addr = self.op.imm as usize;
         let hit = self.memory.write(addr, self.get_reg(self.op.rs2));
@@ -857,8 +864,11 @@ impl SimulatorV4 {
             OpName::Sub => self.exec_sub(),
             OpName::Sll => self.exec_sll(),
             OpName::Srl => self.exec_srl(),
+            #[cfg(feature = "full_ops")]
             OpName::Xor => self.exec_xor(),
+            #[cfg(feature = "full_ops")]
             OpName::And => self.exec_and(),
+            #[cfg(feature = "full_ops")]
             OpName::Or => self.exec_or(),
             OpName::Addi => self.exec_addi(),
             OpName::Slli => self.exec_slli(),
@@ -885,8 +895,10 @@ impl SimulatorV4 {
             OpName::Fsqrt => self.exec_fsqrt(),
             OpName::Lw => self.exec_lw()?,
             OpName::Lwr => self.exec_lwr()?,
+            #[cfg(feature = "full_ops")]
             OpName::Lwi => self.exec_lwi()?,
             OpName::Sw => self.exec_sw()?,
+            #[cfg(feature = "full_ops")]
             OpName::Swi => self.exec_swi()?,
             OpName::Outb => self.exec_outb(),
             OpName::Inw => self.exec_inw(),
@@ -904,8 +916,11 @@ impl SimulatorV4 {
             OpName::Sub => self.exec_sub(),
             OpName::Sll => self.exec_sll(),
             OpName::Srl => self.exec_srl(),
+            #[cfg(feature = "full_ops")]
             OpName::Xor => self.exec_xor(),
+            #[cfg(feature = "full_ops")]
             OpName::And => self.exec_and(),
+            #[cfg(feature = "full_ops")]
             OpName::Or => self.exec_or(),
             OpName::Addi => self.exec_addi(),
             OpName::Slli => self.exec_slli(),
@@ -932,8 +947,10 @@ impl SimulatorV4 {
             OpName::Fsqrt => self.exec_fsqrt(),
             OpName::Lw => self.exec_lw(),
             OpName::Lwr => self.exec_lwr(),
+            #[cfg(feature = "full_ops")]
             OpName::Lwi => self.exec_lwi(),
             OpName::Sw => self.exec_sw(),
+            #[cfg(feature = "full_ops")]
             OpName::Swi => self.exec_swi(),
             OpName::Outb => self.exec_outb(),
             OpName::Inw => self.exec_inw(),

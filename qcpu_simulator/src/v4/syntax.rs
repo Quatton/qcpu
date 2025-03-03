@@ -89,7 +89,9 @@ pub enum OpCode {
     O = 0b1010,
     F = 0b1011,
     LR = 0b1100,
+    #[cfg(feature = "full_ops")]
     LU = 0b1101,
+    #[cfg(feature = "full_ops")]
     SU = 0b0111,
 }
 
@@ -97,7 +99,9 @@ pub const R_CODE: u32 = OpCode::R as u32;
 pub const I_CODE: u32 = OpCode::I as u32;
 pub const L_CODE: u32 = OpCode::L as u32;
 pub const LR_CODE: u32 = OpCode::LR as u32;
+#[cfg(feature = "full_ops")]
 pub const LU_CODE: u32 = OpCode::LU as u32;
+#[cfg(feature = "full_ops")]
 pub const SU_CODE: u32 = OpCode::SU as u32;
 pub const S_CODE: u32 = OpCode::S as u32;
 pub const B_CODE: u32 = OpCode::B as u32;
@@ -111,8 +115,11 @@ pub const F_CODE: u32 = OpCode::F as u32;
 pub const ADDSUB_FUNC3: u32 = 0b000;
 pub const SLL_FUNC3: u32 = 0b001;
 pub const SRL_FUNC3: u32 = 0b101;
+#[cfg(feature = "full_ops")]
 pub const XOR_FUNC3: u32 = 0b100;
+#[cfg(feature = "full_ops")]
 pub const OR_FUNC3: u32 = 0b110;
+#[cfg(feature = "full_ops")]
 pub const AND_FUNC3: u32 = 0b111;
 
 pub const ADDI_FUNC3: u32 = 0b000;
@@ -153,8 +160,12 @@ pub enum OpName {
     Sub,
     Sll,
     Srl,
+
+    #[cfg(feature = "full_ops")]
     Xor,
+    #[cfg(feature = "full_ops")]
     Or,
+    #[cfg(feature = "full_ops")]
     And,
 
     Addi,
@@ -163,8 +174,10 @@ pub enum OpName {
 
     Lw,
     Lwr,
+    #[cfg(feature = "full_ops")]
     Lwi,
     Sw,
+    #[cfg(feature = "full_ops")]
     Swi,
 
     Beq,
@@ -206,8 +219,11 @@ impl Display for OpName {
             OpName::Sub => write!(f, "sub"),
             OpName::Sll => write!(f, "sll"),
             OpName::Srl => write!(f, "srl"),
+            #[cfg(feature = "full_ops")]
             OpName::Xor => write!(f, "xor"),
+            #[cfg(feature = "full_ops")]
             OpName::Or => write!(f, "or"),
+            #[cfg(feature = "full_ops")]
             OpName::And => write!(f, "and"),
 
             OpName::Addi => write!(f, "addi"),
@@ -216,8 +232,10 @@ impl Display for OpName {
 
             OpName::Lw => write!(f, "lw"),
             OpName::Lwr => write!(f, "lwr"),
+            #[cfg(feature = "full_ops")]
             OpName::Lwi => write!(f, "lwi"),
             OpName::Sw => write!(f, "sw"),
+            #[cfg(feature = "full_ops")]
             OpName::Swi => write!(f, "swi"),
 
             OpName::Beq => write!(f, "beq"),

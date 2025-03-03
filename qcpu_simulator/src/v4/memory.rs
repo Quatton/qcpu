@@ -156,6 +156,9 @@ impl MemoryV4 {
     #[cfg(not(feature = "safe"))]
     pub fn read(&mut self, addr: usize) -> (u32, bool) {
         let value = unsafe { *self.m.get_unchecked(addr) };
+        if !self.verbose {
+            return (value, false);
+        }
         let hit = unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr);
         (value, hit)
     }
@@ -206,6 +209,9 @@ impl MemoryV4 {
     #[cfg(not(feature = "safe"))]
     pub fn write(&mut self, addr: usize, val: u32) -> bool {
         unsafe { *self.m.get_unchecked_mut(addr) = val };
+        if !self.verbose {
+            return true;
+        }
         unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr)
     }
 }

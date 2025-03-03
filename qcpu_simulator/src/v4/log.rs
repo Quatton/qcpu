@@ -43,7 +43,18 @@ impl SimulatorV4 {
             .zip(self.instructions.iter())
             .enumerate()
             .filter_map(|(i, (s, op))| match op.opname {
+                #[cfg(feature = "full_ops")]
                 OpName::Lwi | OpName::Lwr | OpName::Lw => {
+                    if s.call > 0 && s.hit < s.call {
+                        let miss = s.call - s.hit;
+                        let miss_rate = miss as f64 / s.call as f64;
+                        Some((i, s, miss, miss_rate))
+                    } else {
+                        None
+                    }
+                }
+                #[cfg(not(feature = "full_ops"))]
+                OpName::Lwr | OpName::Lw => {
                     if s.call > 0 && s.hit < s.call {
                         let miss = s.call - s.hit;
                         let miss_rate = miss as f64 / s.call as f64;
@@ -172,6 +183,7 @@ impl SimulatorV4 {
                         };
 
                     (match prev_op.opname {
+                        #[cfg(feature = "full_ops")]
                         OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
                             if hazard {
                                 prev_stat.hit * (CACHE_HIT_PENALTY + delay)
@@ -182,6 +194,18 @@ impl SimulatorV4 {
                                     + (prev_stat.call - prev_stat.hit) * CACHE_MISS_PENALTY
                             }
                         }
+                        #[cfg(not(feature = "full_ops"))]
+                        OpName::Lw | OpName::Lwr | OpName::Sw => {
+                            if hazard {
+                                prev_stat.hit * (CACHE_HIT_PENALTY + delay)
+                                    + (prev_stat.call - prev_stat.hit)
+                                        * (CACHE_MISS_PENALTY + delay)
+                            } else {
+                                prev_stat.hit * delay.max(CACHE_HIT_PENALTY)
+                                    + (prev_stat.call - prev_stat.hit) * CACHE_MISS_PENALTY
+                            }
+                        }
+
                         OpName::Inw => {
                             if hazard {
                                 prev_stat.call * (INW_DELAY + delay)
@@ -197,11 +221,23 @@ impl SimulatorV4 {
             };
 
             match op.opname {
+                #[cfg(feature = "full_ops")]
                 OpName::Lw | OpName::Lwr | OpName::Lwi => {
                     self.memory.stat.read += stat.call;
                     self.memory.stat.hit += stat.hit;
                 }
+                #[cfg(not(feature = "full_ops"))]
+                OpName::Lw | OpName::Lwr => {
+                    self.memory.stat.read += stat.call;
+                    self.memory.stat.hit += stat.hit;
+                }
+                #[cfg(feature = "full_ops")]
                 OpName::Sw | OpName::Swi => {
+                    self.memory.stat.write += stat.call;
+                    self.memory.stat.write_hit += stat.hit;
+                }
+                #[cfg(not(feature = "full_ops"))]
+                OpName::Sw => {
                     self.memory.stat.write += stat.call;
                     self.memory.stat.write_hit += stat.hit;
                 }

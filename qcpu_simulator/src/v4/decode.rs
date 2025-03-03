@@ -17,7 +17,9 @@ pub fn decode(mc: u32) -> OpV4 {
         super::syntax::O_CODE => OpCode::O,
         super::syntax::F_CODE => OpCode::F,
         super::syntax::LR_CODE => OpCode::LR,
+        #[cfg(feature = "full_ops")]
         super::syntax::LU_CODE => OpCode::LU,
+        #[cfg(feature = "full_ops")]
         super::syntax::SU_CODE => OpCode::SU,
         opcode => unimplemented!("Not supported for {opcode:04b}"),
     };
@@ -31,11 +33,14 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::U
         | OpCode::I
         | OpCode::N
-        | OpCode::L
         | OpCode::LR
-        | OpCode::LU
+        | OpCode::L
         | OpCode::A => bits[4..10].load::<Reg>(),
-        OpCode::B | OpCode::O | OpCode::SU | OpCode::S => 0,
+        OpCode::B | OpCode::O | OpCode::S => 0,
+        #[cfg(feature = "full_ops")]
+        OpCode::LU => bits[4..10].load::<Reg>(),
+        #[cfg(feature = "full_ops")]
+        OpCode::SU => 0,
     };
 
     let rs1 = match opcode {
@@ -47,14 +52,20 @@ pub fn decode(mc: u32) -> OpV4 {
         | OpCode::L
         | OpCode::LR
         | OpCode::A => bits[13..19].load::<Reg>(),
-        OpCode::J | OpCode::N | OpCode::O | OpCode::SU | OpCode::LU | OpCode::U => 0,
+        OpCode::J | OpCode::N | OpCode::O | OpCode::U => 0,
+        #[cfg(feature = "full_ops")]
+        OpCode::SU | OpCode::LU => 0,
     };
 
     let rs2 = match opcode {
-        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O | OpCode::LR | OpCode::SU => {
+        OpCode::R | OpCode::F | OpCode::S | OpCode::B | OpCode::O | OpCode::LR => {
             bits[19..25].load::<Reg>()
         }
-        OpCode::I | OpCode::A | OpCode::U | OpCode::J | OpCode::N | OpCode::L | OpCode::LU => 0,
+        OpCode::I | OpCode::A | OpCode::U | OpCode::J | OpCode::N | OpCode::L => 0,
+        #[cfg(feature = "full_ops")]
+        OpCode::LU => 0,
+        #[cfg(feature = "full_ops")]
+        OpCode::SU => bits[19..25].load::<Reg>(),
     };
 
     let funct3 = bits[10..13].load::<u32>();
@@ -76,15 +87,20 @@ pub fn decode(mc: u32) -> OpV4 {
             }
             super::syntax::SLL_FUNC3 => OpName::Sll,
             super::syntax::SRL_FUNC3 => OpName::Srl,
+            #[cfg(feature = "full_ops")]
             super::syntax::XOR_FUNC3 => OpName::Xor,
+            #[cfg(feature = "full_ops")]
             super::syntax::OR_FUNC3 => OpName::Or,
+            #[cfg(feature = "full_ops")]
             super::syntax::AND_FUNC3 => OpName::And,
             _ => unimplemented!("{funct3} not supported for {opcode:?} {mc:032b}"),
         },
         OpCode::L => super::syntax::OpName::Lw,
         OpCode::S => super::syntax::OpName::Sw,
         OpCode::LR => super::syntax::OpName::Lwr,
+        #[cfg(feature = "full_ops")]
         OpCode::LU => super::syntax::OpName::Lwi,
+        #[cfg(feature = "full_ops")]
         OpCode::SU => super::syntax::OpName::Swi,
         OpCode::B => match funct3 {
             super::syntax::BEQ_FUNC3 => OpName::Beq,
@@ -158,9 +174,11 @@ pub fn decode(mc: u32) -> OpV4 {
         OpCode::U => {
             imm = bits[10..30].load::<u32>() << 12;
         }
+        #[cfg(feature = "full_ops")]
         OpCode::LU => {
             imm = bits[10..31].load::<u32>();
         }
+        #[cfg(feature = "full_ops")]
         OpCode::SU => {
             imm = bits[4..=18].load::<u32>() | bits[25..31].load::<u32>() << 15;
         }
