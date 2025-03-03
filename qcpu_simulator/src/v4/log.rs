@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, io::Write as _, time::Duration};
+use std::{io::Write as _, time::Duration};
+
+#[cfg(feature = "conflict_pair")]
+use std::collections::BTreeMap;
 
 use qcpu_syntax::ParsingContext;
 
@@ -6,8 +9,9 @@ use crate::v4::syntax::{get_reg_name, Reg};
 
 pub const CLOCK_MHZ: u64 = 125;
 pub const CACHE_HIT_PENALTY: u64 = 2;
-pub const CACHE_MISS_PENALTY: u64 = 67;
+pub const CACHE_MISS_PENALTY: u64 = 72;
 pub const INW_DELAY: u64 = 107 * 4 * 10;
+pub const FIRST_MISS_PENALTY: u64 = 2730;
 
 use super::{
     syntax::{OpName, OpV4},
@@ -113,6 +117,7 @@ impl SimulatorV4 {
         Ok(())
     }
 
+    #[cfg(feature = "conflict_pair")]
     pub fn process_memory_conflict_pc(
         &mut self,
         ctx: Option<&ParsingContext>,
@@ -171,12 +176,8 @@ impl SimulatorV4 {
         {
             self.stat.instr_count += stat.call;
             let delay = get_delay(op.opname);
-            let hazard = if (op.rs1 == prev_op.rd || op.rs2 == prev_op.rd) && prev_op.rd != 0 {
-                self.stat.hazard_count += prev_stat.call;
-                true
-            } else {
-                false
-            };
+            self.stat.fpu_stall += (delay - 1) * stat.call;
+            let hazard = (op.rs1 == prev_op.rd || op.rs2 == prev_op.rd) && prev_op.rd != 0;
 
             self.stat.cycle_count += {
                 if stat.prev_ma > 0 {
@@ -184,6 +185,7 @@ impl SimulatorV4 {
                         #[cfg(feature = "full_ops")]
                         OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
                             if hazard {
+                                self.stat.hazard_count += prev_stat.call;
                                 prev_stat.hit * (CACHE_HIT_PENALTY + delay)
                                     + (prev_stat.call - prev_stat.hit)
                                         * (CACHE_MISS_PENALTY + delay)
@@ -195,6 +197,7 @@ impl SimulatorV4 {
                         #[cfg(not(feature = "full_ops"))]
                         OpName::Lw | OpName::Lwr | OpName::Sw => {
                             if hazard {
+                                self.stat.hazard_count += prev_stat.call;
                                 prev_stat.hit * (CACHE_HIT_PENALTY + delay)
                                     + (prev_stat.call - prev_stat.hit)
                                         * (CACHE_MISS_PENALTY + delay)
@@ -212,8 +215,13 @@ impl SimulatorV4 {
                             }
                         }
                         _ => unreachable!(),
-                    }) + (stat.call - stat.prev_ma) * (delay.max(CACHE_HIT_PENALTY) + 1)
+                    }) + {
+                        let count = stat.call - stat.prev_ma;
+                        self.stat.forwarding_stall += count;
+                        count * (delay.max(CACHE_HIT_PENALTY) + 1)
+                    }
                 } else {
+                    self.stat.forwarding_stall += stat.call;
                     stat.call * (delay.max(CACHE_HIT_PENALTY) + 1)
                 }
             };
@@ -246,6 +254,7 @@ impl SimulatorV4 {
             prev_stat = stat;
         }
 
+        self.stat.cycle_count += FIRST_MISS_PENALTY * self.memory.stat.first_miss;
         self.stat.cycle_count += (self.bp.flush_count_branch + self.bp.flush_count_jalr) as u64 * 2;
     }
 
@@ -280,16 +289,18 @@ impl SimulatorV4 {
         let cache_miss = self.memory.stat.read - self.memory.stat.hit;
         let cache_write_miss = self.memory.stat.write - self.memory.stat.write_hit;
 
-        let [total_time, hazard_time, cache_miss_time, cache_write_miss_time, jalr_flush_time, branch_flush_time] =
+        let [total_time, hazard_time, cache_miss_time, cache_write_miss_time, jalr_flush_time, branch_flush_time, cache_first_miss_time] =
             [
                 self.stat.cycle_count as f64 / clock,
-                self.stat.hazard_count as f64 * cache_miss as f64 / self.memory.stat.read as f64
+                self.stat.hazard_count as f64 * self.memory.stat.hit as f64
+                    / self.memory.stat.read as f64
                     * 2.0
                     / clock,
                 cache_miss as f64 * CACHE_MISS_PENALTY as f64 / clock,
                 cache_write_miss as f64 * CACHE_MISS_PENALTY as f64 / clock,
                 self.bp.flush_count_jalr as f64 * 2.0 / clock,
                 self.bp.flush_count_branch as f64 * 2.0 / clock,
+                self.memory.stat.first_miss as f64 * FIRST_MISS_PENALTY as f64 / clock,
             ]
             .map(|s| Duration::from_micros(s as u64));
 
@@ -299,7 +310,8 @@ impl SimulatorV4 {
             Hazard time with cache hit: {:?} ({:.02}%)\n\
             Cache miss time: read: {:?} ({:.02}%), write: {:?} ({:.02}%)\n\
             JALR flush time: {:?} ({:.02}%)\n\
-            Branch flush time: {:?} ({:.02}%)\n",
+            Branch flush time: {:?} ({:.02}%)\n\
+            First miss time: {:?} ({:.02}%)\n",
             total_time,
             clock,
             hazard_time,
@@ -325,6 +337,11 @@ impl SimulatorV4 {
             branch_flush_time,
             percent(
                 branch_flush_time.as_micros() as f64,
+                total_time.as_micros() as f64
+            ),
+            cache_first_miss_time,
+            percent(
+                cache_first_miss_time.as_micros() as f64,
                 total_time.as_micros() as f64
             ),
         ))?;

@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, fmt::Display};
+use std::fmt::Display;
+
+#[cfg(feature = "conflict_pair")]
+use std::collections::BTreeMap;
 
 use serde::Serialize;
 
@@ -61,7 +64,9 @@ pub struct CacheStat {
     pub read: u64,
     pub write: u64,
     pub write_hit: u64,
+    #[cfg(feature = "conflict_pair")]
     pub conflict_pair: BTreeMap<u32, u64>,
+    pub first_miss: u64,
 }
 
 impl Display for CacheStat {
@@ -85,6 +90,7 @@ impl Display for CacheStat {
             self.write - self.write_hit,
             (self.write - self.write_hit) as f64 / self.write as f64 * 100.0
         )?;
+        writeln!(f, "First miss: {}", self.first_miss)?;
 
         Ok(())
     }
@@ -132,6 +138,10 @@ impl MemoryV4 {
         let idx = (addr >> 2) & CACHE_MASK;
         let entry = unsafe { self.cache.get_unchecked_mut(idx) };
 
+        if !entry.tag == 0 {
+            self.stat.first_miss += 1;
+        }
+
         #[cfg(feature = "conflict_pair")]
         {
             let (hit, prev) = entry.replace(addr, pc);
@@ -159,7 +169,14 @@ impl MemoryV4 {
         if !self.verbose {
             return (value, false);
         }
-        let hit = unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr);
+
+        let entry = unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) };
+
+        if !entry.tag == 0 {
+            self.stat.first_miss += 1;
+        }
+
+        let hit = entry.replace(addr);
         (value, hit)
     }
 
@@ -185,6 +202,11 @@ impl MemoryV4 {
 
         let idx = (addr >> 2) & CACHE_MASK;
         let entry = &mut unsafe { self.cache.get_unchecked_mut(idx) };
+
+        if !entry.tag == 0 {
+            self.stat.first_miss += 1;
+        }
+
         #[cfg(feature = "conflict_pair")]
         {
             let (hit, prev) = entry.replace(addr, pc);
@@ -212,7 +234,11 @@ impl MemoryV4 {
         if !self.verbose {
             return true;
         }
-        unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr)
+        let entry = unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) };
+        if !entry.tag == 0 {
+            self.stat.first_miss += 1;
+        }
+        entry.replace(addr)
     }
 }
 
