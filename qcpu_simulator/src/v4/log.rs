@@ -4,17 +4,17 @@ use qcpu_syntax::ParsingContext;
 
 use crate::v4::syntax::{get_reg_name, Reg};
 
-pub const CLOCK_MHZ: u32 = 125;
-pub const CACHE_HIT_PENALTY: u32 = 2;
-pub const CACHE_MISS_PENALTY: u32 = 56;
-pub const INW_DELAY: u32 = 107 * 4 * 10;
+pub const CLOCK_MHZ: u64 = 125;
+pub const CACHE_HIT_PENALTY: u64 = 2;
+pub const CACHE_MISS_PENALTY: u64 = 65;
+pub const INW_DELAY: u64 = 107 * 4 * 10;
 
 use super::{
     syntax::{OpName, OpV4},
     Instat, SimulatorV4,
 };
 
-pub fn get_delay(opname: OpName) -> u32 {
+pub fn get_delay(opname: OpName) -> u64 {
     match opname {
         OpName::Fadd => 4,
         OpName::Fsub => 4,
@@ -158,31 +158,14 @@ impl SimulatorV4 {
             .zip(self.instructions.iter())
             .chain(std::iter::once((&Instat::default(), &OpV4::default())))
         {
-            // self.stat.cycle_count += stat.call;
-            self.stat.instr_count += stat.call as u64;
+            self.stat.instr_count += stat.call;
             let delay = get_delay(op.opname);
 
             self.stat.cycle_count += {
-                // if !matches!(
-                //     prev_op.opname,
-                //     OpName::Bne
-                //         | OpName::Beq
-                //         | OpName::Bge
-                //         | OpName::Blt
-                //         | OpName::Jalr
-                //         | OpName::Jal
-                // ) && prev_stat.call > stat.call
-                // {
-                //     panic!(
-                //         "How? {} vs {}: {} vs {}",
-                //         prev_op.opname, op.opname, prev_stat.call, stat.call
-                //     );
-                // }
-
                 if stat.prev_ma > 0 {
                     let hazard =
                         if (op.rs1 == prev_op.rd || op.rs2 == prev_op.rd) && prev_op.rd != 0 {
-                            self.stat.hazard_count += prev_stat.call as u64;
+                            self.stat.hazard_count += prev_stat.call;
                             true
                         } else {
                             false
@@ -191,7 +174,7 @@ impl SimulatorV4 {
                     (match prev_op.opname {
                         OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
                             if hazard {
-                                prev_stat.hit * (CACHE_HIT_PENALTY + delay.max(CACHE_HIT_PENALTY))
+                                prev_stat.hit * (CACHE_HIT_PENALTY + delay)
                                     + (prev_stat.call - prev_stat.hit)
                                         * (CACHE_MISS_PENALTY + delay)
                             } else {
@@ -201,26 +184,26 @@ impl SimulatorV4 {
                         }
                         OpName::Inw => {
                             if hazard {
-                                prev_stat.call * (INW_DELAY + delay.max(CACHE_HIT_PENALTY))
+                                prev_stat.call * (INW_DELAY + delay)
                             } else {
                                 prev_stat.call * INW_DELAY
                             }
                         }
                         _ => unreachable!(),
-                    }) + (stat.call - stat.prev_ma) * delay.max(CACHE_HIT_PENALTY)
+                    }) + (stat.call - stat.prev_ma) * (delay.max(CACHE_HIT_PENALTY) + 1)
                 } else {
-                    stat.call * delay.max(CACHE_HIT_PENALTY)
+                    stat.call * (delay.max(CACHE_HIT_PENALTY) + 1)
                 }
-            } as u64;
+            };
 
             match op.opname {
                 OpName::Lw | OpName::Lwr | OpName::Lwi => {
-                    self.memory.stat.read += stat.call as u64;
-                    self.memory.stat.hit += stat.hit as u64;
+                    self.memory.stat.read += stat.call;
+                    self.memory.stat.hit += stat.hit;
                 }
                 OpName::Sw | OpName::Swi => {
-                    self.memory.stat.write += stat.call as u64;
-                    self.memory.stat.write_hit += stat.hit as u64;
+                    self.memory.stat.write += stat.call;
+                    self.memory.stat.write_hit += stat.hit;
                 }
                 _ => {}
             }

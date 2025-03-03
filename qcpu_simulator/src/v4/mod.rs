@@ -113,9 +113,9 @@ impl SimulatorV4Builder {
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct Instat {
-    pub hit: u32,
-    pub call: u32,
-    pub prev_ma: u32,
+    pub hit: u64,
+    pub call: u64,
+    pub prev_ma: u64,
 }
 
 #[derive(Debug)]
@@ -199,14 +199,17 @@ impl SimulatorV4 {
             }
 
             self.op = unsafe { *self.instructions.get_unchecked(index) };
-
             self.next_pc = self.pc + 4;
 
+            #[cfg(feature = "safe")]
             self.execute().map_err(|kind| SimulatorV4HaltDetail {
                 op: self.op,
                 line: index,
                 kind,
             })?;
+
+            #[cfg(not(feature = "safe"))]
+            self.execute();
 
             if self.verbose {
                 self.update_statistics(index);
@@ -226,7 +229,7 @@ impl SimulatorV4 {
                     .update_taken(&self.op, self.pc as usize, self.next_pc as usize);
             }
             OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
-                stat.hit += self.cache_hit as u32;
+                stat.hit += self.cache_hit as u64;
             }
             _ => {}
         }

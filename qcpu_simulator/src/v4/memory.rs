@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use serde::Serialize;
 
+#[cfg(feature = "safe")]
 use super::SimulatorV4HaltKind;
 
 #[derive(Debug, Clone)]
@@ -109,6 +110,7 @@ impl MemoryV4 {
         }
     }
 
+    #[cfg(feature = "safe")]
     pub fn read(
         &mut self,
         addr: usize,
@@ -127,7 +129,7 @@ impl MemoryV4 {
             return Ok((value, false));
         }
 
-        let idx = addr & CACHE_MASK;
+        let idx = (addr >> 2) & CACHE_MASK;
         let entry = unsafe { self.cache.get_unchecked_mut(idx) };
 
         #[cfg(feature = "conflict_pair")]
@@ -151,6 +153,14 @@ impl MemoryV4 {
         }
     }
 
+    #[cfg(not(feature = "safe"))]
+    pub fn read(&mut self, addr: usize) -> (u32, bool) {
+        let value = unsafe { *self.m.get_unchecked(addr) };
+        let hit = unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr);
+        (value, hit)
+    }
+
+    #[cfg(feature = "safe")]
     pub fn write(
         &mut self,
         addr: usize,
@@ -170,7 +180,7 @@ impl MemoryV4 {
             return Ok(true);
         }
 
-        let idx = addr & CACHE_MASK;
+        let idx = (addr >> 2) & CACHE_MASK;
         let entry = &mut unsafe { self.cache.get_unchecked_mut(idx) };
         #[cfg(feature = "conflict_pair")]
         {
@@ -191,6 +201,12 @@ impl MemoryV4 {
             let hit = entry.replace(addr);
             Ok(hit)
         }
+    }
+
+    #[cfg(not(feature = "safe"))]
+    pub fn write(&mut self, addr: usize, val: u32) -> bool {
+        unsafe { *self.m.get_unchecked_mut(addr) = val };
+        unsafe { self.cache.get_unchecked_mut((addr >> 2) & CACHE_MASK) }.replace(addr)
     }
 }
 

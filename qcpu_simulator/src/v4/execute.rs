@@ -1,6 +1,9 @@
 use std::io::{Read as _, Write as _};
 
-use super::{syntax::OpName, SimulatorV4, SimulatorV4HaltKind};
+use super::{syntax::OpName, SimulatorV4};
+
+#[cfg(feature = "safe")]
+use super::SimulatorV4HaltKind;
 
 pub type ExecuteResult = (usize, Option<u32>);
 
@@ -698,6 +701,7 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(feature = "safe")]
     fn exec_lw(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
         let (val, hit) = self.memory.read(
@@ -714,6 +718,16 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    fn exec_lw(&mut self) {
+        let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
+        let (val, hit) = self.memory.read(addr);
+        self.cache_hit = hit;
+        self.set_reg(self.op.rd, val);
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "safe")]
     fn exec_lwr(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self
             .get_reg(self.op.rs1)
@@ -733,6 +747,18 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    fn exec_lwr(&mut self) {
+        let addr = self
+            .get_reg(self.op.rs1)
+            .wrapping_add(self.get_reg(self.op.rs2)) as usize;
+        let (val, hit) = self.memory.read(addr);
+        self.cache_hit = hit;
+        self.set_reg(self.op.rd, val);
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "safe")]
     fn exec_lwi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let (val, hit) = self.memory.read(
@@ -750,6 +776,16 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    fn exec_lwi(&mut self) {
+        let addr = self.op.imm as usize;
+        let (val, hit) = self.memory.read(addr);
+        self.cache_hit = hit;
+        self.set_reg(self.op.rd, val);
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "safe")]
     fn exec_sw(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
         let hit = self.memory.write(
@@ -767,6 +803,15 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    fn exec_sw(&mut self) {
+        let addr = self.get_reg(self.op.rs1).wrapping_add(self.op.imm) as usize;
+        let hit = self.memory.write(addr, self.get_reg(self.op.rs2));
+        self.cache_hit = hit;
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "safe")]
     fn exec_swi(&mut self) -> Result<(), SimulatorV4HaltKind> {
         let addr = self.op.imm as usize;
         let hit = self.memory.write(
@@ -784,6 +829,14 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    fn exec_swi(&mut self) {
+        let addr = self.op.imm as usize;
+        let hit = self.memory.write(addr, self.get_reg(self.op.rs2));
+        self.cache_hit = hit;
+    }
+
+    #[inline(always)]
     fn exec_outb(&mut self) {
         let val = self.get_reg(self.op.rs2);
         self.output.write_all(&[(val & 0xff) as u8]).unwrap();
@@ -797,6 +850,7 @@ impl SimulatorV4 {
     }
 
     #[inline(always)]
+    #[cfg(feature = "safe")]
     pub fn execute(&mut self) -> Result<(), SimulatorV4HaltKind> {
         match self.op.opname {
             OpName::Add => self.exec_add(),
@@ -840,6 +894,51 @@ impl SimulatorV4 {
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    #[cfg(not(feature = "safe"))]
+    pub fn execute(&mut self) {
+        match self.op.opname {
+            OpName::Add => self.exec_add(),
+            OpName::Sub => self.exec_sub(),
+            OpName::Sll => self.exec_sll(),
+            OpName::Srl => self.exec_srl(),
+            OpName::Xor => self.exec_xor(),
+            OpName::And => self.exec_and(),
+            OpName::Or => self.exec_or(),
+            OpName::Addi => self.exec_addi(),
+            OpName::Slli => self.exec_slli(),
+            OpName::Srli => self.exec_srli(),
+            OpName::Beq => self.exec_beq(),
+            OpName::Bge => self.exec_bge(),
+            OpName::Blt => self.exec_blt(),
+            OpName::Bne => self.exec_bne(),
+            OpName::Jal => self.exec_jal(),
+            OpName::Jalr => self.exec_jalr(),
+            OpName::Lui => self.exec_lui(),
+            OpName::Fadd => self.exec_fadd(),
+            OpName::Fsub => self.exec_fsub(),
+            OpName::Fmul => self.exec_fmul(),
+            OpName::Fdiv => self.exec_fdiv(),
+            OpName::Fsgnj => self.exec_fsgnj(),
+            OpName::Fsgnjn => self.exec_fsgnjn(),
+            OpName::Fsgnjx => self.exec_fsgnjx(),
+            OpName::Ftoi => self.exec_ftoi(),
+            OpName::Fitof => self.exec_fitof(),
+            OpName::Feq => self.exec_feq(),
+            OpName::Flt => self.exec_flt(),
+            OpName::Fle => self.exec_fle(),
+            OpName::Fsqrt => self.exec_fsqrt(),
+            OpName::Lw => self.exec_lw(),
+            OpName::Lwr => self.exec_lwr(),
+            OpName::Lwi => self.exec_lwi(),
+            OpName::Sw => self.exec_sw(),
+            OpName::Swi => self.exec_swi(),
+            OpName::Outb => self.exec_outb(),
+            OpName::Inw => self.exec_inw(),
+            _ => unimplemented!(),
+        }
     }
 }
 

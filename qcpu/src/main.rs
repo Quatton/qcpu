@@ -309,17 +309,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Err(e) = sim.run() {
                 eprintln!("Simulation Result: {:?}", e);
             }
-            let e2 = s.elapsed();
 
             sim.tally();
             sim.log_registers();
-
-            sim.log.write_fmt(format_args!(
-                "Loaded in: {:?}\nSimulated in: {:?}\n\n",
-                e, e2
-            ))?;
-
-            println!("Loaded in: {:?}\nSimulated in: {:?}", e, e2);
 
             if verbose {
                 sim.log_stat()?;
@@ -348,15 +340,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         stat: sim.stat,
                         const_: Constants {
                             clock_mhz: clock as u64,
-                            cache_hit_penalty: CACHE_HIT_PENALTY as u64,
-                            cache_miss_penalty: CACHE_MISS_PENALTY as u64,
-                            inw_delay: INW_DELAY as u64,
+                            cache_hit_penalty: CACHE_HIT_PENALTY,
+                            cache_miss_penalty: CACHE_MISS_PENALTY,
+                            inw_delay: INW_DELAY,
                         },
                     };
 
                     serde_json::to_writer_pretty(&mut writer, &json)?;
                 }
             }
+
+            let e2 = s.elapsed();
+
+            sim.log.write_fmt(format_args!(
+                "Loaded in: {:?}\nSimulated in: {:?}\n\n",
+                e, e2
+            ))?;
+
+            println!("Loaded in: {:?}\nSimulated in: {:?}", e, e2);
 
             println!("Output written to: {:?}", sim.output_file);
             println!("Log written to: {:?}", sim.log_file);
