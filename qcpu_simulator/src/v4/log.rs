@@ -6,7 +6,7 @@ use crate::v4::syntax::{get_reg_name, Reg};
 
 pub const CLOCK_MHZ: u64 = 125;
 pub const CACHE_HIT_PENALTY: u64 = 2;
-pub const CACHE_MISS_PENALTY: u64 = 65;
+pub const CACHE_MISS_PENALTY: u64 = 67;
 pub const INW_DELAY: u64 = 107 * 4 * 10;
 
 use super::{
@@ -171,17 +171,15 @@ impl SimulatorV4 {
         {
             self.stat.instr_count += stat.call;
             let delay = get_delay(op.opname);
+            let hazard = if (op.rs1 == prev_op.rd || op.rs2 == prev_op.rd) && prev_op.rd != 0 {
+                self.stat.hazard_count += prev_stat.call;
+                true
+            } else {
+                false
+            };
 
             self.stat.cycle_count += {
                 if stat.prev_ma > 0 {
-                    let hazard =
-                        if (op.rs1 == prev_op.rd || op.rs2 == prev_op.rd) && prev_op.rd != 0 {
-                            self.stat.hazard_count += prev_stat.call;
-                            true
-                        } else {
-                            false
-                        };
-
                     (match prev_op.opname {
                         #[cfg(feature = "full_ops")]
                         OpName::Lw | OpName::Lwr | OpName::Lwi | OpName::Sw | OpName::Swi => {
