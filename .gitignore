@@ -3,3 +3,4 @@
 /test_data/*.log
 .DS_Store
 profile.json
+!test_data/output*
