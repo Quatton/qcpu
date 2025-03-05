@@ -1,6 +1,6 @@
 # qcpu 
 
-([Japanese below](#japanese))
+([Japanese below](#japanese) but it's not really complete or well proof-read so please bare with me and refer to the English version when in doubt. Or you can refer to my official CPU実験 report, in which I put a lot more effort into.)
 
 ```
 .
@@ -42,10 +42,46 @@ qcpu asm -s <input_file> -o <output_file>
 ```sh
 qcpu sim -b <input_file_in_binary>
 
-qcpu sim -s <input_file_in_assembly> # Just-in-time compilation
+qcpu sim -s <input_file_in_assembly> # Just-in-time assembly
 
 qcpu --help # For more information
 ```
+
+## Caveats
+
+### Input, output, and log files
+
+Usually we have `contest.sld` but it's not in binary so I built a converter to convert it to binary format.
+
+```sh
+qcpu conv -i <input_file> -o <output_file>
+```
+
+But I already have `contest` inside `test_data` so you can just use that. Even better, if the program sits inside the `test_data` directory, you don't have to specify the path.
+
+For example this is your full command:
+
+```sh
+qcpu sim -i ./test_data/contest -b ./test_data/minrt_128.bin -o ./test_data/minrt_128.ppm --log ./test_data/minrt_128.log
+```
+
+You can reduce it to:
+
+```sh
+qcpu sim -b minrt_128.bin
+```
+
+`--log` will **override** everything in its way so be careful. It's not checked into version control so it's not really recoverable. So omitting it will automatically create a log file with timestamp. If you don't want the log file to clutter your directory, you can just use `--log` to override a single file.
+
+### Compiler and assembly file
+
+The latest version of the `minrt` program is not included in the repository so you should compile it directory from our compiler submodules.
+
+### Restrictions
+
+You might wonder how restrictive the simulator is and how limited the options are. But that's because the simulator is tailored to run this specific `minrt` program. Its default output path is even hardcoded to use `ppm` format. No options to change the memory size or cache size so that code path is predictable and vectors are contiguous in memory. 
+
+You can try other compile features other than default but it's not guaranteed to work. The simulator is optimized for speed. I can guarantee that it will run the `minrt` program as fast as possible.
 
 ## About
 
@@ -192,6 +228,8 @@ Writeback is just writing back to the register file. Nothing special here.
 
 ## Statistics
 
+(Some numbers here are not accurate anymore. I changed a lot of stuff during the final days and just went with it. For example direct-mapped cache is 99% hit. If you have my official Japanese report, that's more up-to-date.)
+
 ### Cache
 
 Cache is a direct-mapped cache with 16384 lines. In a direct-mapped cache, we usually need tag, data, and valid bits. However, due to how perfectly our memory is sized, there is a clever trick to fit all of these in a single `u8` integer. 
@@ -261,6 +299,7 @@ Branch Flush Count: 80474384 (12.08%)
 This result is really good but sadly it's not really significant. The cost of flush is like 1% of the cache miss time. But it's good to know that it's working as intended.
 
 ### Time prediction and cycle-accurate simulation
+
 
 Wait, but your simulator is single-cycle. How can you predict the time accurately? Because `minrt` is a sizeable program, we can predict the time by counting the maximum time each cycle takes and summing them up. First, because the program doesn't exceed `16384` lines, we just count how many calls each line is executed.
 
@@ -394,6 +433,42 @@ qcpu sim -s <アセンブリファイル> # JITコンパイル
 
 qcpu --help # 詳細情報
 ```
+
+## 注意点
+
+### 入出力とログファイル
+
+通常、`contest.sld`がありますが、バイナリ形式ではないため、バイナリ形式に変換するコンバーターを作成しました。
+
+```sh
+qcpu conv -i <入力ファイル> -o <出力ファイル>
+```
+
+ただし、`test_data`の中に`contest`が既にあるため、それを使用できます。さらに良いことに、プログラムが`test_data`ディレクトリ内にある場合、パスを指定する必要はありません。
+
+たとえば、完全なコマンドは次のようになります。
+
+```sh
+qcpu sim -i ./test_data/contest -b ./test_data/minrt_128.bin -o ./test_data/minrt_128.ppm --log ./test_data/minrt_128.log
+```
+
+次のように短縮できます。
+
+```sh
+qcpu sim -b minrt_128.bin
+```
+
+`--log`はすべてを**上書き**するため、注意してください。バージョン管理されていないため、復元は困難です。したがって、省略すると、タイムスタンプ付きのログファイルが自動的に作成されます。ログファイルでディレクトリが散らかるのを避けたい場合は、`--log`を使用して単一のファイルを上書きできます。
+
+### コンパイラとアセンブリファイル
+
+`minrt`プログラムの最新バージョンはリポジトリに含まれていないため、コンパイラサブモジュールから直接コンパイルする必要があります。
+
+### 制限事項
+
+シミュレータがどれほど制限的で、オプションがどれほど限られているのか疑問に思うかもしれません。しかし、それはシミュレータがこの特定の`minrt`プログラムを実行するように調整されているためです。デフォルトの出力パスは`ppm`形式を使用するようにハードコードされています。メモリサイズやキャッシュサイズを変更するオプションはないため、コードパスは予測可能で、ベクトルはメモリ内で連続しています。
+
+デフォルト以外のコンパイル機能を試すこともできますが、動作は保証されていません。シミュレータは速度のために最適化されています。`minrt`プログラムを可能な限り高速に実行することを保証できます。
 
 ## プロジェクトについて
 
